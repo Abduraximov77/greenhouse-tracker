@@ -16,6 +16,7 @@
   --danger: #b3261e;
   --shadow: 0 1px 2px rgb(29 42 34 / 0.05), 0 4px 14px rgb(29 42 34 / 0.05);
 
+  color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -23,7 +24,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #111814;
     --surface: #18221c;
     --text: #e8efe9;
@@ -40,6 +42,24 @@
     --danger: #ff8a80;
     --shadow: none;
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111814;
+  --surface: #18221c;
+  --text: #e8efe9;
+  --muted: #9fb0a5;
+  --line: #2a372f;
+  --brand: #8bd06f;
+  --brand-soft: #1f3326;
+  --brand-accent: #a7db8a;
+  --on-brand: #0f2a1b;
+  --good: #8bd06f;
+  --good-soft: #1f3a27;
+  --warn: #f0a46c;
+  --warn-soft: #3a2616;
+  --danger: #ff8a80;
+  --shadow: none;
 }
 
 * {
@@ -167,7 +187,7 @@ a {
 /* ---------- Layout ---------- */
 .topbar {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: flex;
   align-items: center;
