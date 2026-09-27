@@ -992,3 +992,20 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   }
   .crop-nav-item.is-active { border-color: var(--brand); }
 }
+
+/* Day off for everyone */
+.day-off-all { margin-left: auto; background: var(--surface); color: var(--warn); border-color: var(--warn); }
+.day-off-all:hover { background: var(--warn-soft); }
+.day-off-all.is-on { background: var(--warn); color: #fff; border-color: var(--warn); }
+.day-off-note {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+@media (max-width: 480px) {
+  .day-off-all { margin-left: 0; flex: 1 1 100%; white-space: normal; }
+}

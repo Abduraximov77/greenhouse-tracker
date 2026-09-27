@@ -5,7 +5,9 @@ import {
   cropDays,
   dayPay,
   removeRecord,
+  setDayOffForAll,
   setWorkerDay,
+  daysBetween,
   updateRecord,
   useDB,
   type Attendance,
@@ -16,6 +18,12 @@ import { formatDate, formatDateTime, formatMonth, formatNumber, todayISO } from 
 import { useCurrency, sumIn } from '../../lib/money'
 import { useT } from '../../lib/i18n'
 import { DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stat, num, str } from '../../components/ui'
+
+function lastDayOfMonth(ym: string) {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m, 0).getDate()
+  return `${ym}-${String(d).padStart(2, '0')}`
+}
 
 function shiftDate(iso: string, days: number) {
   const [y, m, d] = iso.split('-').map(Number)
@@ -32,7 +40,14 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const workers = [...db.workers].sort((a, b) => a.name.localeCompare(b.name))
   const days = cropDays(db, crop.id)
 
-  const [date, setDate] = useState(todayISO())
+  const [date, setDateRaw] = useState(todayISO())
+  // Bumped after "day off for everyone" so the rows reset their inputs.
+  const [bulk, setBulk] = useState(0)
+  const [confirmOff, setConfirmOff] = useState(false)
+  const setDate = (d: string) => {
+    setDateRaw(d)
+    setConfirmOff(false)
+  }
   const [editing, setEditing] = useState<null | 'new' | string>(null)
   const [f, setF] = useState({ name: '', phone: '', dailySalary: '', payPerBox: '', currency: '' })
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +86,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const dayOf = (w: Worker) => db.attendance[attendanceKey(crop.id, w.id, date)]
   const todays = workers.map(dayOf).filter(Boolean) as Attendance[]
   const onCount = todays.filter((a) => a.status === 'on').length
+  const allOff = workers.length > 0 && workers.every((w) => dayOf(w)?.status === 'off')
   const dayBoxes = todays.reduce((a, d) => a + (d.boxes ?? 0), 0)
   const dayTotal = sumIn(todays.map((d) => ({ amount: dayPay(d), currency: d.currency })), cur.display, cur.rates)
 
@@ -94,8 +110,18 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const payTotal = summary.reduce((a, s) => a + s.pay.total, 0)
   // Calendar days, not worker-days: a day counts once however many people worked.
   const workDates = new Set(inPeriod.filter((r) => r.status === 'on').map((r) => r.date))
-  // A day off = marked, but nobody worked that day.
-  const offDates = new Set(inPeriod.filter((r) => r.status === 'off' && !workDates.has(r.date)).map((r) => r.date))
+  // Days off = every day in the period with nobody working, including days with nothing recorded.
+  // The period runs from the first recorded day on this crop (or the month start) up to today
+  // (or the month end), so future days and days before work began don't count.
+  const firstDay = days.map((r) => r.date).sort()[0]
+  const today = todayISO()
+  let offCount = 0
+  if (firstDay) {
+    const from = period === 'all' ? firstDay : [firstDay, `${period}-01`].sort()[1]
+    const monthEnd = period === 'all' ? today : lastDayOfMonth(period)
+    const to = [today, monthEnd].sort()[0]
+    offCount = Math.max(0, daysBetween(from, to) - [...workDates].filter((d) => d >= from && d <= to).length)
+  }
   const payMissing = summary.some((s) => s.pay.missing)
 
   return (
@@ -124,7 +150,21 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                 {t('Today')}
               </button>
             )}
+            <button
+              type="button"
+              className={`btn btn-small day-off-all${allOff ? ' is-on' : ''}`}
+              aria-pressed={allOff}
+              onClick={() => {
+                if (!allOff && onCount > 0 && !confirmOff) return setConfirmOff(true)
+                setDayOffForAll(crop, workers, date, !allOff)
+                setConfirmOff(false)
+                setBulk((n) => n + 1)
+              }}
+            >
+              {allOff ? `✓ ${t('Day off for everyone')}` : confirmOff ? t('Tap again: boxes for this day will be cleared') : t('Day off for everyone')}
+            </button>
           </div>
+          {allOff && <p className="day-off-note">{t('Nobody works on this day. Tap the button again to undo.')}</p>}
 
           <div className="day-summary">
             <span>
@@ -141,7 +181,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
 
           <ul className="att-list">
             {workers.map((w) => (
-              <WorkerDayRow key={`${w.id}|${date}`} crop={crop} worker={w} date={date} day={dayOf(w)} />
+              <WorkerDayRow key={`${w.id}|${date}|${bulk}`} crop={crop} worker={w} date={date} day={dayOf(w)} />
             ))}
           </ul>
         </div>
@@ -172,7 +212,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             <Stat label={t('Total to pay')} value={cur.fmt(payTotal)} />
             <Stat label={t('Boxes prepared')} value={formatNumber(sum('boxes'), 0)} />
             <Stat label={t('Working days')} value={formatNumber(workDates.size, 0)} />
-            <Stat label={t('Days off')} value={formatNumber(offDates.size, 0)} />
+            <Stat label={t('Days off')} value={formatNumber(offCount, 0)} />
           </div>
           <RateMissing show={payMissing || dayTotal.missing} />
           {summary.length === 0 ? (
@@ -204,7 +244,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                   <tr>
                     <td>{t('Total')}</td>
                     <td className="num">{workDates.size}</td>
-                    <td className="num">{offDates.size}</td>
+                    <td className="num">{offCount}</td>
                     <td className="num">{formatNumber(sum('boxes'), 0)}</td>
                     <td className="num">{cur.fmt(payTotal)}</td>
                   </tr>
@@ -214,7 +254,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
           )}
           <p className="field-hint">
             {t('Pay for a day = daily salary + boxes × pay per box.')}{' '}
-            {t('Working days count each calendar day once; a day off is a day when nobody worked.')}
+            {t('Working days count each calendar day once. Every day with nobody working counts as a day off, even if nothing was entered.')}
           </p>
         </>
       )}

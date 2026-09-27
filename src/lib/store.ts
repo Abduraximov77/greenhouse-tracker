@@ -381,6 +381,40 @@ export function setWorkerDay(
   commit({ ...db, attendance, workers })
 }
 
+/** Mark every worker off for a day on a crop (on = true), or clear those day-off marks (on = false). */
+export function setDayOffForAll(crop: SeasonCrop, workers: Worker[], date: string, on: boolean) {
+  const attendance = { ...db.attendance }
+  for (const w of workers) {
+    const key = attendanceKey(crop.id, w.id, date)
+    if (on) {
+      attendance[key] = {
+        seasonId: crop.seasonId,
+        cropId: crop.id,
+        workerId: w.id,
+        date,
+        status: 'off',
+        salary: w.dailySalary,
+        boxes: null,
+        payPerBox: w.payPerBox || null,
+        currency: w.currency,
+        updatedAt: nowIso(),
+      }
+    } else if (attendance[key]?.status === 'off') {
+      delete attendance[key]
+    }
+  }
+  commit({ ...db, attendance })
+}
+
+/** Days from start to end inclusive (YYYY-MM-DD). 0 if end is before start. */
+export function daysBetween(start: string, end: string) {
+  const [a, b] = [start, end].map((s) => {
+    const [y, m, d] = s.split('-').map(Number)
+    return Date.UTC(y, m - 1, d)
+  })
+  return b < a ? 0 : Math.round((b - a) / 86400000) + 1
+}
+
 /** Money earned on one day: daily salary (if worked) + boxes × pay per box. */
 export function dayPay(a: Attendance) {
   if (a.status !== 'on') return 0
