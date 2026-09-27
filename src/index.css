@@ -1075,3 +1075,44 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .back-btn:hover { background: var(--brand-soft); }
 .back-btn:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
 .back-btn svg { width: 20px; height: 20px; }
+
+/* Dropdowns: drawn the same way in every browser (Safari ignores padding on its native ones,
+   which made the globe icon sit on top of the language name). */
+select.input {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5' fill='none' stroke='%234d6657' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 16px 16px;
+  cursor: pointer;
+}
+select.input.with-icon { padding-left: 32px; }
+.money-cur {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5' fill='none' stroke='%23237a4a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px 14px;
+}
+.control-icon { z-index: 1; }
+
+/* Dropdowns drawn the same in every browser (Safari ignores padding on native
+   dropdowns, which made the globe icon overlap the language name). */
+select.input,
+.money-cur {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%234d6657' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px;
+  cursor: pointer;
+}
+.money-cur { padding-right: 28px; background-position: right 8px center; }
+.money-cur-static { background-image: none; padding-right: 10px; cursor: default; }
+select.input.with-icon { padding-left: 32px; }

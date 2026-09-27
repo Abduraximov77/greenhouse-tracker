@@ -60,7 +60,9 @@ function Header() {
   const t = useT()
   const { rates, currency } = db.settings
   const other = currency === 'USD' ? 'UZS' : currency
-  const rateText = rates[other] ? `1 USD = ${formatMoney(rates[other], other)}` : t('Set exchange rate')
+  // Whole numbers for big rates (1 USD = 11 826 UZS), decimals for small ones (1 USD = 0.92 EUR).
+  const rate = rates[other] && rates[other] >= 100 ? Math.round(rates[other]) : rates[other]
+  const rateText = rate ? `1 USD = ${formatMoney(rate, other)}` : t('Set exchange rate')
   return (
     <header className="topbar">
       <a href={href()} className="logo-link" aria-label="AgroLedger">
