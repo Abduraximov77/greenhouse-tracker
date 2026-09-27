@@ -185,8 +185,8 @@ export function FormCard({
 
 export function SectionHead({ title, action }: { title: string; action?: ReactNode }) {
   return (
-    <div className="section-head">
-      <h2 className="section-title">{title}</h2>
+    <div className={`section-head${title ? '' : ' section-head-bare'}`}>
+      {title && <h2 className="section-title">{title}</h2>}
       {action}
     </div>
   )

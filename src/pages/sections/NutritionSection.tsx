@@ -143,7 +143,7 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
       <RateMissing show={cost.missing} />
 
       <SectionHead
-        title={t('Nutrition given')}
+        title=""
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>

@@ -81,7 +81,7 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
       </div>
 
       <SectionHead
-        title={t('Packed boxes ready for export')}
+        title=""
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>

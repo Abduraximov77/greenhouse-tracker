@@ -138,7 +138,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
       <RateMissing show={delivery.missing} />
 
       <SectionHead
-        title={t('Trucks')}
+        title=""
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>

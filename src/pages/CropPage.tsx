@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { removeRecord, seasonLabel, updateRecord, useDB, type Season, type SeasonCrop } from '../lib/store'
+import { useEffect, useRef, useState } from 'react'
+import { cropDays, removeRecord, seasonLabel, updateRecord, useDB, type Season, type SeasonCrop } from '../lib/store'
 import { href, navigate } from '../lib/router'
 import { cropName } from '../lib/crops'
 import { formatNumber } from '../lib/format'
@@ -13,56 +13,139 @@ import { HarvestSection } from './sections/HarvestSection'
 import { WorkersSection } from './sections/WorkersSection'
 import { ExportSection } from './sections/ExportSection'
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'planting', label: 'Planting' },
-  { id: 'nutrition', label: 'Nutrition' },
-  { id: 'workers', label: 'Workers' },
-  { id: 'harvest', label: 'Harvest' },
-  { id: 'export', label: 'Export' },
-] as const
+type SectionId = 'overview' | 'planting' | 'nutrition' | 'workers' | 'harvest' | 'export'
+
+const SECTIONS: { id: SectionId; label: string; sub: string }[] = [
+  { id: 'overview', label: 'Overview', sub: 'Summary of this crop' },
+  { id: 'planting', label: 'Planting', sub: 'Seedlings: arrived & planted' },
+  { id: 'nutrition', label: 'Nutrition', sub: 'Fertilizer and nutrients given' },
+  { id: 'workers', label: 'Workers', sub: 'Days worked, boxes prepared and pay' },
+  { id: 'harvest', label: 'Harvest', sub: 'Packed boxes ready for export' },
+  { id: 'export', label: 'Export', sub: 'Trucks leaving with boxes' },
+]
+
+/** Line icons for the crop sections. */
+function SectionIcon({ id }: { id: SectionId }) {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  return (
+    <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {id === 'overview' && (
+        <>
+          <rect x="3" y="3" width="7.5" height="7.5" rx="2" {...p} />
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" {...p} />
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="2" {...p} />
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" {...p} />
+        </>
+      )}
+      {id === 'planting' && (
+        <>
+          <path d="M12 21v-9M12 12c0-4 3-7 8-7 0 5-3 7-8 7zM12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 5.5 7 5.5z" {...p} />
+          <path d="M6 21h12" {...p} />
+        </>
+      )}
+      {id === 'nutrition' && (
+        <>
+          <path d="M12 3c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z" {...p} />
+          <path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5" {...p} />
+        </>
+      )}
+      {id === 'workers' && (
+        <>
+          <circle cx="9" cy="8" r="3.2" {...p} />
+          <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" {...p} />
+          <circle cx="17" cy="9" r="2.5" {...p} />
+          <path d="M17 14c2.5 0 4 2 4 4.5" {...p} />
+        </>
+      )}
+      {id === 'harvest' && <path d="M3 9l9-5 9 5v9l-9 4-9-4zM3 9l9 4 9-4M12 13v9" {...p} />}
+      {id === 'export' && (
+        <>
+          <path d="M2 6h11v10H2zM13 9h4.5l3.5 3.5V16h-8z" {...p} />
+          <circle cx="6" cy="17.5" r="2" {...p} fill="var(--surface)" />
+          <circle cx="17" cy="17.5" r="2" {...p} fill="var(--surface)" />
+        </>
+      )}
+    </svg>
+  )
+}
 
 export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCrop; tab: string }) {
+  const db = useDB()
   const t = useT()
-  const lang = useDB().settings.lang
-  const active = TABS.some((x) => x.id === tab) ? tab : 'overview'
+  const lang = db.settings.lang
+  const active: SectionId = SECTIONS.some((x) => x.id === tab) ? (tab as SectionId) : 'overview'
+  const section = SECTIONS.find((x) => x.id === active)!
   const name = cropName(crop.crop, lang)
-  const title = crop.variety ? `${name} · ${crop.variety}` : name
+
+  // On phones the menu is a sideways row: keep the current section in view.
+  const navRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const nav = navRef.current
+    const item = nav?.querySelector<HTMLElement>('.is-active')
+    if (nav && item && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft = item.offsetLeft - nav.clientWidth / 2 + item.clientWidth / 2
+    }
+  }, [active])
+
+  // Number of entries shown next to each section in the menu.
+  const days = cropDays(db, crop.id)
+  const counts: Partial<Record<SectionId, number>> = {
+    planting: db.plantings.filter((r) => r.cropId === crop.id).length,
+    nutrition: db.nutrition.filter((r) => r.cropId === crop.id).length,
+    workers: new Set(days.map((d) => d.workerId)).size,
+    harvest: new Set([
+      ...db.harvests.filter((r) => r.cropId === crop.id).map((r) => r.date),
+      ...days.filter((d) => (d.boxes ?? 0) > 0).map((d) => d.date),
+    ]).size,
+    export: db.shipments.filter((r) => r.cropId === crop.id).length,
+  }
 
   return (
-    <>
-      <Breadcrumbs
-        items={[
-          { label: t('Seasons'), to: [] },
-          { label: seasonLabel(season), to: ['season', season.id] },
-          { label: name },
-        ]}
-      />
-      <PageHead
-        title={title}
-        sub={`${t('{season} season', { season: seasonLabel(season) })}${crop.areaHa ? ` · ${formatNumber(crop.areaHa)} ${t('ha')}` : ''}`}
-      />
+    <div className="crop-layout">
+      <aside className="crop-side">
+        <a className="crop-id" href={href('season', season.id)}>
+          <span className="crop-id-season">{seasonLabel(season)}</span>
+          <span className="crop-id-name">{name}</span>
+          <span className="crop-id-meta">
+            {[crop.variety, crop.areaHa ? `${formatNumber(crop.areaHa)} ${t('ha')}` : ''].filter(Boolean).join(' · ') ||
+              t('No variety set')}
+          </span>
+        </a>
+        <nav ref={navRef} className="crop-nav" aria-label={t('Crop sections')}>
+          {SECTIONS.map((x) => (
+            <a
+              key={x.id}
+              className={`crop-nav-item${active === x.id ? ' is-active' : ''}`}
+              aria-current={active === x.id ? 'page' : undefined}
+              href={href('season', season.id, 'crop', crop.id, x.id)}
+            >
+              <SectionIcon id={x.id} />
+              <span className="crop-nav-label">{t(x.label)}</span>
+              {!!counts[x.id] && <span className="crop-nav-count">{counts[x.id]}</span>}
+            </a>
+          ))}
+        </nav>
+      </aside>
 
-      <nav className="tabs" aria-label={t('Crop sections')}>
-        {TABS.map((x) => (
-          <a
-            key={x.id}
-            className={`tab${active === x.id ? ' is-active' : ''}`}
-            aria-current={active === x.id ? 'page' : undefined}
-            href={href('season', season.id, 'crop', crop.id, x.id)}
-          >
-            {t(x.label)}
-          </a>
-        ))}
-      </nav>
+      <div className="crop-main">
+        <Breadcrumbs
+          items={[
+            { label: t('Seasons'), to: [] },
+            { label: seasonLabel(season), to: ['season', season.id] },
+            { label: name, to: ['season', season.id, 'crop', crop.id] },
+            ...(active === 'overview' ? [] : [{ label: t(section.label) }]),
+          ]}
+        />
+        <PageHead title={t(section.label)} sub={t(section.sub)} />
 
-      {active === 'overview' && <Overview season={season} crop={crop} />}
-      {active === 'planting' && <PlantingSection crop={crop} />}
-      {active === 'nutrition' && <NutritionSection crop={crop} />}
-      {active === 'workers' && <WorkersSection crop={crop} />}
-      {active === 'harvest' && <HarvestSection season={season} crop={crop} />}
-      {active === 'export' && <ExportSection crop={crop} />}
-    </>
+        {active === 'overview' && <Overview season={season} crop={crop} />}
+        {active === 'planting' && <PlantingSection crop={crop} />}
+        {active === 'nutrition' && <NutritionSection crop={crop} />}
+        {active === 'workers' && <WorkersSection crop={crop} />}
+        {active === 'harvest' && <HarvestSection season={season} crop={crop} />}
+        {active === 'export' && <ExportSection crop={crop} />}
+      </div>
+    </div>
   )
 }
 

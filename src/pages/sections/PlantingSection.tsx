@@ -131,7 +131,7 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
       <RateMissing show={total.missing} />
 
       <SectionHead
-        title={t('Seedlings: arrived & planted')}
+        title=""
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>
