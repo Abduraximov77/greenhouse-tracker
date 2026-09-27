@@ -1,20 +1,21 @@
 :root {
-  --bg: #f3f6f4;
+  /* One light, fresh-green look for everyone (no dark mode by design). */
+  --bg: #eef6f0;
   --surface: #ffffff;
-  --text: #14201a;
-  --muted: #4b5b52;
-  --line: #d9e2dc;
-  --brand: #17603d;
-  --brand-soft: #e6f1ea;
-  --brand-accent: #1f7a4d;
+  --text: #1f3328;
+  --muted: #4d6657;
+  --line: #d2e5d8;
+  --brand: #2a7f50;
+  --brand-soft: #dcf0e2;
+  --brand-accent: #237a4a;
   --accent: #f2b544;
   --on-brand: #ffffff;
-  --good: #1b7a44;
-  --good-soft: #e3f3e9;
+  --good: #1f7a45;
+  --good-soft: #dcf2e3;
   --warn: #a4480f;
   --warn-soft: #fcebdd;
-  --danger: #b3261e;
-  --shadow: 0 1px 2px rgb(29 42 34 / 0.05), 0 4px 14px rgb(29 42 34 / 0.05);
+  --danger: #c0392b;
+  --shadow: 0 1px 2px rgb(31 51 40 / 0.05), 0 4px 14px rgb(31 51 40 / 0.06);
 
   color-scheme: light;
   font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -23,45 +24,6 @@
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0e1411;
-    --surface: #162019;
-    --text: #f1f5f2;
-    --muted: #b6c4bb;
-    --line: #2b3830;
-    --brand: #6fcf97;
-    --brand-soft: #1c3326;
-    --brand-accent: #86dba8;
-    --on-brand: #0b2417;
-    --good: #7fd9a0;
-    --good-soft: #1d3a28;
-    --warn: #f5ae78;
-    --warn-soft: #3a2616;
-    --danger: #ff8a80;
-    --shadow: none;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0e1411;
-  --surface: #162019;
-  --text: #f1f5f2;
-  --muted: #b6c4bb;
-  --line: #2b3830;
-  --brand: #6fcf97;
-  --brand-soft: #1c3326;
-  --brand-accent: #86dba8;
-  --on-brand: #0b2417;
-  --good: #7fd9a0;
-  --good-soft: #1d3a28;
-  --warn: #f5ae78;
-  --warn-soft: #3a2616;
-  --danger: #ff8a80;
-  --shadow: none;
 }
 
 * {
@@ -75,6 +37,9 @@ h1, h2, h3 {
 body {
   margin: 0;
   min-height: 100vh;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text);
   background: var(--bg);
 }
 
@@ -86,9 +51,8 @@ body {
   display: grid;
   place-items: center;
   padding: 16px;
-  background:
-    radial-gradient(ellipse at 50% 40%, #24704a 0%, #17472f 55%, #0f3322 100%);
-  color: #f4f1e6;
+  background: radial-gradient(ellipse at 50% 40%, #f6fbf7 0%, #e3f3e7 60%, #d3ebdb 100%);
+  color: var(--text);
   transition: opacity 0.6s ease, visibility 0.6s;
 }
 .loading-screen.is-leaving {
@@ -104,17 +68,17 @@ body {
 }
 .loading-mark {
   border-radius: 22px;
-  box-shadow: 0 0 0 1px rgb(244 241 230 / 0.18), 0 18px 40px rgb(0 0 0 / 0.35);
+  box-shadow: 0 14px 34px rgb(42 127 80 / 0.25);
 }
 .loading-name {
   margin: 28px 0 6px;
   font-size: clamp(2rem, 7vw, 2.8rem);
   font-weight: 600;
   letter-spacing: -0.03em;
-  color: #f4f1e6;
+  color: var(--text);
 }
 .loading-name span {
-  color: #a7db8a;
+  color: var(--brand);
 }
 .loading-tagline {
   margin: 0;
@@ -122,7 +86,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: rgb(244 241 230 / 0.6);
+  color: var(--muted);
 }
 .loading-bar {
   position: relative;
@@ -130,14 +94,14 @@ body {
   height: 3px;
   margin-top: 36px;
   border-radius: 99px;
-  background: rgb(244 241 230 / 0.15);
+  background: rgb(42 127 80 / 0.15);
   overflow: hidden;
 }
 .loading-bar span {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: #a7db8a;
+  background: var(--brand);
   transform-origin: left;
   animation: fill 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
@@ -609,7 +573,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   white-space: nowrap;
 }
 .segmented button.is-on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
-.segmented button.is-good { background: var(--good); color: var(--on-brand); }
+.segmented button.is-good { background: var(--brand); color: var(--on-brand); }
 .segmented button.is-off { background: var(--warn-soft); color: var(--warn); }
 
 /* ---------- Buttons ---------- */
