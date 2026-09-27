@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { cropDays, removeRecord, seasonLabel, updateRecord, useDB, type Season, type SeasonCrop } from '../lib/store'
+import { cropDays, seasonLabel, updateRecord, useDB, type Season, type SeasonCrop } from '../lib/store'
 import { href, navigate } from '../lib/router'
 import { cropName } from '../lib/crops'
 import { formatNumber } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
-import { Breadcrumbs, DeleteButton, Field, FormCard, PageHead, RateMissing, SectionHead, Stat, num, str } from '../components/ui'
+import { Breadcrumbs, Field, FormCard, PageHead, RateMissing, SectionHead, Stat, num, str } from '../components/ui'
 import { cropTotals } from './cropTotals'
 import { PlantingSection } from './sections/PlantingSection'
 import { NutritionSection } from './sections/NutritionSection'
@@ -262,17 +262,6 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
           </div>
         </div>
       )}
-
-      <div className="danger-zone">
-        <DeleteButton
-          label={t('Remove this crop')}
-          onDelete={() => {
-            removeRecord('crops', crop.id)
-            navigate('season', season.id)
-          }}
-        />
-        <span className="field-hint">{t('Deletes all records for this crop, including worker days. Workers stay.')}</span>
-      </div>
     </>
   )
 }

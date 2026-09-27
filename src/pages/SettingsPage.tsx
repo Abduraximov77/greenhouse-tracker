@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { setCurrency, setLang, setRates, useDB, type Lang } from '../lib/store'
+import { removeRecord, seasonLabel, setCurrency, setLang, setRates, useDB, type Lang } from '../lib/store'
+import { cropName } from '../lib/crops'
+import { ConfirmDelete } from '../components/ConfirmDelete'
 import { CURRENCIES, formatDateTime, formatNumber } from '../lib/format'
 import { convert, fetchRatesOnline, formatMoney } from '../lib/money'
 import { LANGS, useT } from '../lib/i18n'
@@ -56,6 +58,16 @@ export function SettingsPage() {
     <>
       <Breadcrumbs items={[{ label: t('Seasons'), to: [] }, { label: t('Settings') }]} />
       <PageHead title={t('Settings')} />
+
+      <SectionHead title={t('Account')} />
+      <div className="card settings-card account-soon">
+        <p className="empty-title">{t('Accounts are coming soon')}</p>
+        <p className="field-hint">
+          {t('Signing in and sharing the same records with your family will be set up here.')}
+        </p>
+      </div>
+
+      <SectionHead title={t('General')} />
 
       <div className="card settings-card">
         <div className="form-grid">
@@ -162,6 +174,47 @@ export function SettingsPage() {
             1 {from} = {formatNumber(convert(1, from, to, s.rates) ?? 0, 4)} {to}
           </p>
         )}
+      </div>
+
+      <SectionHead title={t('Seasons and crops')} />
+      <p className="field-hint">{t('Delete seasons or crops you no longer need. Workers are never deleted here.')}</p>
+      <div className="manage-list">
+        {[...db.seasons]
+          .sort((a, b) => a.startYear - b.startYear)
+          .map((season) => {
+            const crops = db.crops.filter((c) => c.seasonId === season.id)
+            return (
+              <div key={season.id} className="card manage-season">
+                <div className="manage-row">
+                  <span className="manage-name">{t('{season} season', { season: seasonLabel(season) })}</span>
+                  <ConfirmDelete
+                    label={t('Delete season')}
+                    question={t('Delete the {season} season?', { season: seasonLabel(season) })}
+                    details={t('Its {n} crops and all their records (planting, nutrition, worker days, harvest, export) will be deleted. Workers stay.', { n: crops.length })}
+                    onDelete={() => removeRecord('seasons', season.id)}
+                  />
+                </div>
+                {crops.length > 0 && (
+                  <ul className="manage-crops">
+                    {crops.map((c) => {
+                      const name = [cropName(c.crop, s.lang), c.variety].filter(Boolean).join(' · ')
+                      return (
+                        <li key={c.id} className="manage-row">
+                          <span>{name}</span>
+                          <ConfirmDelete
+                            label={t('Delete crop')}
+                            question={t('Delete {crop} from {season}?', { crop: name, season: seasonLabel(season) })}
+                            details={t('All its records (planting, nutrition, worker days, harvest, export) will be deleted. Workers stay.')}
+                            onDelete={() => removeRecord('crops', c.id)}
+                          />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
       </div>
     </>
   )

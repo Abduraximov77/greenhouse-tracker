@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { addRecord, removeRecord, seasonLabel, useDB, type Season } from '../lib/store'
+import { addRecord, seasonLabel, useDB, type Season } from '../lib/store'
 import { href, navigate } from '../lib/router'
 import { CROP_CATALOG, cropName } from '../lib/crops'
 import { formatNumber } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
-import { Breadcrumbs, DeleteButton, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
+import { Breadcrumbs, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
 import { cropTotals } from './cropTotals'
 
 export function SeasonPage({ season }: { season: Season }) {
@@ -147,17 +147,6 @@ export function SeasonPage({ season }: { season: Season }) {
           })}
         </div>
       )}
-
-      <div className="danger-zone">
-        <DeleteButton
-          label={t('Delete this season')}
-          onDelete={() => {
-            removeRecord('seasons', season.id)
-            navigate()
-          }}
-        />
-        <span className="field-hint">{t('Deletes all crops and records in this season. Workers stay.')}</span>
-      </div>
     </>
   )
 }
