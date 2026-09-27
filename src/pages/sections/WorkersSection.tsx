@@ -2,18 +2,20 @@ import { useState } from 'react'
 import {
   addRecord,
   attendanceKey,
+  cropDays,
   dayPay,
   removeRecord,
-  seasonLabel,
   setWorkerDay,
   updateRecord,
   useDB,
   type Attendance,
-  type Season,
+  type SeasonCrop,
   type Worker,
-} from '../lib/store'
-import { formatDate, formatDateTime, formatNumber, todayISO, useMoney } from '../lib/format'
-import { Breadcrumbs, DeleteButton, Empty, Field, FormCard, PageHead, SectionHead, Stat, num, str } from '../components/ui'
+} from '../../lib/store'
+import { formatDate, formatDateTime, formatMonth, formatNumber, todayISO } from '../../lib/format'
+import { useCurrency, sumIn } from '../../lib/money'
+import { useT } from '../../lib/i18n'
+import { DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stat, num, str } from '../../components/ui'
 
 function shiftDate(iso: string, days: number) {
   const [y, m, d] = iso.split('-').map(Number)
@@ -22,21 +24,17 @@ function shiftDate(iso: string, days: number) {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
 }
 
-function monthLabel(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-}
-
-export function WorkersPage({ season }: { season: Season }) {
+export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const db = useDB()
-  const money = useMoney()
-  // Workers are shared by every season.
+  const t = useT()
+  const cur = useCurrency()
+  // The worker list is shared by every season and crop.
   const workers = [...db.workers].sort((a, b) => a.name.localeCompare(b.name))
-  const days = Object.values(db.attendance).filter((a) => a.seasonId === season.id)
+  const days = cropDays(db, crop.id)
 
   const [date, setDate] = useState(todayISO())
   const [editing, setEditing] = useState<null | 'new' | string>(null)
-  const [f, setF] = useState({ name: '', phone: '', dailySalary: '', payPerBox: '' })
+  const [f, setF] = useState({ name: '', phone: '', dailySalary: '', payPerBox: '', currency: '' })
   const [error, setError] = useState<string | null>(null)
   const currentMonth = todayISO().slice(0, 7)
   const [period, setPeriod] = useState<string>(currentMonth)
@@ -46,8 +44,14 @@ export function WorkersPage({ season }: { season: Season }) {
     const last = workers.at(-1)
     setF(
       w
-        ? { name: w.name, phone: w.phone, dailySalary: str(w.dailySalary), payPerBox: str(w.payPerBox) }
-        : { name: '', phone: '', dailySalary: str(last?.dailySalary), payPerBox: str(last?.payPerBox) },
+        ? { name: w.name, phone: w.phone, dailySalary: str(w.dailySalary), payPerBox: str(w.payPerBox), currency: w.currency }
+        : {
+            name: '',
+            phone: '',
+            dailySalary: str(last?.dailySalary),
+            payPerBox: str(last?.payPerBox),
+            currency: last?.currency ?? cur.display,
+          },
     )
     setEditing(w ? w.id : 'new')
   }
@@ -55,24 +59,20 @@ export function WorkersPage({ season }: { season: Season }) {
   function submit() {
     const salary = num(f.dailySalary) ?? 0
     const perBox = num(f.payPerBox) ?? 0
-    if (!f.name.trim()) return setError("Enter the worker's name.")
-    if (salary < 0 || perBox < 0) return setError('Amounts cannot be negative.')
-    const data = { name: f.name.trim(), phone: f.phone.trim(), dailySalary: salary, payPerBox: perBox }
+    if (!f.name.trim()) return setError(t("Enter the worker's name."))
+    if (salary < 0 || perBox < 0) return setError(t('Amounts cannot be negative.'))
+    const data = { name: f.name.trim(), phone: f.phone.trim(), dailySalary: salary, payPerBox: perBox, currency: f.currency }
     if (editing === 'new') addRecord('workers', data)
     else if (editing) updateRecord('workers', editing, data)
     setEditing(null)
   }
 
   // ----- the chosen day -----
-  const dayOf = (w: Worker) => db.attendance[attendanceKey(season.id, w.id, date)]
+  const dayOf = (w: Worker) => db.attendance[attendanceKey(crop.id, w.id, date)]
   const todays = workers.map(dayOf).filter(Boolean) as Attendance[]
   const onCount = todays.filter((a) => a.status === 'on').length
   const dayBoxes = todays.reduce((a, d) => a + (d.boxes ?? 0), 0)
-  const dayTotal = todays.reduce((a, d) => a + dayPay(d), 0)
-  const seasonCropIds = new Set(db.crops.filter((c) => c.seasonId === season.id).map((c) => c.id))
-  const harvestBoxes = db.harvests
-    .filter((h) => h.date === date && seasonCropIds.has(h.cropId))
-    .reduce((a, h) => a + h.boxes, 0)
+  const dayTotal = sumIn(todays.map((d) => ({ amount: dayPay(d), currency: d.currency })), cur.display, cur.rates)
 
   // ----- summary for the chosen period -----
   const months = [...new Set([currentMonth, ...days.map((r) => r.date.slice(0, 7))])].sort().reverse()
@@ -86,31 +86,23 @@ export function WorkersPage({ season }: { season: Season }) {
         daysOn: on.length,
         daysOff: mine.length - on.length,
         boxes: on.reduce((a, r) => a + (r.boxes ?? 0), 0),
-        pay: on.reduce((a, r) => a + dayPay(r), 0),
+        pay: sumIn(on.map((r) => ({ amount: dayPay(r), currency: r.currency })), cur.display, cur.rates),
       }
     })
     .filter((s) => s.daysOn + s.daysOff > 0)
-  const sum = (k: 'daysOn' | 'daysOff' | 'boxes' | 'pay') => summary.reduce((a, s) => a + s[k], 0)
+  const sum = (k: 'daysOn' | 'daysOff' | 'boxes') => summary.reduce((a, s) => a + s[k], 0)
+  const payTotal = summary.reduce((a, s) => a + s.pay.total, 0)
+  const payMissing = summary.some((s) => s.pay.missing)
 
   return (
     <>
-      <Breadcrumbs
-        items={[
-          { label: 'Seasons', to: [] },
-          { label: seasonLabel(season), to: ['season', season.id] },
-          { label: 'Workers' },
-        ]}
-      />
-      <PageHead title="Workers" sub={`${seasonLabel(season)} season · days worked, boxes prepared and pay`} />
-
-      {/* ---------- one day ---------- */}
-      <SectionHead title="Daily work" />
+      <SectionHead title={t('Daily work')} />
       {workers.length === 0 ? (
-        <Empty title="No workers yet">Add your workers below. They stay in every season.</Empty>
+        <Empty title={t('No workers yet')}>{t('Add your workers below. They stay in every season and crop.')}</Empty>
       ) : (
         <div className="card attendance">
           <div className="date-nav">
-            <button className="btn btn-ghost btn-icon" aria-label="Previous day" onClick={() => setDate(shiftDate(date, -1))}>
+            <button className="btn btn-ghost btn-icon" aria-label={t('Previous day')} onClick={() => setDate(shiftDate(date, -1))}>
               ‹
             </button>
             <input
@@ -120,81 +112,77 @@ export function WorkersPage({ season }: { season: Season }) {
               value={date}
               onChange={(e) => e.target.value && setDate(e.target.value)}
             />
-            <button className="btn btn-ghost btn-icon" aria-label="Next day" onClick={() => setDate(shiftDate(date, 1))}>
+            <button className="btn btn-ghost btn-icon" aria-label={t('Next day')} onClick={() => setDate(shiftDate(date, 1))}>
               ›
             </button>
             {date !== todayISO() && (
               <button className="btn btn-ghost btn-small" onClick={() => setDate(todayISO())}>
-                Today
+                {t('Today')}
               </button>
             )}
           </div>
 
           <div className="day-summary">
             <span>
-              <b>{onCount}</b> of {workers.length} working
+              {t('Working')}: <b>{onCount}</b> / {workers.length}
             </span>
             <span>
-              <b>{formatNumber(dayBoxes, 0)}</b> boxes prepared
+              {t('Boxes prepared')}: <b>{formatNumber(dayBoxes, 0)}</b>
             </span>
             <span>
-              <b>{money(dayTotal)}</b> to pay
+              {t('To pay')}: <b>{cur.fmt(dayTotal.total)}</b>
             </span>
           </div>
-          {harvestBoxes > 0 && harvestBoxes !== dayBoxes && (
-            <p className="field-hint">
-              Harvest records for {formatDate(date)} show {formatNumber(harvestBoxes, 0)} boxes.
-            </p>
-          )}
+          <p className="field-hint">{t('Boxes entered here are added to the Harvest for this day.')}</p>
 
           <ul className="att-list">
             {workers.map((w) => (
-              <WorkerDayRow key={`${w.id}|${date}`} season={season} worker={w} date={date} day={dayOf(w)} />
+              <WorkerDayRow key={`${w.id}|${date}`} crop={crop} worker={w} date={date} day={dayOf(w)} />
             ))}
           </ul>
         </div>
       )}
 
-      {/* ---------- summary ---------- */}
       {workers.length > 0 && (
         <>
           <SectionHead
-            title="Pay summary"
+            title={t('Pay summary')}
             action={
               <select
                 id="pay-period"
                 className="input input-compact"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                aria-label="Period"
+                aria-label={t('Period')}
               >
                 {months.map((m) => (
                   <option key={m} value={m}>
-                    {monthLabel(m)}
+                    {formatMonth(m)}
                   </option>
                 ))}
-                <option value="all">Whole season</option>
+                <option value="all">{t('Whole season')}</option>
               </select>
             }
           />
           <div className="stat-grid">
-            <Stat label="Total to pay" value={money(sum('pay'))} />
-            <Stat label="Boxes prepared" value={formatNumber(sum('boxes'), 0)} />
-            <Stat label="Working days" value={formatNumber(sum('daysOn'), 0)} />
-            <Stat label="Days off" value={formatNumber(sum('daysOff'), 0)} />
+            <Stat label={t('Total to pay')} value={cur.fmt(payTotal)} />
+            <Stat label={t('Boxes prepared')} value={formatNumber(sum('boxes'), 0)} />
+            <Stat label={t('Working days')} value={formatNumber(sum('daysOn'), 0)} />
+            <Stat label={t('Days off')} value={formatNumber(sum('daysOff'), 0)} />
           </div>
+          <RateMissing show={payMissing || dayTotal.missing} />
           {summary.length === 0 ? (
-            <Empty title="Nothing recorded in this period" />
+            <Empty title={t('Nothing recorded in this period')} />
           ) : (
             <div className="card table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Worker</th>
-                    <th className="num">Days on</th>
-                    <th className="num">Days off</th>
-                    <th className="num">Boxes</th>
-                    <th className="num">Pay</th>
+                    <th>{t('Worker')}</th>
+                    <th className="num">{t('Days on')}</th>
+                    <th className="num">{t('Days off')}</th>
+                    <th className="num">{t('Boxes')}</th>
+                    <th className="num">{t('Pay')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,71 +192,70 @@ export function WorkersPage({ season }: { season: Season }) {
                       <td className="num">{s.daysOn}</td>
                       <td className="num">{s.daysOff}</td>
                       <td className="num">{formatNumber(s.boxes, 0)}</td>
-                      <td className="num">{money(s.pay)}</td>
+                      <td className="num">{cur.fmt(s.pay.total)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td>Total</td>
+                    <td>{t('Total')}</td>
                     <td className="num">{sum('daysOn')}</td>
                     <td className="num">{sum('daysOff')}</td>
                     <td className="num">{formatNumber(sum('boxes'), 0)}</td>
-                    <td className="num">{money(sum('pay'))}</td>
+                    <td className="num">{cur.fmt(payTotal)}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
           )}
-          <p className="field-hint">Pay for a day = daily salary + boxes × pay per box.</p>
+          <p className="field-hint">{t('Pay for a day = daily salary + boxes × pay per box.')}</p>
         </>
       )}
 
-      {/* ---------- worker list ---------- */}
       <SectionHead
-        title="All workers"
+        title={t('All workers')}
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>
-              + Add worker
+              + {t('Add worker')}
             </button>
           )
         }
       />
-      <p className="field-hint">Workers you add here appear in every season.</p>
+      <p className="field-hint">{t('Workers you add here appear in every season and crop.')}</p>
       {editing && (
         <FormCard
-          title={editing === 'new' ? 'Add worker' : 'Edit worker'}
-          submitLabel={editing === 'new' ? 'Save' : 'Save changes'}
+          title={editing === 'new' ? t('Add worker') : t('Edit worker')}
+          submitLabel={editing === 'new' ? t('Save') : t('Save changes')}
           onCancel={() => setEditing(null)}
           onSubmit={submit}
           error={error}
         >
-          <Field label="Name">
+          <Field label={t('Name')}>
             <input id="worker-name" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
           </Field>
-          <Field label="Phone (optional)">
+          <Field label={t('Phone (optional)')}>
             <input id="worker-phone" className="input" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           </Field>
-          <Field label="Daily salary" hint="Leave empty or 0 if paid only per box">
-            <input
+          <Field label={t('Daily salary')} hint={t('Leave empty or 0 if paid only per box')}>
+            <MoneyInput
               id="worker-salary"
-              className="input"
-              inputMode="decimal"
               value={f.dailySalary}
-              onChange={(e) => setF({ ...f, dailySalary: e.target.value })}
+              currency={f.currency}
+              onCurrency={(c) => setF({ ...f, currency: c })}
+              onChange={(v) => setF({ ...f, dailySalary: v })}
             />
           </Field>
-          <Field label="Pay per box" hint="Used as the starting value each day">
-            <input
+          <Field label={t('Pay per box')} hint={t('Used as the starting value each day')}>
+            <MoneyInput
               id="worker-perbox"
-              className="input"
-              inputMode="decimal"
               value={f.payPerBox}
-              onChange={(e) => setF({ ...f, payPerBox: e.target.value })}
+              currency={f.currency}
+              onCurrency={(c) => setF({ ...f, currency: c })}
+              onChange={(v) => setF({ ...f, payPerBox: v })}
             />
           </Field>
-          {editing !== 'new' && <p className="field-hint field-wide">New amounts apply to days marked from now on.</p>}
+          {editing !== 'new' && <p className="field-hint field-wide">{t('New amounts apply to days marked from now on.')}</p>}
         </FormCard>
       )}
       {workers.length > 0 && (
@@ -278,15 +265,15 @@ export function WorkersPage({ season }: { season: Season }) {
               <div className="record-main">
                 <span className="record-title">{w.name}</span>
                 <span className="record-sub">
-                  {w.dailySalary ? `${money(w.dailySalary)} per day` : 'No daily salary'} ·{' '}
-                  {w.payPerBox ? `${money(w.payPerBox)} per box` : 'No pay per box'}
+                  {w.dailySalary ? t('{amount} per day', { amount: cur.fmt(w.dailySalary, w.currency) }) : t('No daily salary')} ·{' '}
+                  {w.payPerBox ? t('{amount} per box', { amount: cur.fmt(w.payPerBox, w.currency) }) : t('No pay per box')}
                 </span>
                 {w.phone && <span className="record-sub">{w.phone}</span>}
-                <span className="stamp">Added {formatDateTime(w.createdAt)}</span>
+                <span className="stamp">{t('Added {time}', { time: formatDateTime(w.createdAt) })}</span>
               </div>
               <div className="record-actions">
                 <button className="btn btn-ghost btn-small" onClick={() => open(w)}>
-                  Edit
+                  {t('Edit')}
                 </button>
                 <DeleteButton onDelete={() => removeRecord('workers', w.id)} />
               </div>
@@ -294,14 +281,16 @@ export function WorkersPage({ season }: { season: Season }) {
           ))}
         </ul>
       )}
-      {workers.length > 0 && <p className="field-hint">Deleting a worker also deletes their days in every season.</p>}
+      {workers.length > 0 && <p className="field-hint">{t('Deleting a worker also deletes all their days, in every season.')}</p>}
     </>
   )
 }
 
 /** One worker on one day: worked / day off, boxes prepared and pay per box. */
-function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: Worker; date: string; day?: Attendance }) {
-  const money = useMoney()
+function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: Worker; date: string; day?: Attendance }) {
+  const t = useT()
+  const cur = useCurrency()
+  const currency = day?.currency ?? worker.currency
   // Inputs keep their own text so typing "0." or "12," isn't interrupted.
   const [boxes, setBoxes] = useState(str(day?.boxes))
   const [perBox, setPerBox] = useState(str(day?.payPerBox ?? (worker.payPerBox || null)))
@@ -311,13 +300,13 @@ function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: W
     setBoxes(v)
     const n = num(v)
     if (v.trim() === '' || (n !== null && n >= 0)) {
-      setWorkerDay(season.id, worker, date, { status: 'on', boxes: n, payPerBox: num(perBox) })
+      setWorkerDay(crop, worker, date, { status: 'on', boxes: n, payPerBox: num(perBox) })
     }
   }
   function savePerBox(v: string) {
     setPerBox(v)
     const n = num(v)
-    if (worked && (v.trim() === '' || (n !== null && n >= 0))) setWorkerDay(season.id, worker, date, { payPerBox: n })
+    if (worked && (v.trim() === '' || (n !== null && n >= 0))) setWorkerDay(crop, worker, date, { payPerBox: n })
   }
 
   const id = `${worker.id}-${date}`
@@ -326,17 +315,19 @@ function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: W
       <div className="att-top">
         <span className="att-name">
           {worker.name}
-          <span className="stamp">{day ? `Updated ${formatDateTime(day.updatedAt)}` : 'Not marked yet'}</span>
+          <span className="stamp">
+            {day ? t('Updated {time}', { time: formatDateTime(day.updatedAt) }) : t('Not marked yet')}
+          </span>
         </span>
-        <div className="segmented" role="radiogroup" aria-label={`${worker.name} on ${formatDate(date)}`}>
+        <div className="segmented" role="radiogroup" aria-label={`${worker.name}, ${formatDate(date)}`}>
           <button
             type="button"
             role="radio"
             aria-checked={worked}
             className={worked ? 'is-on is-good' : ''}
-            onClick={() => setWorkerDay(season.id, worker, date, { status: worked ? null : 'on', payPerBox: num(perBox) })}
+            onClick={() => setWorkerDay(crop, worker, date, { status: worked ? null : 'on', payPerBox: num(perBox) })}
           >
-            Worked
+            {t('Worked')}
           </button>
           <button
             type="button"
@@ -345,10 +336,10 @@ function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: W
             className={day?.status === 'off' ? 'is-on is-off' : ''}
             onClick={() => {
               setBoxes('')
-              setWorkerDay(season.id, worker, date, { status: day?.status === 'off' ? null : 'off' })
+              setWorkerDay(crop, worker, date, { status: day?.status === 'off' ? null : 'off' })
             }}
           >
-            Day off
+            {t('Day off')}
           </button>
         </div>
       </div>
@@ -356,7 +347,7 @@ function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: W
       {day?.status !== 'off' && (
         <div className="att-work">
           <label className="mini-field" htmlFor={`${id}-boxes`}>
-            <span>Boxes prepared</span>
+            <span>{t('Boxes prepared')}</span>
             <input
               id={`${id}-boxes`}
               className="input"
@@ -370,7 +361,9 @@ function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: W
             ×
           </span>
           <label className="mini-field" htmlFor={`${id}-perbox`}>
-            <span>Pay per box</span>
+            <span>
+              {t('Pay per box')} ({currency})
+            </span>
             <input
               id={`${id}-perbox`}
               className="input"
@@ -381,9 +374,11 @@ function WorkerDayRow({ season, worker, date, day }: { season: Season; worker: W
             />
           </label>
           <div className="att-pay">
-            <span>Pay for the day</span>
-            <b>{worked && day ? money(dayPay(day)) : '—'}</b>
-            {worked && day && day.salary > 0 && <small>incl. {money(day.salary)} daily salary</small>}
+            <span>{t('Pay for the day')}</span>
+            <b>{worked && day ? cur.both(dayPay(day), day.currency) : '—'}</b>
+            {worked && day && day.salary > 0 && (
+              <small>{t('incl. {amount} daily salary', { amount: cur.fmt(day.salary, day.currency) })}</small>
+            )}
           </div>
         </div>
       )}

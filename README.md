@@ -6,14 +6,19 @@ Built as a website first, designed so it can become a phone app later.
 ## What's here so far
 - **Seasons**: 2026–2027, 2027–2028, and add more
 - **Crops**: search and add crops to a season (or add your own)
-- For each crop:
+- For each crop (tabs):
   - **Planting**: seedlings arrived and planted, quantity, price and automatic total cost
   - **Nutrition**: fertilizer given, quantity per hectare, automatic total amount and cost
-  - **Harvest**: boxes packed each day, automatic total weight
+  - **Workers**: each day worked/day off, boxes prepared × pay per box, optional daily salary, pay summary.
+    The worker list is shared by all seasons and crops.
+  - **Harvest**: boxes per day, including the boxes entered for workers, plus any other boxes
   - **Export**: trucks with truck number, driver, boxes and delivery price; boxes in stock
-- **Workers** (shared by all seasons): each day worked/day off, boxes prepared × pay per box, optional daily salary, pay totals by month or season
+- Records are grouped under bold date headings
 - Every entry saves its date and time automatically
-- Currency can be changed in the top right
+- **Languages**: English, Русский, O'zbekcha
+- **Currencies**: each amount has its own currency (e.g. delivery in USD, wages in UZS);
+  totals are converted with the exchange rate in Settings, which also has a currency converter
+  and a button to fetch today's rate online (works when hosted on its own address)
 
 > Data is currently saved in the browser on each device. A shared online database
 > and user accounts are the next step.

@@ -1,7 +1,32 @@
 import { useState } from 'react'
-import { addRecord, byDateDesc, removeRecord, updateRecord, useDB, type SeasonCrop, type Shipment } from '../../lib/store'
-import { formatDate, formatNumber, todayISO, useMoney } from '../../lib/format'
-import { Computed, DeleteButton, Empty, Field, FormCard, SectionHead, Stamp, Stat, num, str } from '../../components/ui'
+import {
+  addRecord,
+  byDateDesc,
+  groupByDate,
+  removeRecord,
+  updateRecord,
+  useDB,
+  type SeasonCrop,
+  type Shipment,
+} from '../../lib/store'
+import { formatNumber, todayISO } from '../../lib/format'
+import { useCurrency } from '../../lib/money'
+import { useT } from '../../lib/i18n'
+import {
+  Computed,
+  DayHeading,
+  DeleteButton,
+  Empty,
+  Field,
+  FormCard,
+  MoneyInput,
+  RateMissing,
+  SectionHead,
+  Stamp,
+  Stat,
+  num,
+  str,
+} from '../../components/ui'
 import { cropTotals } from '../cropTotals'
 
 type Form = {
@@ -11,13 +36,15 @@ type Form = {
   driverPhone: string
   boxes: string
   deliveryPrice: string
+  currency: string
   destination: string
   note: string
 }
 
 export function ExportSection({ crop }: { crop: SeasonCrop }) {
   const db = useDB()
-  const money = useMoney()
+  const t = useT()
+  const cur = useCurrency()
   const list = db.shipments.filter((r) => r.cropId === crop.id).sort(byDateDesc((r) => r.date))
   const allShipments = [...db.shipments].sort(byDateDesc((r) => r.date))
   const trucks = [...new Set(allShipments.map((r) => r.truckNumber))]
@@ -31,7 +58,17 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
   function open(rec?: Shipment) {
     setError(null)
     if (!rec) {
-      setF({ date: todayISO(), truckNumber: '', driverName: '', driverPhone: '', boxes: '', deliveryPrice: '', destination: '', note: '' })
+      setF({
+        date: todayISO(),
+        truckNumber: '',
+        driverName: '',
+        driverPhone: '',
+        boxes: '',
+        deliveryPrice: '',
+        currency: allShipments[0]?.currency ?? cur.display,
+        destination: '',
+        note: '',
+      })
       setEditing('new')
     } else {
       setF({
@@ -41,6 +78,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         driverPhone: rec.driverPhone,
         boxes: str(rec.boxes),
         deliveryPrice: str(rec.deliveryPrice),
+        currency: rec.currency,
         destination: rec.destination,
         note: rec.note,
       })
@@ -65,11 +103,11 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
 
   function submit() {
     if (!f) return
-    if (!f.date) return setError('Enter the date.')
-    if (!f.truckNumber.trim()) return setError("Enter the truck's number.")
-    if (!f.driverName.trim() && !f.driverPhone.trim()) return setError("Enter the driver's name or phone number.")
-    if (boxes === null || boxes <= 0 || !Number.isInteger(boxes)) return setError('Enter the number of boxes (a whole number).')
-    if (price === null || price < 0) return setError('Enter the delivery price (0 if free).')
+    if (!f.date) return setError(t('Enter the date.'))
+    if (!f.truckNumber.trim()) return setError(t("Enter the truck's number."))
+    if (!f.driverName.trim() && !f.driverPhone.trim()) return setError(t("Enter the driver's name or phone number."))
+    if (boxes === null || boxes <= 0 || !Number.isInteger(boxes)) return setError(t('Enter the number of boxes (a whole number).'))
+    if (price === null || price < 0) return setError(t('Enter the delivery price (0 if free).'))
     const data = {
       cropId: crop.id,
       date: f.date,
@@ -78,6 +116,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
       driverPhone: f.driverPhone.trim(),
       boxes,
       deliveryPrice: price,
+      currency: f.currency,
       destination: f.destination.trim(),
       note: f.note.trim(),
     }
@@ -86,21 +125,24 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
     setEditing(null)
   }
 
+  const delivery = cur.sum(list.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })))
+
   return (
     <>
       <div className="stat-grid">
-        <Stat label="Boxes in stock" value={formatNumber(totals.boxesInStock, 0)} tone={totals.boxesInStock < 0 ? 'warn' : undefined} />
-        <Stat label="Boxes exported" value={formatNumber(totals.boxesExported, 0)} />
-        <Stat label="Trucks sent" value={formatNumber(totals.trucks, 0)} />
-        <Stat label="Delivery cost" value={money(totals.deliveryCost)} />
+        <Stat label={t('Boxes in stock')} value={formatNumber(totals.boxesInStock, 0)} tone={totals.boxesInStock < 0 ? 'warn' : undefined} />
+        <Stat label={t('Boxes exported')} value={formatNumber(totals.boxesExported, 0)} />
+        <Stat label={t('Trucks sent')} value={formatNumber(totals.trucks, 0)} />
+        <Stat label={t('Delivery cost')} value={cur.fmt(delivery.total)} />
       </div>
+      <RateMissing show={delivery.missing} />
 
       <SectionHead
-        title="Trucks"
+        title={t('Trucks')}
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>
-              + Add truck
+              + {t('Add truck')}
             </button>
           )
         }
@@ -108,48 +150,67 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
 
       {editing && f && (
         <FormCard
-          title={editing === 'new' ? 'Add truck' : 'Edit truck'}
-          submitLabel={editing === 'new' ? 'Save' : 'Save changes'}
+          title={editing === 'new' ? t('Add truck') : t('Edit truck')}
+          submitLabel={editing === 'new' ? t('Save') : t('Save changes')}
           onCancel={() => setEditing(null)}
           onSubmit={submit}
           error={error}
         >
-          <Field label="Date">
-            <input className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+          <Field label={t('Date')}>
+            <input id="ex-date" className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
           </Field>
-          <Field label="Truck number" hint="Known trucks fill in the driver for you">
-            <input className="input" list="truck-numbers" value={f.truckNumber} onChange={(e) => setTruck(e.target.value)} autoCapitalize="characters" />
+          <Field label={t('Truck number')} hint={t('Known trucks fill in the driver for you')}>
+            <input
+              id="ex-truck"
+              className="input"
+              list="truck-numbers"
+              value={f.truckNumber}
+              onChange={(e) => setTruck(e.target.value)}
+              autoCapitalize="characters"
+            />
             <datalist id="truck-numbers">
-              {trucks.map((t) => (
-                <option key={t} value={t} />
+              {trucks.map((x) => (
+                <option key={x} value={x} />
               ))}
             </datalist>
           </Field>
-          <Field label="Driver's name">
-            <input className="input" value={f.driverName} onChange={(e) => setF({ ...f, driverName: e.target.value })} />
+          <Field label={t("Driver's name")}>
+            <input id="ex-driver" className="input" value={f.driverName} onChange={(e) => setF({ ...f, driverName: e.target.value })} />
           </Field>
-          <Field label="Driver's phone">
-            <input className="input" type="tel" value={f.driverPhone} onChange={(e) => setF({ ...f, driverPhone: e.target.value })} />
+          <Field label={t("Driver's phone")}>
+            <input id="ex-phone" className="input" type="tel" value={f.driverPhone} onChange={(e) => setF({ ...f, driverPhone: e.target.value })} />
           </Field>
           <Field
-            label="Boxes loaded"
+            label={t('Boxes loaded')}
             hint={
               boxes !== null && boxes > available ? (
                 <span className="text-warn">
-                  More than the {formatNumber(available, 0)} boxes in stock. Check the harvest records.
+                  {t('More than the {n} boxes in stock. Check the harvest records.', { n: formatNumber(available, 0) })}
                 </span>
               ) : (
-                `${formatNumber(available, 0)} boxes in stock`
+                t('In stock: {n} boxes', { n: formatNumber(available, 0) })
               )
             }
           >
-            <input className="input" inputMode="numeric" value={f.boxes} onChange={(e) => setF({ ...f, boxes: e.target.value })} />
+            <input id="ex-boxes" className="input" inputMode="numeric" value={f.boxes} onChange={(e) => setF({ ...f, boxes: e.target.value })} />
           </Field>
-          <Field label="Delivery price">
-            <input className="input" inputMode="decimal" value={f.deliveryPrice} onChange={(e) => setF({ ...f, deliveryPrice: e.target.value })} />
+          <Field label={t('Delivery price')}>
+            <MoneyInput
+              id="ex-price"
+              value={f.deliveryPrice}
+              currency={f.currency}
+              onCurrency={(c) => setF({ ...f, currency: c })}
+              onChange={(v) => setF({ ...f, deliveryPrice: v })}
+            />
           </Field>
-          <Field label="Destination (optional)">
-            <input className="input" list="destinations" value={f.destination} onChange={(e) => setF({ ...f, destination: e.target.value })} />
+          <Field label={t('Destination (optional)')}>
+            <input
+              id="ex-dest"
+              className="input"
+              list="destinations"
+              value={f.destination}
+              onChange={(e) => setF({ ...f, destination: e.target.value })}
+            />
             <datalist id="destinations">
               {destinations.map((d) => (
                 <option key={d} value={d} />
@@ -157,51 +218,55 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
             </datalist>
           </Field>
           <Computed
-            label="Delivery cost per box"
-            value={boxes && price !== null ? money(price / boxes) : '—'}
-            note={boxes && price !== null ? `${money(price)} ÷ ${formatNumber(boxes, 0)} boxes` : 'Delivery price ÷ boxes'}
+            label={t('Delivery cost per box')}
+            value={boxes && price !== null ? cur.both(price / boxes, f.currency) : '—'}
+            note={
+              boxes && price !== null
+                ? `${cur.fmt(price, f.currency)} ÷ ${formatNumber(boxes, 0)}`
+                : t('Delivery price ÷ boxes')
+            }
           />
-          <Field label="Note (optional)" wide>
-            <input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
+          <Field label={t('Note (optional)')} wide>
+            <input id="ex-note" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
           </Field>
         </FormCard>
       )}
 
       {list.length === 0 ? (
-        !editing && <Empty title="No trucks recorded yet">Add each truck that leaves with boxes for export.</Empty>
+        !editing && <Empty title={t('No trucks recorded yet')}>{t('Add each truck that leaves with boxes for export.')}</Empty>
       ) : (
-        <ul className="records">
-          {list.map((r) => (
-            <li key={r.id} className="card record">
-              <div className="record-main">
-                <span className="record-title">
-                  <span className="plate">{r.truckNumber}</span> {formatNumber(r.boxes, 0)} boxes · {money(r.deliveryPrice)}
-                </span>
-                <span className="record-sub">
-                  {formatDate(r.date)}
-                  {r.destination ? ` · to ${r.destination}` : ''}
-                </span>
-                <span className="record-sub">
-                  Driver: {r.driverName || '—'}
-                  {r.driverPhone && (
-                    <>
-                      {' · '}
-                      <a href={`tel:${r.driverPhone.replace(/[^\d+]/g, '')}`}>{r.driverPhone}</a>
-                    </>
-                  )}
-                  {r.note ? ` · ${r.note}` : ''}
-                </span>
-                <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} />
-              </div>
-              <div className="record-actions">
-                <button className="btn btn-ghost btn-small" onClick={() => open(r)}>
-                  Edit
-                </button>
-                <DeleteButton onDelete={() => removeRecord('shipments', r.id)} />
-              </div>
-            </li>
+        <div className="day-groups">
+          {groupByDate(list, (r) => r.date).map(([date, rows]) => (
+            <section key={date} className="day-group">
+              <DayHeading date={date} right={t('{n} boxes', { n: formatNumber(rows.reduce((a, r) => a + r.boxes, 0), 0) })} />
+              <ul className="records">
+                {rows.map((r) => (
+                  <li key={r.id} className="card record">
+                    <div className="record-main">
+                      <span className="record-title">
+                        <span className="plate">{r.truckNumber}</span> {t('{n} boxes', { n: formatNumber(r.boxes, 0) })} ·{' '}
+                        {cur.both(r.deliveryPrice, r.currency)}
+                      </span>
+                      {r.destination && <span className="record-sub">{t('To {place}', { place: r.destination })}</span>}
+                      <span className="record-sub">
+                        {t('Driver')}: {r.driverName || '—'}
+                        {r.driverPhone && ` · ${r.driverPhone}`}
+                        {r.note ? ` · ${r.note}` : ''}
+                      </span>
+                      <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} />
+                    </div>
+                    <div className="record-actions">
+                      <button className="btn btn-ghost btn-small" onClick={() => open(r)}>
+                        {t('Edit')}
+                      </button>
+                      <DeleteButton onDelete={() => removeRecord('shipments', r.id)} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </>
   )

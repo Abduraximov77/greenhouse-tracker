@@ -1,28 +1,32 @@
 import { useMemo, useState } from 'react'
 import { addRecord, removeRecord, seasonLabel, useDB, type Season } from '../lib/store'
 import { href, navigate } from '../lib/router'
-import { CROP_CATALOG } from '../lib/crops'
-import { formatNumber, useMoney } from '../lib/format'
+import { CROP_CATALOG, cropName } from '../lib/crops'
+import { formatNumber } from '../lib/format'
+import { useCurrency } from '../lib/money'
+import { useT } from '../lib/i18n'
 import { Breadcrumbs, DeleteButton, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
 import { cropTotals } from './cropTotals'
 
 export function SeasonPage({ season }: { season: Season }) {
   const db = useDB()
-  const money = useMoney()
+  const t = useT()
+  const lang = db.settings.lang
+  const { fmt: money } = useCurrency()
   const crops = db.crops.filter((c) => c.seasonId === season.id)
-  const workers = db.workers
 
   const [query, setQuery] = useState('')
   const [picked, setPicked] = useState<string | null>(null)
   const [variety, setVariety] = useState('')
   const [area, setArea] = useState('')
 
+  // Search matches the crop name in any of the three languages.
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
-    return CROP_CATALOG.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 8)
+    return CROP_CATALOG.filter((c) => [c.name, c.ru, c.uz].some((n) => n.toLowerCase().includes(q))).slice(0, 8)
   }, [query])
-  const exact = CROP_CATALOG.some((c) => c.name.toLowerCase() === query.trim().toLowerCase())
+  const exact = CROP_CATALOG.some((c) => [c.name, c.ru, c.uz].some((n) => n.toLowerCase() === query.trim().toLowerCase()))
 
   function pick(name: string) {
     setPicked(name)
@@ -33,26 +37,23 @@ export function SeasonPage({ season }: { season: Season }) {
 
   function addCrop() {
     if (!picked) return
-    const rec = addRecord('crops', {
-      seasonId: season.id,
-      crop: picked,
-      variety: variety.trim(),
-      areaHa: num(area),
-    })
+    const rec = addRecord('crops', { seasonId: season.id, crop: picked, variety: variety.trim(), areaHa: num(area) })
     setPicked(null)
     navigate('season', season.id, 'crop', rec.id)
   }
 
   return (
     <>
-      <Breadcrumbs items={[{ label: 'Seasons', to: [] }, { label: seasonLabel(season) }]} />
-      <PageHead title={`${seasonLabel(season)} season`} sub="Crops you grow this season, and your workers." />
+      <Breadcrumbs items={[{ label: t('Seasons'), to: [] }, { label: seasonLabel(season) }]} />
+      <PageHead
+        title={t('{season} season', { season: seasonLabel(season) })}
+        sub={t('Crops you grow this season. Open a crop to record its work.')}
+      />
 
-      {/* ---------- crop search ---------- */}
       {!picked && (
         <div className="card search-card">
           <label className="field-label" htmlFor="crop-search">
-            Add a crop to this season
+            {t('Add a crop to this season')}
           </label>
           <div className="search-wrap">
             <svg className="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -62,24 +63,24 @@ export function SeasonPage({ season }: { season: Season }) {
             <input
               id="crop-search"
               className="input search-input"
-              placeholder="Search crops, e.g. tomato"
+              placeholder={t('Search crops, e.g. tomato')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoComplete="off"
             />
           </div>
           {query.trim() && (
-            <ul className="search-results" role="listbox">
+            <ul className="search-results">
               {results.map((c) => {
                 const already = crops.some((x) => x.crop === c.name)
                 return (
                   <li key={c.name}>
                     <button type="button" className="search-item" onClick={() => pick(c.name)}>
                       <span>
-                        <span className="search-name">{c.name}</span>
-                        <span className="search-group">{c.group}</span>
+                        <span className="search-name">{cropName(c.name, lang)}</span>
+                        <span className="search-group">{t(c.group)}</span>
                       </span>
-                      <span className="search-tag">{already ? 'Already added · add again' : 'Add'}</span>
+                      <span className="search-tag">{already ? t('Already added · add again') : t('Add')}</span>
                     </button>
                   </li>
                 )
@@ -89,9 +90,9 @@ export function SeasonPage({ season }: { season: Season }) {
                   <button type="button" className="search-item" onClick={() => pick(query.trim())}>
                     <span>
                       <span className="search-name">“{query.trim()}”</span>
-                      <span className="search-group">Not in the list: add as a new crop</span>
+                      <span className="search-group">{t('Not in the list: add as a new crop')}</span>
                     </span>
-                    <span className="search-tag">Add</span>
+                    <span className="search-tag">{t('Add')}</span>
                   </button>
                 </li>
               )}
@@ -102,44 +103,43 @@ export function SeasonPage({ season }: { season: Season }) {
 
       {picked && (
         <FormCard
-          title={`Add ${picked} to ${seasonLabel(season)}`}
-          submitLabel="Add crop"
+          title={t('Add {crop} to {season}', { crop: cropName(picked, lang), season: seasonLabel(season) })}
+          submitLabel={t('Add crop')}
           onCancel={() => setPicked(null)}
           onSubmit={addCrop}
         >
-          <Field label="Variety (optional)" hint="e.g. Pink Paradise F1">
-            <input className="input" value={variety} onChange={(e) => setVariety(e.target.value)} />
+          <Field label={t('Variety (optional)')} hint={t('e.g. Pink Paradise F1')}>
+            <input id="crop-variety" className="input" value={variety} onChange={(e) => setVariety(e.target.value)} />
           </Field>
-          <Field label="Growing area, hectares (optional)" hint="Used to calculate fertilizer totals">
-            <input className="input" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
+          <Field label={t('Growing area, hectares (optional)')} hint={t('Used to calculate fertilizer totals')}>
+            <input id="crop-area" className="input" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
           </Field>
         </FormCard>
       )}
 
-      {/* ---------- crops ---------- */}
-      <SectionHead title="Crops" />
+      <SectionHead title={t('Crops')} />
       {crops.length === 0 ? (
-        <Empty title="No crops in this season yet">Search above to add the first one.</Empty>
+        <Empty title={t('No crops in this season yet')}>{t('Search above to add the first one.')}</Empty>
       ) : (
         <div className="crop-grid">
           {crops.map((c) => {
-            const t = cropTotals(db, c.id)
+            const tt = cropTotals(db, c.id)
             return (
               <a key={c.id} className="card crop-card" href={href('season', season.id, 'crop', c.id)}>
-                <span className="crop-name">{c.crop}</span>
+                <span className="crop-name">{cropName(c.crop, lang)}</span>
                 <span className="crop-variety">
-                  {[c.variety, c.areaHa ? `${formatNumber(c.areaHa)} ha` : ''].filter(Boolean).join(' · ') ||
-                    'No variety set'}
+                  {[c.variety, c.areaHa ? `${formatNumber(c.areaHa)} ${t('ha')}` : ''].filter(Boolean).join(' · ') ||
+                    t('No variety set')}
                 </span>
                 <span className="crop-stats">
                   <span>
-                    <b>{formatNumber(t.boxesHarvested, 0)}</b> boxes harvested
+                    {t('Boxes harvested')}: <b>{formatNumber(tt.boxesHarvested, 0)}</b>
                   </span>
                   <span>
-                    <b>{formatNumber(t.boxesInStock, 0)}</b> in stock
+                    {t('Boxes in stock')}: <b>{formatNumber(tt.boxesInStock, 0)}</b>
                   </span>
                   <span>
-                    <b>{money(t.totalCost)}</b> costs
+                    {t('Costs')}: <b>{money(tt.totalCost)}</b>
                   </span>
                 </span>
               </a>
@@ -148,31 +148,15 @@ export function SeasonPage({ season }: { season: Season }) {
         </div>
       )}
 
-      {/* ---------- workers ---------- */}
-      <SectionHead title="Workers" />
-      <a className="card link-card" href={href('season', season.id, 'workers')}>
-        <span>
-          <span className="crop-name">Workers & salaries</span>
-          <span className="crop-variety">
-            {workers.length
-              ? `${workers.length} worker${workers.length === 1 ? '' : 's'}: daily work, boxes prepared and pay`
-              : 'Add workers, record their days and boxes, see pay'}
-          </span>
-        </span>
-        <span className="season-open" aria-hidden="true">
-          →
-        </span>
-      </a>
-
       <div className="danger-zone">
         <DeleteButton
-          label="Delete this season"
+          label={t('Delete this season')}
           onDelete={() => {
             removeRecord('seasons', season.id)
             navigate()
           }}
         />
-        <span className="field-hint">Deletes all crops and records in this season. Workers stay.</span>
+        <span className="field-hint">{t('Deletes all crops and records in this season. Workers stay.')}</span>
       </div>
     </>
   )

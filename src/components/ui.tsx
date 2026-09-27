@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { formatDateTime } from '../lib/format'
+import { formatDateTime, formatDayLong } from '../lib/format'
+import { useT } from '../lib/i18n'
+import { useDB } from '../lib/store'
 import { href } from '../lib/router'
 
 /** Parse what the user typed ("12,5", " 3 ") into a number, or null if empty/invalid. */
@@ -48,7 +50,7 @@ export function Computed({ label, value, note }: { label: string; value: ReactNo
 
 export function Breadcrumbs({ items }: { items: { label: string; to?: string[] }[] }) {
   return (
-    <nav className="crumbs" aria-label="Breadcrumb">
+    <nav className="crumbs" aria-label="Breadcrumbs">
       {items.map((it, i) => (
         <span key={i} className="crumb">
           {it.to ? <a href={href(...it.to)}>{it.label}</a> : <span aria-current="page">{it.label}</span>}
@@ -91,17 +93,29 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 
 /** Shows when a record was saved (automatic). */
 export function Stamp({ createdAt, updatedAt }: { createdAt: string; updatedAt: string }) {
+  const t = useT()
   const edited = updatedAt !== createdAt
   return (
-    <span className="stamp" title={edited ? `Edited ${formatDateTime(updatedAt)}` : undefined}>
-      Saved {formatDateTime(createdAt)}
-      {edited && ' · edited'}
+    <span className="stamp" title={edited ? t('Edited {time}', { time: formatDateTime(updatedAt) }) : undefined}>
+      {t('Saved {time}', { time: formatDateTime(createdAt) })}
+      {edited && ` · ${t('edited')}`}
     </span>
   )
 }
 
+/** Bold date heading that separates records day by day. */
+export function DayHeading({ date, right }: { date: string; right?: ReactNode }) {
+  return (
+    <h3 className="day-head">
+      <span>{formatDayLong(date)}</span>
+      {right && <span className="day-head-right">{right}</span>}
+    </h3>
+  )
+}
+
 /** Two-step delete: first tap asks, second tap deletes. Resets after a few seconds. */
-export function DeleteButton({ onDelete, label = 'Delete' }: { onDelete: () => void; label?: string }) {
+export function DeleteButton({ onDelete, label }: { onDelete: () => void; label?: string }) {
+  const t = useT()
   const [armed, setArmed] = useState(false)
   useEffect(() => {
     if (!armed) return
@@ -114,7 +128,7 @@ export function DeleteButton({ onDelete, label = 'Delete' }: { onDelete: () => v
       className={`btn btn-small ${armed ? 'btn-danger' : 'btn-ghost'}`}
       onClick={() => (armed ? onDelete() : setArmed(true))}
     >
-      {armed ? 'Tap again to delete' : label}
+      {armed ? t('Tap again to delete') : (label ?? t('Delete'))}
     </button>
   )
 }
@@ -135,6 +149,7 @@ export function FormCard({
   children: ReactNode
   error?: string | null
 }) {
+  const t = useT()
   const ref = useRef<HTMLFormElement>(null)
   useEffect(() => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -158,7 +173,7 @@ export function FormCard({
       )}
       <div className="form-actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Cancel
+          {t('Cancel')}
         </button>
         <button type="submit" className="btn btn-primary">
           {submitLabel}
@@ -174,5 +189,55 @@ export function SectionHead({ title, action }: { title: string; action?: ReactNo
       <h2 className="section-title">{title}</h2>
       {action}
     </div>
+  )
+}
+
+/** Number field with its own currency switch (e.g. 4 500 | USD). */
+export function MoneyInput({
+  id,
+  value,
+  onChange,
+  currency,
+  onCurrency,
+  className,
+}: {
+  id: string
+  value: string
+  onChange: (v: string) => void
+  currency: string
+  onCurrency: (c: string) => void
+  className?: string
+}) {
+  const t = useT()
+  const display = useDB().settings.currency
+  const options = [...new Set([currency, display, 'USD'])]
+  return (
+    <div className={`money-input${className ? ` ${className}` : ''}`}>
+      <input id={id} className="input" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} />
+      <select
+        className="money-cur"
+        aria-label={t('Currency')}
+        value={currency}
+        onChange={(e) => onCurrency(e.target.value)}
+      >
+        {options.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/** Small warning shown when a total can't include some amounts because a rate is missing. */
+export function RateMissing({ show }: { show: boolean }) {
+  const t = useT()
+  if (!show) return null
+  return (
+    <p className="field-hint text-warn">
+      {t('Some amounts are in another currency and no exchange rate is set.')}{' '}
+      <a href="#/settings">{t('Set the exchange rate')}</a>
+    </p>
   )
 }

@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { addRecord, seasonLabel, useDB } from '../lib/store'
 import { href } from '../lib/router'
+import { cropName } from '../lib/crops'
+import { useT } from '../lib/i18n'
 import { FormCard, Field, PageHead } from '../components/ui'
 
 export function SeasonsPage() {
   const db = useDB()
+  const t = useT()
+  const lang = db.settings.lang
   const seasons = [...db.seasons].sort((a, b) => a.startYear - b.startYear)
   const [adding, setAdding] = useState(false)
   const nextYear = seasons.length ? Math.max(...seasons.map((s) => s.startYear)) + 1 : new Date().getFullYear()
@@ -20,8 +24,8 @@ export function SeasonsPage() {
 
   function submit() {
     const y = Number(year)
-    if (!Number.isInteger(y) || y < 2000 || y > 2100) return setError('Enter a year like 2028.')
-    if (seasons.some((s) => s.startYear === y)) return setError(`The ${y}–${y + 1} season already exists.`)
+    if (!Number.isInteger(y) || y < 2000 || y > 2100) return setError(t('Enter a year like 2028.'))
+    if (seasons.some((s) => s.startYear === y)) return setError(t('The {season} season already exists.', { season: `${y}–${y + 1}` }))
     addRecord('seasons', { startYear: y })
     setAdding(false)
   }
@@ -29,27 +33,25 @@ export function SeasonsPage() {
   return (
     <>
       <PageHead
-        title="Seasons"
-        sub="Choose a season to see its crops, workers and records."
+        title={t('Seasons')}
+        sub={t('Choose a season to see its crops and records.')}
         actions={
           !adding && (
             <button className="btn btn-primary" onClick={openAdd}>
-              + New season
+              + {t('New season')}
             </button>
           )
         }
       />
 
       {adding && (
-        <FormCard
-          title="New season"
-          submitLabel="Create season"
-          onCancel={() => setAdding(false)}
-          onSubmit={submit}
-          error={error}
-        >
-          <Field label="Season starts in year" hint={`Creates the ${year || '…'}–${Number(year) + 1 || '…'} season`}>
+        <FormCard title={t('New season')} submitLabel={t('Create season')} onCancel={() => setAdding(false)} onSubmit={submit} error={error}>
+          <Field
+            label={t('Season starts in year')}
+            hint={t('Creates the {season} season', { season: `${year || '…'}–${Number(year) + 1 || '…'}` })}
+          >
             <input
+              id="season-year"
               className="input"
               inputMode="numeric"
               value={year}
@@ -66,15 +68,14 @@ export function SeasonsPage() {
           const status = s.startYear < thisYear ? 'Past' : s.startYear === thisYear ? 'Current' : 'Upcoming'
           return (
             <a key={s.id} className="card season-card" href={href('season', s.id)}>
-              <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>
+              <span className={`badge badge-${status.toLowerCase()}`}>{t(status)}</span>
               <span className="season-year">{seasonLabel(s)}</span>
               <span className="season-meta">
-                {crops.length ? crops.map((c) => c.crop).join(', ') : 'No crops yet'}
+                {crops.length ? crops.map((c) => cropName(c.crop, lang)).join(', ') : t('No crops yet')}
               </span>
               <span className="season-foot">
                 <span>
-                  {crops.length} crop{crops.length === 1 ? '' : 's'} · {workerIds.size} worker
-                  {workerIds.size === 1 ? '' : 's'} active
+                  {t('Crops: {n}', { n: crops.length })} · {t('Workers: {n}', { n: workerIds.size })}
                 </span>
                 <span className="season-open" aria-hidden="true">
                   →

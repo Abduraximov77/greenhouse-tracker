@@ -650,15 +650,6 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   font-size: 0.9rem;
   letter-spacing: 0.04em;
 }
-.day-group + .day-group { margin-top: 18px; }
-.day-head {
-  display: flex;
-  justify-content: space-between;
-  margin: 18px 0 0;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-.day-head span:last-child { color: var(--text); font-variant-numeric: tabular-nums; }
 
 .empty {
   padding: 32px 20px;
@@ -757,3 +748,149 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   .table th:first-child, .table td:first-child { padding-left: 12px; }
   .table th:last-child, .table td:last-child { padding-right: 12px; }
 }
+
+/* ---------- Header controls ---------- */
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.control-icon {
+  position: absolute;
+  left: 9px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.input.with-icon { padding-left: 30px; }
+.rate-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.rate-chip:hover { border-color: var(--brand-accent); }
+.control-icon-inline { width: 16px; height: 16px; color: var(--brand-accent); flex-shrink: 0; }
+@media (max-width: 720px) {
+  .rate-text { display: none; }
+}
+@media (max-width: 440px) {
+  .logo-name { display: none; }
+  .topbar-controls { gap: 6px; }
+}
+
+/* ---------- Day headings ---------- */
+.day-groups { margin-top: 8px; }
+.day-group + .day-group { margin-top: 22px; }
+.day-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 20px 0 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--brand-soft);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.day-head-right {
+  font-weight: 600;
+  color: var(--brand-accent);
+  font-variant-numeric: tabular-nums;
+}
+.day-group .records { margin-top: 10px; }
+
+.worker-boxes {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.worker-boxes li {
+  display: inline-flex;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--brand-soft);
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.worker-boxes b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---------- Money input with currency ---------- */
+.money-input {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.money-input .input {
+  flex: 1;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.money-input.is-computed .input { background: var(--brand-soft); }
+.money-cur {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--brand-accent);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+}
+.money-cur-static { display: inline-flex; align-items: center; cursor: default; }
+.money-cur:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+
+/* ---------- Settings ---------- */
+.settings-card { padding: 18px; }
+.form-actions-start { justify-content: flex-start; flex-wrap: wrap; }
+.form-ok {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--good-soft);
+  color: var(--good);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.converter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.converter .money-input { flex: 1 1 220px; }
+.converter-result {
+  flex: 1 1 100%;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--brand-accent);
+  font-variant-numeric: tabular-nums;
+}
+.converter-note { flex: 1 1 100%; margin: -6px 0 0; }
+.btn[disabled] { opacity: 0.6; cursor: wait; }
