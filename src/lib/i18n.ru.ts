@@ -26,6 +26,7 @@ export const ru: Record<string, string> = {
   "Area treated (ha)": "Обработанная площадь (га)",
   "Arrived on": "Дата поступления",
   "Average per seedling": "В среднем за штуку",
+  "Back": "Назад",
   "Berries": "Ягоды",
   "Boxes": "Ящики",
   "Boxes entered here are added to the Harvest for this day.": "Ящики, указанные здесь, добавляются в урожай за этот день.",

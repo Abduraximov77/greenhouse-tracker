@@ -26,6 +26,7 @@ export const uz: Record<string, string> = {
   "Area treated (ha)": "Ishlov berilgan maydon (ga)",
   "Arrived on": "Kelgan sana",
   "Average per seedling": "Bitta ko‘chat o‘rtacha",
+  "Back": "Orqaga",
   "Berries": "Rezavorlar",
   "Boxes": "Qutilar",
   "Boxes entered here are added to the Harvest for this day.": "Bu yerda kiritilgan qutilar shu kungi hosilga qo‘shiladi.",

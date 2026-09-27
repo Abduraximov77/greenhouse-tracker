@@ -4,7 +4,7 @@ import { Logo } from './components/Logo'
 import { Empty } from './components/ui'
 import { CURRENCIES } from './lib/format'
 import { LANGS, LOCALES, useT } from './lib/i18n'
-import { href, usePath } from './lib/router'
+import { goBack, href, usePath } from './lib/router'
 import { currentSettings, setCurrency, setLang, useDB, type Lang } from './lib/store'
 import { SeasonsPage } from './pages/SeasonsPage'
 import { SeasonPage } from './pages/SeasonPage'
@@ -47,6 +47,7 @@ export default function App() {
       <div className="app" aria-hidden={phase !== 'done'}>
         <Header />
         <main className="content">
+          <BackButton />
           <Routes />
         </main>
       </div>
@@ -120,6 +121,21 @@ function Header() {
         </a>
       </div>
     </header>
+  )
+}
+
+/** "‹ Back" on every page except the first one. */
+function BackButton() {
+  const t = useT()
+  const path = usePath()
+  if (path.length === 0) return null
+  return (
+    <button type="button" className="back-btn" onClick={goBack}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {t('Back')}
+    </button>
   )
 }
 

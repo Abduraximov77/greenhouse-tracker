@@ -1054,3 +1054,24 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .confirm-q { margin: 0; font-weight: 600; color: var(--danger); }
 .confirm-d { margin: 4px 0 0; font-size: 0.9rem; color: var(--text); }
 .confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+/* Back button */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  margin: 0 0 12px -6px;
+  padding: 6px 12px 6px 6px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--brand-accent);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.back-btn:hover { background: var(--brand-soft); }
+.back-btn:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.back-btn svg { width: 20px; height: 20px; }
