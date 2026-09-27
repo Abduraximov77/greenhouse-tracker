@@ -3,8 +3,8 @@ import { LoadingScreen } from './components/LoadingScreen'
 import { Logo, LogoMark } from './components/Logo'
 
 // How long the loading screen shows at minimum, so the animation can be seen.
-const MIN_SPLASH_MS = 2200
-const FADE_MS = 500
+const MIN_SPLASH_MS = 2100
+const FADE_MS = 600
 
 export default function App() {
   const [phase, setPhase] = useState<'loading' | 'leaving' | 'done'>('loading')
@@ -29,7 +29,7 @@ export default function App() {
         <main className="content">
           <section className="welcome">
             <LogoMark size={72} />
-            <h2>Welcome to your greenhouse tracker</h2>
+            <h2>Welcome to AgroLedger</h2>
             <p>
               This is where you'll record everything happening in the greenhouse. Tracking
               sections will appear here as we add them, one by one.

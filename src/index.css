@@ -6,12 +6,8 @@
   --line: #e2ded0;
   --brand: #1f5e3b;
   --brand-soft: #e3efe5;
+  --brand-accent: #3e8e4e;
   --accent: #f2b544;
-  --sky-top: #bfe6f2;
-  --sky-bottom: #eef8f0;
-  --hill-back: #a9d98f;
-  --hill-front: #7cc26a;
-  --frame: #1f5e3b;
 
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
@@ -28,11 +24,7 @@
     --line: #2a372f;
     --brand: #8bd06f;
     --brand-soft: #1f3326;
-    --sky-top: #1c3346;
-    --sky-bottom: #26433a;
-    --hill-back: #2f5a37;
-    --hill-front: #3b7443;
-    --frame: #d9ecd9;
+  --brand-accent: #a7db8a;
   }
 }
 
@@ -54,97 +46,81 @@ body {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: var(--bg);
-  transition: opacity 0.5s ease, visibility 0.5s;
+  background:
+    radial-gradient(ellipse at 50% 40%, #24704a 0%, #17472f 55%, #0f3322 100%);
+  color: #f4f1e6;
+  transition: opacity 0.6s ease, visibility 0.6s;
 }
 .loading-screen.is-leaving {
   opacity: 0;
   visibility: hidden;
 }
 .loading-inner {
-  width: min(520px, 100%);
-  text-align: center;
-}
-.scene {
-  width: 100%;
-  height: auto;
-  display: block;
-  filter: drop-shadow(0 12px 30px rgb(31 94 59 / 0.18));
-}
-.loading-brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 24px;
+  text-align: center;
+  animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-.loading-brand h1 {
+.loading-mark {
+  border-radius: 22px;
+  box-shadow: 0 0 0 1px rgb(244 241 230 / 0.18), 0 18px 40px rgb(0 0 0 / 0.35);
+}
+.loading-name {
+  margin: 28px 0 6px;
+  font-size: clamp(2rem, 7vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #f4f1e6;
+}
+.loading-name span {
+  color: #a7db8a;
+}
+.loading-tagline {
   margin: 0;
-  font-size: clamp(1.4rem, 4vw, 1.9rem);
-  letter-spacing: -0.02em;
-  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(244 241 230 / 0.6);
 }
 .loading-bar {
-  height: 6px;
-  width: min(260px, 70%);
-  margin: 20px auto 10px;
+  position: relative;
+  width: 180px;
+  height: 3px;
+  margin-top: 36px;
   border-radius: 99px;
-  background: var(--line);
+  background: rgb(244 241 230 / 0.15);
   overflow: hidden;
 }
 .loading-bar span {
-  display: block;
-  height: 100%;
-  width: 100%;
+  position: absolute;
+  inset: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--brand), #7fcb6a);
+  background: #a7db8a;
   transform-origin: left;
-  animation: fill 2.1s ease-out forwards;
+  animation: fill 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
-.loading-text {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.plant {
-  transform-box: view-box;
-  animation: grow 2.4s ease-out infinite;
-}
-.fruit {
-  animation: pop 2.4s ease-out infinite;
-  animation-delay: inherit;
-}
-.sun-rays {
-  animation: spin 12s linear infinite;
-}
-.shine {
-  animation: sweep 2.6s ease-in-out infinite;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @keyframes fill {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
-@keyframes grow {
-  0% { transform: scaleY(0.05); opacity: 0.4; }
-  55% { transform: scaleY(1); opacity: 1; }
-  100% { transform: scaleY(1); opacity: 1; }
-}
-@keyframes pop {
-  0%, 50% { opacity: 0; }
-  65%, 100% { opacity: 1; }
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes sweep {
-  0% { transform: skewX(-20deg) translateX(0); }
-  100% { transform: skewX(-20deg) translateX(520px); }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .plant, .fruit, .sun-rays, .shine, .loading-bar span {
+  .loading-inner, .loading-bar span {
     animation: none;
   }
 }
@@ -155,22 +131,13 @@ body {
   align-items: center;
   gap: 10px;
 }
-.logo-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
 .logo-name {
-  font-weight: 750;
-  font-size: 1.1rem;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: -0.03em;
 }
-.logo-sub {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--muted);
+.logo-accent {
+  color: var(--brand-accent);
 }
 
 .topbar {

@@ -1,11 +1,11 @@
-# Greenhouse Tracker
+# AgroLedger
 
 A website for tracking everything that happens in our family greenhouse.
 Built as a website first, designed so it can become a phone app later.
 
 ## What's here so far
 - Logo (`public/logo.svg`)
-- Animated loading screen with a greenhouse illustration
+- Minimal loading screen with the logo and name
 - Home page shell (tracking sections will be added one by one)
 
 ## Run it on your computer
