@@ -62,7 +62,7 @@ export function SeasonsPage() {
       <div className="season-grid">
         {seasons.map((s) => {
           const crops = db.crops.filter((c) => c.seasonId === s.id)
-          const workers = db.workers.filter((w) => w.seasonId === s.id)
+          const workerIds = new Set(Object.values(db.attendance).filter((a) => a.seasonId === s.id).map((a) => a.workerId))
           const status = s.startYear < thisYear ? 'Past' : s.startYear === thisYear ? 'Current' : 'Upcoming'
           return (
             <a key={s.id} className="card season-card" href={href('season', s.id)}>
@@ -73,8 +73,8 @@ export function SeasonsPage() {
               </span>
               <span className="season-foot">
                 <span>
-                  {crops.length} crop{crops.length === 1 ? '' : 's'} · {workers.length} worker
-                  {workers.length === 1 ? '' : 's'}
+                  {crops.length} crop{crops.length === 1 ? '' : 's'} · {workerIds.size} worker
+                  {workerIds.size === 1 ? '' : 's'} active
                 </span>
                 <span className="season-open" aria-hidden="true">
                   →

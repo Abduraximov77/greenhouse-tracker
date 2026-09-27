@@ -39,7 +39,7 @@ export const CURRENCIES = ['USD', 'EUR', 'UZS', 'KZT', 'KGS', 'TJS', 'RUB', 'CNY
 export function makeMoney(currency: string) {
   let fmt: Intl.NumberFormat
   try {
-    fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 })
+    fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 })
   } catch {
     fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
   }

@@ -10,7 +10,7 @@ export function SeasonPage({ season }: { season: Season }) {
   const db = useDB()
   const money = useMoney()
   const crops = db.crops.filter((c) => c.seasonId === season.id)
-  const workers = db.workers.filter((w) => w.seasonId === season.id)
+  const workers = db.workers
 
   const [query, setQuery] = useState('')
   const [picked, setPicked] = useState<string | null>(null)
@@ -155,8 +155,8 @@ export function SeasonPage({ season }: { season: Season }) {
           <span className="crop-name">Workers & salaries</span>
           <span className="crop-variety">
             {workers.length
-              ? `${workers.length} worker${workers.length === 1 ? '' : 's'}: days on/off and daily salary`
-              : 'Add workers, mark days on and off, see salaries'}
+              ? `${workers.length} worker${workers.length === 1 ? '' : 's'}: daily work, boxes prepared and pay`
+              : 'Add workers, record their days and boxes, see pay'}
           </span>
         </span>
         <span className="season-open" aria-hidden="true">
@@ -172,7 +172,7 @@ export function SeasonPage({ season }: { season: Season }) {
             navigate()
           }}
         />
-        <span className="field-hint">Deletes all crops, records and workers in this season.</span>
+        <span className="field-hint">Deletes all crops and records in this season. Workers stay.</span>
       </div>
     </>
   )

@@ -432,7 +432,8 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   color: var(--muted);
 }
 .stat-value {
-  font-size: 1.35rem;
+  font-size: clamp(1.1rem, 4.6vw, 1.35rem);
+  overflow-wrap: anywhere;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -686,18 +687,63 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .att-list { list-style: none; margin: 12px 0 0; padding: 0; }
 .att-row {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.att-top {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
 }
-.att-name { font-weight: 500; }
-.att-row .segmented { flex: 0 1 240px; }
+.att-name { font-weight: 500; font-size: 1.05rem; }
+.att-top .segmented { flex: 0 1 240px; }
+.att-work {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+}
+.mini-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 130px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.att-times { padding-bottom: 11px; color: var(--muted); }
+.att-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: right;
+}
+.att-pay b { font-size: 1.1rem; font-weight: 600; color: var(--brand-accent); font-variant-numeric: tabular-nums; }
+.att-pay small { font-size: 0.76rem; }
 @media (max-width: 480px) {
-  .att-row .segmented { flex: 1 1 100%; }
+  .att-top .segmented { flex: 1 1 100%; }
+  .mini-field { flex: 1 1 0; width: auto; }
+  .att-pay { flex: 1 1 100%; margin-left: 0; flex-direction: row; justify-content: space-between; align-items: baseline; flex-wrap: wrap; }
 }
+.day-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin-top: 12px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.day-summary b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .table-wrap { overflow-x: auto; margin-top: 12px; }
 .table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
@@ -705,3 +751,9 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .table th { font-size: 0.86rem; font-weight: 500; color: var(--muted); }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table tfoot td { font-weight: 600; border-bottom: 0; }
+@media (max-width: 480px) {
+  .table { font-size: 0.88rem; }
+  .table th, .table td { padding: 10px 8px; }
+  .table th:first-child, .table td:first-child { padding-left: 12px; }
+  .table th:last-child, .table td:last-child { padding-right: 12px; }
+}

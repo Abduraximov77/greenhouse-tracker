@@ -11,7 +11,7 @@ Built as a website first, designed so it can become a phone app later.
   - **Nutrition**: fertilizer given, quantity per hectare, automatic total amount and cost
   - **Harvest**: boxes packed each day, automatic total weight
   - **Export**: trucks with truck number, driver, boxes and delivery price; boxes in stock
-- **Workers** (per season): daily salary, days on and off, salary totals by month
+- **Workers** (shared by all seasons): each day worked/day off, boxes prepared × pay per box, optional daily salary, pay totals by month or season
 - Every entry saves its date and time automatically
 - Currency can be changed in the top right
 
