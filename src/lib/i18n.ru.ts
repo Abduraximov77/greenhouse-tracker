@@ -238,6 +238,7 @@ export const ru: Record<string, string> = {
   "Workers: {n}": "Работников: {n}",
   "Working": "Работают",
   "Working days": "Рабочих дней",
+  "Working days count each calendar day once; a day off is a day when nobody worked.": "Рабочий день считается один раз, сколько бы человек ни работало; выходной — день, когда никто не работал.",
   "e.g. NPK 20-20-20": "например, NPK 20-20-20",
   "e.g. Pink Paradise F1": "например, Pink Paradise F1",
   "edited": "изменено",

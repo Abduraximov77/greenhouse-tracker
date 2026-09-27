@@ -90,8 +90,12 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
       }
     })
     .filter((s) => s.daysOn + s.daysOff > 0)
-  const sum = (k: 'daysOn' | 'daysOff' | 'boxes') => summary.reduce((a, s) => a + s[k], 0)
+  const sum = (k: 'boxes') => summary.reduce((a, s) => a + s[k], 0)
   const payTotal = summary.reduce((a, s) => a + s.pay.total, 0)
+  // Calendar days, not worker-days: a day counts once however many people worked.
+  const workDates = new Set(inPeriod.filter((r) => r.status === 'on').map((r) => r.date))
+  // A day off = marked, but nobody worked that day.
+  const offDates = new Set(inPeriod.filter((r) => r.status === 'off' && !workDates.has(r.date)).map((r) => r.date))
   const payMissing = summary.some((s) => s.pay.missing)
 
   return (
@@ -167,8 +171,8 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
           <div className="stat-grid">
             <Stat label={t('Total to pay')} value={cur.fmt(payTotal)} />
             <Stat label={t('Boxes prepared')} value={formatNumber(sum('boxes'), 0)} />
-            <Stat label={t('Working days')} value={formatNumber(sum('daysOn'), 0)} />
-            <Stat label={t('Days off')} value={formatNumber(sum('daysOff'), 0)} />
+            <Stat label={t('Working days')} value={formatNumber(workDates.size, 0)} />
+            <Stat label={t('Days off')} value={formatNumber(offDates.size, 0)} />
           </div>
           <RateMissing show={payMissing || dayTotal.missing} />
           {summary.length === 0 ? (
@@ -199,8 +203,8 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                 <tfoot>
                   <tr>
                     <td>{t('Total')}</td>
-                    <td className="num">{sum('daysOn')}</td>
-                    <td className="num">{sum('daysOff')}</td>
+                    <td className="num">{workDates.size}</td>
+                    <td className="num">{offDates.size}</td>
                     <td className="num">{formatNumber(sum('boxes'), 0)}</td>
                     <td className="num">{cur.fmt(payTotal)}</td>
                   </tr>
@@ -208,7 +212,10 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
               </table>
             </div>
           )}
-          <p className="field-hint">{t('Pay for a day = daily salary + boxes × pay per box.')}</p>
+          <p className="field-hint">
+            {t('Pay for a day = daily salary + boxes × pay per box.')}{' '}
+            {t('Working days count each calendar day once; a day off is a day when nobody worked.')}
+          </p>
         </>
       )}
 

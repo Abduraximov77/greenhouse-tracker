@@ -238,6 +238,7 @@ export const uz: Record<string, string> = {
   "Workers: {n}": "Ishchilar: {n}",
   "Working": "Ishlayapti",
   "Working days": "Ish kunlari",
+  "Working days count each calendar day once; a day off is a day when nobody worked.": "Ish kuni necha kishi ishlaganidan qat’i nazar bir marta hisoblanadi; dam olish kuni — hech kim ishlamagan kun.",
   "e.g. NPK 20-20-20": "masalan, NPK 20-20-20",
   "e.g. Pink Paradise F1": "masalan, Pink Paradise F1",
   "edited": "tahrirlangan",
