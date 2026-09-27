@@ -1,23 +1,25 @@
 :root {
-  --bg: #f6f4ec;
+  --bg: #f3f6f4;
   --surface: #ffffff;
-  --text: #1d2a22;
-  --muted: #5d6b62;
-  --line: #e2ded0;
-  --brand: #1f5e3b;
-  --brand-soft: #e3efe5;
-  --brand-accent: #3e8e4e;
+  --text: #14201a;
+  --muted: #4b5b52;
+  --line: #d9e2dc;
+  --brand: #17603d;
+  --brand-soft: #e6f1ea;
+  --brand-accent: #1f7a4d;
   --accent: #f2b544;
   --on-brand: #ffffff;
-  --good: #2e7d46;
-  --good-soft: #e1f2e5;
-  --warn: #b0561a;
-  --warn-soft: #fbe9dc;
+  --good: #1b7a44;
+  --good-soft: #e3f3e9;
+  --warn: #a4480f;
+  --warn-soft: #fcebdd;
   --danger: #b3261e;
   --shadow: 0 1px 2px rgb(29 42 34 / 0.05), 0 4px 14px rgb(29 42 34 / 0.05);
 
   color-scheme: light;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -26,18 +28,18 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #111814;
-    --surface: #18221c;
-    --text: #e8efe9;
-    --muted: #9fb0a5;
-    --line: #2a372f;
-    --brand: #8bd06f;
-    --brand-soft: #1f3326;
-    --brand-accent: #a7db8a;
-    --on-brand: #0f2a1b;
-    --good: #8bd06f;
-    --good-soft: #1f3a27;
-    --warn: #f0a46c;
+    --bg: #0e1411;
+    --surface: #162019;
+    --text: #f1f5f2;
+    --muted: #b6c4bb;
+    --line: #2b3830;
+    --brand: #6fcf97;
+    --brand-soft: #1c3326;
+    --brand-accent: #86dba8;
+    --on-brand: #0b2417;
+    --good: #7fd9a0;
+    --good-soft: #1d3a28;
+    --warn: #f5ae78;
     --warn-soft: #3a2616;
     --danger: #ff8a80;
     --shadow: none;
@@ -45,18 +47,18 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111814;
-  --surface: #18221c;
-  --text: #e8efe9;
-  --muted: #9fb0a5;
-  --line: #2a372f;
-  --brand: #8bd06f;
-  --brand-soft: #1f3326;
-  --brand-accent: #a7db8a;
-  --on-brand: #0f2a1b;
-  --good: #8bd06f;
-  --good-soft: #1f3a27;
-  --warn: #f0a46c;
+  --bg: #0e1411;
+  --surface: #162019;
+  --text: #f1f5f2;
+  --muted: #b6c4bb;
+  --line: #2b3830;
+  --brand: #6fcf97;
+  --brand-soft: #1c3326;
+  --brand-accent: #86dba8;
+  --on-brand: #0b2417;
+  --good: #7fd9a0;
+  --good-soft: #1d3a28;
+  --warn: #f5ae78;
   --warn-soft: #3a2616;
   --danger: #ff8a80;
   --shadow: none;
@@ -64,6 +66,10 @@
 
 * {
   box-sizing: border-box;
+}
+
+h1, h2, h3 {
+  font-weight: 600;
 }
 
 body {
@@ -103,7 +109,7 @@ body {
 .loading-name {
   margin: 28px 0 6px;
   font-size: clamp(2rem, 7vw, 2.8rem);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.03em;
   color: #f4f1e6;
 }
@@ -113,7 +119,7 @@ body {
 .loading-tagline {
   margin: 0;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: rgb(244 241 230 / 0.6);
@@ -166,7 +172,7 @@ body {
   gap: 10px;
 }
 .logo-name {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.3rem;
   letter-spacing: -0.03em;
 }
@@ -294,7 +300,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 }
 .season-year {
   font-size: 1.9rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -319,7 +325,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .badge {
   align-self: flex-start;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 3px 8px;
@@ -344,7 +350,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .link-card > span:first-child { display: flex; flex-direction: column; gap: 4px; }
 .crop-name {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .crop-variety {
@@ -402,12 +408,12 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 }
 .search-item:hover { background: var(--brand-soft); }
 .search-item > span:first-child { display: flex; flex-direction: column; }
-.search-name { font-weight: 600; }
+.search-name { font-weight: 500; }
 .search-group { font-size: 0.82rem; color: var(--muted); }
 .search-tag {
   flex-shrink: 0;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--brand-accent);
 }
 
@@ -425,7 +431,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   flex-shrink: 0;
   padding: 10px 14px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.95rem;
   text-decoration: none;
   border-bottom: 2px solid transparent;
@@ -457,15 +463,13 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   border-radius: 14px;
 }
 .stat-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.86rem;
+  font-weight: 500;
   color: var(--muted);
 }
 .stat-value {
   font-size: 1.35rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -528,13 +532,13 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .field-wide { grid-column: 1 / -1; }
 .field-label {
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 .field-hint {
   font-size: 0.8rem;
   color: var(--muted);
 }
-.text-warn { color: var(--warn); font-weight: 600; }
+.text-warn { color: var(--warn); font-weight: 500; }
 .input {
   width: 100%;
   min-height: 44px;
@@ -558,10 +562,10 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   border-radius: 12px;
   background: var(--brand-soft);
 }
-.computed-label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.computed-label { font-size: 0.85rem; font-weight: 500; color: var(--muted); }
 .computed-value {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--brand-accent);
 }
@@ -572,7 +576,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   border-radius: 10px;
   background: var(--warn-soft);
   color: var(--warn);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.9rem;
 }
 .form-actions {
@@ -596,7 +600,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   padding: 6px 12px;
   font: inherit;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
   background: transparent;
   border: 0;
@@ -617,7 +621,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   min-height: 44px;
   padding: 10px 18px;
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.95rem;
   border-radius: 10px;
   border: 1px solid transparent;
@@ -657,7 +661,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   flex: 1 1 260px;
 }
 .record-title {
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .record-sub {
@@ -668,9 +672,8 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .stamp {
   display: block;
   margin-top: 4px;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   color: var(--muted);
-  opacity: 0.85;
 }
 .plate {
   display: inline-block;
@@ -699,7 +702,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   border-radius: 16px;
   margin-top: 12px;
 }
-.empty-title { margin: 0; font-weight: 700; }
+.empty-title { margin: 0; font-weight: 600; }
 .empty-body { margin: 6px 0 0; color: var(--muted); font-size: 0.92rem; }
 
 .danger-zone {
@@ -726,7 +729,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
   padding: 12px 0;
   border-top: 1px solid var(--line);
 }
-.att-name { font-weight: 600; }
+.att-name { font-weight: 500; }
 .att-row .segmented { flex: 0 1 240px; }
 @media (max-width: 480px) {
   .att-row .segmented { flex: 1 1 100%; }
@@ -735,6 +738,6 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 .table-wrap { overflow-x: auto; margin-top: 12px; }
 .table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 .table th, .table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); }
-.table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.table th { font-size: 0.86rem; font-weight: 500; color: var(--muted); }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
-.table tfoot td { font-weight: 700; border-bottom: 0; }
+.table tfoot td { font-weight: 600; border-bottom: 0; }
