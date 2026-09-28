@@ -1357,7 +1357,8 @@ body { font-size: 15px; }
 .card, .stat, .crop-side, .quick { border-radius: 4px; box-shadow: none; }
 .btn, .input, .segmented, .crop-nav-item, .segmented button, .computed, .form-error { border-radius: 3px; }
 .btn { font-weight: 600; }
-.input:not(.input-compact) { min-height: 40px; padding: 7px 10px; }
+.input:not(.input-compact) { min-height: 40px; padding-top: 7px; padding-bottom: 7px; }
+.input:not(.input-compact):not(.search-input):not(.with-icon) { padding-left: 10px; padding-right: 10px; }
 .stat { padding: 10px 12px; border-top: 3px solid var(--brand); }
 .stat-warn { border-top-color: var(--warn); }
 .stat-value { font-weight: 600; font-size: 1.25rem; }
