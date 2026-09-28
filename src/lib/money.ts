@@ -22,7 +22,11 @@ export function formatMoney(n: number | null | undefined, currency: string) {
       currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
-    }).format(n)
+    })
+      .format(n)
+      // Let long amounts wrap between the number and the currency code, not inside "UZS".
+      .replace(/\u00a0(?=[A-Z]{3}$)/, ' ')
+      .replace(/^([A-Z]{3})\u00a0/, '$1 ')
   } catch {
     return `${n.toLocaleString(currentLocale(), { maximumFractionDigits: 2 })} ${currency}`
   }

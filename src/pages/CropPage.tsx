@@ -12,14 +12,16 @@ import { NutritionSection } from './sections/NutritionSection'
 import { HarvestSection } from './sections/HarvestSection'
 import { WorkersSection } from './sections/WorkersSection'
 import { ExportSection } from './sections/ExportSection'
+import { ExpensesSection } from './sections/ExpensesSection'
 
-type SectionId = 'overview' | 'planting' | 'nutrition' | 'workers' | 'harvest' | 'export'
+type SectionId = 'overview' | 'planting' | 'nutrition' | 'workers' | 'expenses' | 'harvest' | 'export'
 
 const SECTIONS: { id: SectionId; label: string; sub: string }[] = [
   { id: 'overview', label: 'Overview', sub: 'Summary of this crop' },
   { id: 'planting', label: 'Planting', sub: 'Seedlings: arrived & planted' },
   { id: 'nutrition', label: 'Nutrition', sub: 'Fertilizer and nutrients given' },
   { id: 'workers', label: 'Workers', sub: 'Days worked, boxes prepared and pay' },
+  { id: 'expenses', label: 'Expenses', sub: 'What was bought or paid for, by day' },
   { id: 'harvest', label: 'Harvest', sub: 'Packed boxes ready for export' },
   { id: 'export', label: 'Export', sub: 'Trucks leaving with boxes' },
 ]
@@ -55,6 +57,12 @@ function SectionIcon({ id }: { id: SectionId }) {
           <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" {...p} />
           <circle cx="17" cy="9" r="2.5" {...p} />
           <path d="M17 14c2.5 0 4 2 4 4.5" {...p} />
+        </>
+      )}
+      {id === 'expenses' && (
+        <>
+          <rect x="3" y="6" width="18" height="13" rx="2.5" {...p} />
+          <path d="M3 10h18M7 15h4" {...p} />
         </>
       )}
       {id === 'harvest' && <path d="M3 9l9-5 9 5v9l-9 4-9-4zM3 9l9 4 9-4M12 13v9" {...p} />}
@@ -98,6 +106,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
       ...days.filter((d) => (d.boxes ?? 0) > 0).map((d) => d.date),
     ]).size,
     export: db.shipments.filter((r) => r.cropId === crop.id).length,
+    expenses: db.expenses.filter((r) => r.cropId === crop.id).length,
   }
 
   return (
@@ -142,6 +151,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
         {active === 'planting' && <PlantingSection crop={crop} />}
         {active === 'nutrition' && <NutritionSection crop={crop} />}
         {active === 'workers' && <WorkersSection crop={crop} />}
+        {active === 'expenses' && <ExpensesSection crop={crop} />}
         {active === 'harvest' && <HarvestSection season={season} crop={crop} />}
         {active === 'export' && <ExportSection crop={crop} />}
       </div>
@@ -179,10 +189,18 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
         <Stat label={t('Seedlings')} value={money(tt.plantingCost)} />
         <Stat label={t('Nutrition')} value={money(tt.nutritionCost)} />
         <Stat label={t('Workers')} value={money(tt.workerPay)} />
+        <Stat label={t('Expenses')} value={money(tt.expensesCost)} />
         <Stat label={t('Delivery')} value={money(tt.deliveryCost)} />
         <Stat label={t('Total')} value={money(tt.totalCost)} />
       </div>
       <RateMissing show={tt.rateMissing} />
+
+      <SectionHead title={t('Payments')} />
+      <div className="stat-grid">
+        <Stat label={t('Paid')} value={money(tt.paid)} tone={tt.paid > 0 ? 'good' : undefined} />
+        <Stat label={t('Still to pay')} value={money(tt.owed)} tone={tt.owed > 0 ? 'warn' : undefined} />
+      </div>
+      <p className="field-hint">{t('Worker pay and expenses. Mark them paid in the Workers and Expenses sections.')}</p>
 
       <SectionHead title={t('Record something')} />
       <div className="quick-grid">
@@ -197,6 +215,10 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
         <button className="quick" onClick={() => go('workers')}>
           <b>{t('Workers')}</b>
           <span>{t('Days worked and boxes prepared')}</span>
+        </button>
+        <button className="quick" onClick={() => go('expenses')}>
+          <b>{t('Expenses')}</b>
+          <span>{t('Something bought or paid for')}</span>
         </button>
         <button className="quick" onClick={() => go('harvest')}>
           <b>{t('Harvest')}</b>

@@ -9,8 +9,9 @@ Built as a website first, designed so it can become a phone app later.
 - For each crop (tabs):
   - **Planting**: seedlings arrived and planted, quantity, price and automatic total cost
   - **Nutrition**: fertilizer given, quantity per hectare, automatic total amount and cost
-  - **Workers**: each day worked/day off, boxes prepared × pay per box, optional daily salary, pay summary.
+  - **Workers**: each day worked/day off, daily salary + boxes prepared × pay per box, paid / partly / not paid, pay summary with amounts still owed.
     The worker list is shared by all seasons and crops.
+  - **Expenses**: anything bought or paid for on a day (name, quantity, amount), with paid / partly / not paid
   - **Harvest**: boxes per day, including the boxes entered for workers, plus any other boxes
   - **Export**: trucks with truck number, driver, boxes and delivery price; boxes in stock
 - Records are grouped under bold date headings

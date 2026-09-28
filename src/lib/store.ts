@@ -85,6 +85,23 @@ export interface Worker extends Meta {
 
 export type DayStatus = 'on' | 'off'
 
+/** Whether money owed has been paid: fully, not at all, or partly (paidAmount says how much). */
+export type PayStatus = 'unpaid' | 'partial' | 'paid'
+
+/** Something bought or paid for on a day (fuel, film, tools, repairs…). */
+export interface Expense extends Meta {
+  cropId: ID
+  date: string
+  name: string
+  quantity: number | null
+  unit: string
+  amount: number // total spent
+  currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
+  note: string
+}
+
 /**
  * One worker's day on one crop. Salary and pay per box are stored on the day,
  * so changing a worker's rates later doesn't rewrite past days.
@@ -100,6 +117,8 @@ export interface Attendance {
   boxes: number | null
   payPerBox: number | null
   currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
   updatedAt: string
 }
 
@@ -115,13 +134,14 @@ export interface Settings {
 }
 
 export interface DB {
-  version: 4
+  version: 5
   seasons: Season[]
   crops: SeasonCrop[]
   plantings: Planting[]
   nutrition: Nutrition[]
   harvests: Harvest[]
   shipments: Shipment[]
+  expenses: Expense[]
   workers: Worker[]
   attendance: Record<string, Attendance> // key: `${cropId}|${workerId}|${date}`
   settings: Settings
@@ -134,6 +154,7 @@ type Collections = {
   nutrition: Nutrition
   harvests: Harvest
   shipments: Shipment
+  expenses: Expense
   workers: Worker
 }
 export type CollectionName = keyof Collections
@@ -153,13 +174,14 @@ function seed(): DB {
   const t = nowIso()
   const year = new Date().getFullYear()
   return {
-    version: 4,
+    version: 5,
     seasons: [year, year + 1].map((y) => ({ id: newId(), startYear: y, createdAt: t, updatedAt: t })),
     crops: [],
     plantings: [],
     nutrition: [],
     harvests: [],
     shipments: [],
+    expenses: [],
     workers: [],
     attendance: {},
     settings: { currency: 'USD', lang: 'en', rates: { USD: 1 }, ratesUpdatedAt: null, ratesSource: null },
@@ -174,7 +196,8 @@ function load(): DB {
       if (d && d.version === 1) d = migrateV1(d)
       if (d && d.version === 2) d = migrateV2(d)
       if (d && d.version === 3) d = migrateV3(d)
-      if (d && d.version === 4) {
+      if (d && d.version === 4) d = migrateV4(d)
+      if (d && d.version === 5) {
         const base = seed()
         return { ...base, ...d, settings: { ...base.settings, ...d.settings } } as DB
       }
@@ -239,12 +262,23 @@ function migrateV3(old: any): any {
   const add = (list: any[] = []) => list.map((r) => ({ currency: cur, ...r }))
   return {
     ...old,
-    version: 4,
+    version: 5,
     plantings: add(old.plantings),
     nutrition: add(old.nutrition),
     shipments: add(old.shipments),
     workers: add(old.workers),
     attendance: Object.fromEntries(Object.entries(old.attendance ?? {}).map(([k, a]: [string, any]) => [k, { currency: cur, ...a }])),
+  }
+}
+/** v5 adds expenses and payment status on worker days (old days start as not paid). */
+function migrateV4(old: any): any {
+  return {
+    ...old,
+    version: 5,
+    expenses: old.expenses ?? [],
+    attendance: Object.fromEntries(
+      Object.entries(old.attendance ?? {}).map(([k, a]: [string, any]) => [k, { payStatus: 'unpaid', paidAmount: null, ...a }]),
+    ),
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -329,6 +363,7 @@ function dropCropChildren(d: DB, cropIds: Set<ID>): DB {
       nutrition: keep(d.nutrition),
       harvests: keep(d.harvests),
       shipments: keep(d.shipments),
+      expenses: keep(d.expenses),
     },
     (a) => cropIds.has(a.cropId),
   )
@@ -348,7 +383,14 @@ export function setWorkerDay(
   crop: SeasonCrop,
   worker: Worker,
   date: string,
-  patch: { status?: DayStatus | null; boxes?: number | null; payPerBox?: number | null },
+  patch: {
+    status?: DayStatus | null
+    boxes?: number | null
+    payPerBox?: number | null
+    salary?: number
+    payStatus?: PayStatus
+    paidAmount?: number | null
+  },
 ) {
   const key = attendanceKey(crop.id, worker.id, date)
   const attendance = { ...db.attendance }
@@ -366,6 +408,8 @@ export function setWorkerDay(
       boxes: null,
       payPerBox: worker.payPerBox || null,
       currency: worker.currency,
+      payStatus: 'unpaid',
+      paidAmount: null,
       updatedAt: nowIso(),
     }
     const next: Attendance = { ...base, ...patch, updatedAt: nowIso() } as Attendance
@@ -397,6 +441,8 @@ export function setDayOffForAll(crop: SeasonCrop, workers: Worker[], date: strin
         boxes: null,
         payPerBox: w.payPerBox || null,
         currency: w.currency,
+        payStatus: 'unpaid',
+        paidAmount: null,
         updatedAt: nowIso(),
       }
     } else if (attendance[key]?.status === 'off') {
@@ -419,6 +465,23 @@ export function daysBetween(start: string, end: string) {
 export function dayPay(a: Attendance) {
   if (a.status !== 'on') return 0
   return a.salary + (a.boxes ?? 0) * (a.payPerBox ?? 0)
+}
+
+/** How much of an amount is paid and how much is still owed. */
+export function payment(due: number, status: PayStatus, paidAmount: number | null) {
+  const paid = status === 'paid' ? due : status === 'partial' ? Math.min(paidAmount ?? 0, due) : 0
+  return { paid, owed: Math.max(0, due - paid) }
+}
+
+/** Mark every worked day on a crop and date as paid (or back to not paid). */
+export function setDayPaidForAll(cropId: ID, date: string, paid: boolean) {
+  const attendance = { ...db.attendance }
+  for (const [k, a] of Object.entries(attendance)) {
+    if (a.cropId === cropId && a.date === date && a.status === 'on') {
+      attendance[k] = { ...a, payStatus: paid ? 'paid' : 'unpaid', paidAmount: null, updatedAt: nowIso() }
+    }
+  }
+  commit({ ...db, attendance })
 }
 
 /** Worker days for one crop. */

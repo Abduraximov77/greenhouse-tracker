@@ -6,6 +6,8 @@ import {
   dayPay,
   removeRecord,
   setDayOffForAll,
+  setDayPaidForAll,
+  payment,
   setWorkerDay,
   daysBetween,
   updateRecord,
@@ -16,6 +18,7 @@ import {
 } from '../../lib/store'
 import { formatDate, formatDateTime, formatMonth, formatNumber, todayISO } from '../../lib/format'
 import { useCurrency, sumIn } from '../../lib/money'
+import { PaymentControl } from '../../components/PaymentControl'
 import { useT } from '../../lib/i18n'
 import { DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stat, num, str } from '../../components/ui'
 
@@ -88,6 +91,12 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const onCount = todays.filter((a) => a.status === 'on').length
   const allOff = workers.length > 0 && workers.every((w) => dayOf(w)?.status === 'off')
   const dayBoxes = todays.reduce((a, d) => a + (d.boxes ?? 0), 0)
+  const dayPaid = sumIn(
+    todays.filter((d) => d.status === 'on').map((d) => ({ amount: payment(dayPay(d), d.payStatus, d.paidAmount).paid, currency: d.currency })),
+    cur.display,
+    cur.rates,
+  )
+  const dayAllPaid = todays.some((d) => d.status === 'on') && todays.filter((d) => d.status === 'on').every((d) => d.payStatus === 'paid')
   const dayTotal = sumIn(todays.map((d) => ({ amount: dayPay(d), currency: d.currency })), cur.display, cur.rates)
 
   // ----- summary for the chosen period -----
@@ -103,11 +112,17 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
         daysOff: mine.length - on.length,
         boxes: on.reduce((a, r) => a + (r.boxes ?? 0), 0),
         pay: sumIn(on.map((r) => ({ amount: dayPay(r), currency: r.currency })), cur.display, cur.rates),
+        paid: sumIn(
+          on.map((r) => ({ amount: payment(dayPay(r), r.payStatus, r.paidAmount).paid, currency: r.currency })),
+          cur.display,
+          cur.rates,
+        ),
       }
     })
     .filter((s) => s.daysOn + s.daysOff > 0)
   const sum = (k: 'boxes') => summary.reduce((a, s) => a + s[k], 0)
   const payTotal = summary.reduce((a, s) => a + s.pay.total, 0)
+  const paidTotal = summary.reduce((a, s) => a + s.paid.total, 0)
   // Calendar days, not worker-days: a day counts once however many people worked.
   const workDates = new Set(inPeriod.filter((r) => r.status === 'on').map((r) => r.date))
   // Days off = every day in the period with nobody working, including days with nothing recorded.
@@ -176,6 +191,21 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             <span>
               {t('To pay')}: <b>{cur.fmt(dayTotal.total)}</b>
             </span>
+            <span>
+              {t('Paid')}: <b>{cur.fmt(dayPaid.total)}</b>
+            </span>
+            {onCount > 0 && dayTotal.total > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-small"
+                onClick={() => {
+                  setDayPaidForAll(crop.id, date, !dayAllPaid)
+                  setBulk((n) => n + 1)
+                }}
+              >
+                {dayAllPaid ? t('Mark this day as not paid') : `✓ ${t('Mark everyone paid for this day')}`}
+              </button>
+            )}
           </div>
           <p className="field-hint">{t('Boxes entered here are added to the Harvest for this day.')}</p>
 
@@ -209,7 +239,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             }
           />
           <div className="stat-grid">
-            <Stat label={t('Total to pay')} value={cur.fmt(payTotal)} />
+            <Stat label={t('Earned')} value={cur.fmt(payTotal)} />
+            <Stat label={t('Paid')} value={cur.fmt(paidTotal)} tone={paidTotal > 0 ? 'good' : undefined} />
+            <Stat label={t('Still to pay')} value={cur.fmt(payTotal - paidTotal)} tone={payTotal - paidTotal > 0 ? 'warn' : undefined} />
             <Stat label={t('Boxes prepared')} value={formatNumber(sum('boxes'), 0)} />
             <Stat label={t('Working days')} value={formatNumber(workDates.size, 0)} />
             <Stat label={t('Days off')} value={formatNumber(offCount, 0)} />
@@ -226,7 +258,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     <th className="num">{t('Days on')}</th>
                     <th className="num">{t('Days off')}</th>
                     <th className="num">{t('Boxes')}</th>
-                    <th className="num">{t('Pay')}</th>
+                    <th className="num">{t('Earned')}</th>
+                    <th className="num">{t('Paid')}</th>
+                    <th className="num">{t('Still to pay')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -237,6 +271,8 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                       <td className="num">{s.daysOff}</td>
                       <td className="num">{formatNumber(s.boxes, 0)}</td>
                       <td className="num">{cur.fmt(s.pay.total)}</td>
+                      <td className="num">{cur.fmt(s.paid.total)}</td>
+                      <td className="num text-owed">{cur.fmt(s.pay.total - s.paid.total)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -247,6 +283,8 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     <td className="num">{offCount}</td>
                     <td className="num">{formatNumber(sum('boxes'), 0)}</td>
                     <td className="num">{cur.fmt(payTotal)}</td>
+                    <td className="num">{cur.fmt(paidTotal)}</td>
+                    <td className="num text-owed">{cur.fmt(payTotal - paidTotal)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -339,24 +377,27 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
   const cur = useCurrency()
   const currency = day?.currency ?? worker.currency
   // Inputs keep their own text so typing "0." or "12," isn't interrupted.
+  const [salary, setSalary] = useState(str(day ? day.salary : worker.dailySalary || null))
   const [boxes, setBoxes] = useState(str(day?.boxes))
   const [perBox, setPerBox] = useState(str(day?.payPerBox ?? (worker.payPerBox || null)))
   const worked = day?.status === 'on'
+  const ok = (v: string) => v.trim() === '' || ((num(v) ?? -1) >= 0)
 
+  function saveSalary(v: string) {
+    setSalary(v)
+    if (ok(v)) setWorkerDay(crop, worker, date, { status: 'on', salary: num(v) ?? 0, boxes: num(boxes), payPerBox: num(perBox) })
+  }
   function saveBoxes(v: string) {
     setBoxes(v)
-    const n = num(v)
-    if (v.trim() === '' || (n !== null && n >= 0)) {
-      setWorkerDay(crop, worker, date, { status: 'on', boxes: n, payPerBox: num(perBox) })
-    }
+    if (ok(v)) setWorkerDay(crop, worker, date, { status: 'on', boxes: num(v), payPerBox: num(perBox), salary: num(salary) ?? 0 })
   }
   function savePerBox(v: string) {
     setPerBox(v)
-    const n = num(v)
-    if (worked && (v.trim() === '' || (n !== null && n >= 0))) setWorkerDay(crop, worker, date, { payPerBox: n })
+    if (worked && ok(v)) setWorkerDay(crop, worker, date, { payPerBox: num(v) })
   }
 
   const id = `${worker.id}-${date}`
+  const due = worked && day ? dayPay(day) : 0
   return (
     <li className="att-row">
       <div className="att-top">
@@ -372,7 +413,13 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
             role="radio"
             aria-checked={worked}
             className={worked ? 'is-on is-good' : ''}
-            onClick={() => setWorkerDay(crop, worker, date, { status: worked ? null : 'on', payPerBox: num(perBox) })}
+            onClick={() =>
+              setWorkerDay(crop, worker, date, {
+                status: worked ? null : 'on',
+                payPerBox: num(perBox),
+                salary: num(salary) ?? 0,
+              })
+            }
           >
             {t('Worked')}
           </button>
@@ -393,6 +440,22 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
 
       {day?.status !== 'off' && (
         <div className="att-work">
+          <label className="mini-field" htmlFor={`${id}-salary`}>
+            <span>
+              {t('Daily salary')} ({currency})
+            </span>
+            <input
+              id={`${id}-salary`}
+              className="input"
+              inputMode="decimal"
+              placeholder="0"
+              value={salary}
+              onChange={(e) => saveSalary(e.target.value)}
+            />
+          </label>
+          <span className="att-times" aria-hidden="true">
+            +
+          </span>
           <label className="mini-field" htmlFor={`${id}-boxes`}>
             <span>{t('Boxes prepared')}</span>
             <input
@@ -422,12 +485,20 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
           </label>
           <div className="att-pay">
             <span>{t('Pay for the day')}</span>
-            <b>{worked && day ? cur.both(dayPay(day), day.currency) : '—'}</b>
-            {worked && day && day.salary > 0 && (
-              <small>{t('incl. {amount} daily salary', { amount: cur.fmt(day.salary, day.currency) })}</small>
-            )}
+            <b>{worked && day ? cur.both(due, day.currency) : '—'}</b>
           </div>
         </div>
+      )}
+
+      {worked && day && due > 0 && (
+        <PaymentControl
+          id={id}
+          due={due}
+          currency={day.currency}
+          status={day.payStatus}
+          paidAmount={day.paidAmount}
+          onChange={(payStatus, paidAmount) => setWorkerDay(crop, worker, date, { payStatus, paidAmount })}
+        />
       )}
     </li>
   )

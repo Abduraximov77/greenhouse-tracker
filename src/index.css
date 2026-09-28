@@ -433,7 +433,7 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 }
 .stat-value {
   font-size: clamp(1.1rem, 4.6vw, 1.35rem);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -1116,3 +1116,29 @@ select.input,
 .money-cur { padding-right: 28px; background-position: right 8px center; }
 .money-cur-static { background-image: none; padding-right: 10px; cursor: default; }
 select.input.with-icon { padding-left: 32px; }
+
+/* Payment status */
+.pay-control { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.pay-control .segmented { flex: 0 1 320px; }
+.segmented button.is-part { background: #fdf3d6; color: #8a5a00; }
+.pay-partial { display: flex; flex-direction: column; gap: 4px; width: 190px; font-size: 0.82rem; color: var(--muted); }
+.pay-owed { font-size: 0.85rem; font-weight: 500; color: var(--warn); padding-bottom: 10px; }
+.pay-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  vertical-align: 2px;
+}
+.pay-badge.unpaid { background: var(--warn-soft); color: var(--warn); }
+.pay-badge.partial { background: #fdf3d6; color: #8a5a00; }
+.pay-badge.paid { background: var(--good-soft); color: var(--good); }
+@media (max-width: 480px) {
+  .pay-control .segmented { flex: 1 1 100%; }
+  .pay-partial { flex: 1 1 100%; width: auto; }
+}
+.text-owed { color: var(--warn); }
+.day-summary .btn { margin-left: auto; }
+.att-row .pay-control { padding-top: 2px; }
+.qty-input { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 6px; }
