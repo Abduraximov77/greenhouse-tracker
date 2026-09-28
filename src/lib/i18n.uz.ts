@@ -195,7 +195,7 @@ export const uz: Record<string, string> = {
   "Saved. All totals now use this rate.": "Saqlandi. Endi barcha jami summalar shu kurs bilan hisoblanadi.",
   "Search above to add the first one.": "Birinchisini qo‘shish uchun yuqorida qidiring.",
   "Search crops, e.g. tomato": "Ekin qidirish, masalan pomidor",
-  "Season starts in year": "Mavsum boshlanadigan yil",
+  "Season year": "Mavsum yili",
   "Seasons": "Mavsumlar",
   "Seasons and crops": "Mavsumlar va ekinlar",
   "Seedlings": "Ko‘chatlar",

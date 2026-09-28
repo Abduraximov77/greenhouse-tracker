@@ -609,7 +609,7 @@ export function setRates(rates: Record<string, number>, source: 'manual' | 'onli
 // ---------- helpers ----------
 
 export function seasonLabel(s: Pick<Season, 'startYear'>) {
-  return `${s.startYear}–${s.startYear + 1}`
+  return String(s.startYear)
 }
 
 export function byDateDesc<T extends { createdAt: string }>(getDate: (r: T) => string) {

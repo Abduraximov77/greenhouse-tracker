@@ -195,7 +195,7 @@ export const ru: Record<string, string> = {
   "Saved. All totals now use this rate.": "Сохранено. Все итоги теперь считаются по этому курсу.",
   "Search above to add the first one.": "Найдите культуру выше, чтобы добавить первую.",
   "Search crops, e.g. tomato": "Поиск культуры, например помидор",
-  "Season starts in year": "Год начала сезона",
+  "Season year": "Год сезона",
   "Seasons": "Сезоны",
   "Seasons and crops": "Сезоны и культуры",
   "Seedlings": "Рассада",

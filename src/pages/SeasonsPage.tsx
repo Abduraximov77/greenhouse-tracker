@@ -25,7 +25,7 @@ export function SeasonsPage() {
   function submit() {
     const y = Number(year)
     if (!Number.isInteger(y) || y < 2000 || y > 2100) return setError(t('Enter a year like 2028.'))
-    if (seasons.some((s) => s.startYear === y)) return setError(t('The {season} season already exists.', { season: `${y}–${y + 1}` }))
+    if (seasons.some((s) => s.startYear === y)) return setError(t('The {season} season already exists.', { season: String(y) }))
     addRecord('seasons', { startYear: y })
     setAdding(false)
   }
@@ -47,8 +47,8 @@ export function SeasonsPage() {
       {adding && (
         <FormCard title={t('New season')} submitLabel={t('Create season')} onCancel={() => setAdding(false)} onSubmit={submit} error={error}>
           <Field
-            label={t('Season starts in year')}
-            hint={t('Creates the {season} season', { season: `${year || '…'}–${Number(year) + 1 || '…'}` })}
+            label={t('Season year')}
+            hint={t('Creates the {season} season', { season: year || '…' })}
           >
             <input
               id="season-year"
