@@ -11,7 +11,7 @@ import { Breadcrumbs, Field, PageHead, SectionHead, num, str } from '../componen
 function useUsedCurrencies() {
   const db = useDB()
   const used = new Set<string>([db.settings.currency, 'USD', 'UZS'])
-  for (const list of [db.plantings, db.nutrition, db.shipments, db.workers]) for (const r of list) used.add(r.currency)
+  for (const list of [db.expenses, db.shipments, db.workers]) for (const r of list) used.add(r.currency)
   for (const a of Object.values(db.attendance)) used.add(a.currency)
   return [...used]
 }
@@ -190,7 +190,7 @@ export function SettingsPage() {
                   <ConfirmDelete
                     label={t('Delete season')}
                     question={t('Delete the {season} season?', { season: seasonLabel(season) })}
-                    details={t('Its {n} crops and all their records (planting, nutrition, worker days, harvest, export) will be deleted. Workers stay.', { n: crops.length })}
+                    details={t('Its {n} crops and all their records (expenses, worker days, harvest, export) will be deleted. Workers stay.', { n: crops.length })}
                     onDelete={() => removeRecord('seasons', season.id)}
                   />
                 </div>
@@ -204,7 +204,7 @@ export function SettingsPage() {
                           <ConfirmDelete
                             label={t('Delete crop')}
                             question={t('Delete {crop} from {season}?', { crop: name, season: seasonLabel(season) })}
-                            details={t('All its records (planting, nutrition, worker days, harvest, export) will be deleted. Workers stay.')}
+                            details={t('All its records (expenses, worker days, harvest, export) will be deleted. Workers stay.')}
                             onDelete={() => removeRecord('crops', c.id)}
                           />
                         </li>

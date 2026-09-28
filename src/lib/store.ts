@@ -24,38 +24,6 @@ export interface SeasonCrop extends Meta {
   areaHa: number | null // growing area in hectares, used for per-hectare calculations
 }
 
-export interface Planting extends Meta {
-  cropId: ID
-  arrivedOn: string // date seedlings arrived (YYYY-MM-DD)
-  plantedOn: string // date planted (may be empty until planted)
-  supplier: string
-  quantity: number
-  unitPrice: number
-  totalCost: number
-  currency: string // currency of the prices above
-  payStatus: PayStatus
-  paidAmount: number | null
-  note: string
-}
-
-export type AmountUnit = 'kg' | 'L'
-
-export interface Nutrition extends Meta {
-  cropId: ID
-  date: string
-  product: string
-  ratePerHa: number
-  unit: AmountUnit
-  areaHa: number
-  totalAmount: number // ratePerHa × areaHa
-  pricePerUnit: number | null
-  totalCost: number | null
-  currency: string
-  payStatus: PayStatus
-  paidAmount: number | null
-  note: string
-}
-
 export interface Harvest extends Meta {
   cropId: ID
   date: string
@@ -94,9 +62,13 @@ export type DayStatus = 'on' | 'off'
 /** Whether money owed has been paid: fully, not at all, or partly (paidAmount says how much). */
 export type PayStatus = 'unpaid' | 'partial' | 'paid'
 
-/** Something bought or paid for on a day (fuel, film, tools, repairs…). */
+export type ExpenseCategory = 'seedlings' | 'nutrition' | 'fuel' | 'repairs' | 'other'
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = ['seedlings', 'nutrition', 'fuel', 'repairs', 'other']
+
+/** Something bought or paid for on a day: seedlings, fertilizer, fuel, repairs… */
 export interface Expense extends Meta {
   cropId: ID
+  category: ExpenseCategory
   date: string
   name: string
   quantity: number | null
@@ -140,11 +112,9 @@ export interface Settings {
 }
 
 export interface DB {
-  version: 6
+  version: 7
   seasons: Season[]
   crops: SeasonCrop[]
-  plantings: Planting[]
-  nutrition: Nutrition[]
   harvests: Harvest[]
   shipments: Shipment[]
   expenses: Expense[]
@@ -156,8 +126,6 @@ export interface DB {
 type Collections = {
   seasons: Season
   crops: SeasonCrop
-  plantings: Planting
-  nutrition: Nutrition
   harvests: Harvest
   shipments: Shipment
   expenses: Expense
@@ -180,11 +148,9 @@ function seed(): DB {
   const t = nowIso()
   const year = new Date().getFullYear()
   return {
-    version: 6,
+    version: 7,
     seasons: [year, year + 1].map((y) => ({ id: newId(), startYear: y, createdAt: t, updatedAt: t })),
     crops: [],
-    plantings: [],
-    nutrition: [],
     harvests: [],
     shipments: [],
     expenses: [],
@@ -204,7 +170,8 @@ function load(): DB {
       if (d && d.version === 3) d = migrateV3(d)
       if (d && d.version === 4) d = migrateV4(d)
       if (d && d.version === 5) d = migrateV5(d)
-      if (d && d.version === 6) {
+      if (d && d.version === 6) d = migrateV6(d)
+      if (d && d.version === 7) {
         const base = seed()
         return { ...base, ...d, settings: { ...base.settings, ...d.settings } } as DB
       }
@@ -269,7 +236,7 @@ function migrateV3(old: any): any {
   const add = (list: any[] = []) => list.map((r) => ({ currency: cur, ...r }))
   return {
     ...old,
-    version: 6,
+    version: 7,
     plantings: add(old.plantings),
     nutrition: add(old.nutrition),
     shipments: add(old.shipments),
@@ -281,7 +248,7 @@ function migrateV3(old: any): any {
 function migrateV4(old: any): any {
   return {
     ...old,
-    version: 6,
+    version: 7,
     expenses: old.expenses ?? [],
     attendance: Object.fromEntries(
       Object.entries(old.attendance ?? {}).map(([k, a]: [string, any]) => [k, { payStatus: 'unpaid', paidAmount: null, ...a }]),
@@ -293,10 +260,69 @@ function migrateV5(old: any): any {
   const add = (list: any[] = []) => list.map((r) => ({ payStatus: 'paid', paidAmount: null, ...r }))
   return {
     ...old,
-    version: 6,
+    version: 7,
     plantings: add(old.plantings),
     nutrition: add(old.nutrition),
     shipments: add(old.shipments),
+  }
+}
+/**
+ * v7 folds the separate Seedlings and Nutrition sections into Expenses (with a category).
+ * Details that have no field of their own go into the note, in the language in use.
+ */
+function migrateV6(old: any): any {
+  const lang: Lang = old.settings?.lang ?? 'en'
+  const L = {
+    seedling: { en: 'Seedlings', ru: 'Рассада', uz: 'Ko‘chat' }[lang],
+    pcs: { en: 'pcs', ru: 'шт', uz: 'dona' }[lang],
+    planted: { en: 'Planted', ru: 'Высажено', uz: 'Ekilgan' }[lang],
+    ha: { en: 'ha', ru: 'га', uz: 'ga' }[lang],
+  }
+  const join = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(' · ')
+  const fromPlanting = (r: any) => ({
+    id: r.id,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    cropId: r.cropId,
+    category: 'seedlings',
+    date: r.arrivedOn,
+    name: L.seedling,
+    quantity: r.quantity ?? null,
+    unit: L.pcs,
+    amount: r.totalCost ?? 0,
+    currency: r.currency,
+    payStatus: r.payStatus ?? 'paid',
+    paidAmount: r.paidAmount ?? null,
+    note: join(r.supplier, r.plantedOn && `${L.planted}: ${r.plantedOn}`, r.note),
+  })
+  const fromNutrition = (r: any) => {
+    const u = r.unit === 'L' ? 'l' : r.unit
+    return {
+      id: r.id,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      cropId: r.cropId,
+      category: 'nutrition',
+      date: r.date,
+      name: r.product,
+      quantity: r.totalAmount ?? null,
+      unit: u,
+      amount: r.totalCost ?? 0,
+      currency: r.currency,
+      payStatus: r.payStatus ?? 'paid',
+      paidAmount: r.paidAmount ?? null,
+      note: join(`${r.ratePerHa} ${u}/${L.ha} × ${r.areaHa} ${L.ha}`, r.note),
+    }
+  }
+  const { plantings, nutrition, ...rest } = old
+  return {
+    ...rest,
+    version: 7,
+    expenses: [
+      ...(old.expenses ?? []).map((e: any) => ({ category: 'other', ...e })),
+      ...(plantings ?? []).map(fromPlanting),
+      ...(nutrition ?? []).map(fromNutrition),
+    ],
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -377,8 +403,6 @@ function dropCropChildren(d: DB, cropIds: Set<ID>): DB {
   return dropAttendance(
     {
       ...d,
-      plantings: keep(d.plantings),
-      nutrition: keep(d.nutrition),
       harvests: keep(d.harvests),
       shipments: keep(d.shipments),
       expenses: keep(d.expenses),
