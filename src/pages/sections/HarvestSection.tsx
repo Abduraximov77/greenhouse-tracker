@@ -85,18 +85,18 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
         action={
           !editing && (
             <button className="btn btn-primary" onClick={() => open()}>
-              + {t('Add other boxes')}
+              + {t('Add boxes')}
             </button>
           )
         }
       />
       <p className="field-hint">
-        {t("Boxes from the Workers tab are counted here automatically. Use “Add other boxes” only for boxes that aren't entered under a worker, so nothing is counted twice.")}
+        {t("Boxes entered for workers (Workers tab) are added here automatically, so don't enter them again.")}
       </p>
 
       {editing && (
         <FormCard
-          title={editing === 'new' ? t('Add other boxes') : t('Edit boxes')}
+          title={editing === 'new' ? t('Add boxes') : t('Edit boxes')}
           submitLabel={editing === 'new' ? t('Save') : t('Save changes')}
           onCancel={() => setEditing(null)}
           onSubmit={submit}
@@ -168,7 +168,7 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
                     <li key={r.id} className="card record">
                       <div className="record-main">
                         <span className="record-title">
-                          {t('Other boxes')}: {formatNumber(r.boxes, 0)}
+                          {t('Boxes')}: {formatNumber(r.boxes, 0)}
                         </span>
                         <span className="record-sub">
                           {r.totalKg !== null
