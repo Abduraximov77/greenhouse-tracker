@@ -50,9 +50,13 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   // Bumped after "day off for everyone" so the rows reset their inputs.
   const [bulk, setBulk] = useState(0)
   const [confirmOff, setConfirmOff] = useState(false)
+  const [dayPartialOpen, setDayPartialOpen] = useState(false)
+  const [dayPartialValue, setDayPartialValue] = useState('')
+  const [dayPartialError, setDayPartialError] = useState<string | null>(null)
   const setDate = (d: string) => {
     setDateRaw(d)
     setConfirmOff(false)
+    setDayPartialOpen(false)
   }
   const [editing, setEditing] = useState<null | 'new' | string>(null)
   const [f, setF] = useState({ name: '', phone: '', dailySalary: '', payPerBox: '', currency: '' })
@@ -152,9 +156,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
    * Apply a payment (in the display currency) to unpaid days, oldest first:
    * days it fully covers become paid, the last one becomes partly paid.
    */
-  function applyPayment(amount: number, match: (a: Attendance) => boolean) {
+  function applyPayment(amount: number, match: (a: Attendance) => boolean, fresh = false) {
     const nameOf = (id: string) => workers.find((w) => w.id === id)?.name ?? ''
-    const open = inPeriod
+    const open = days
       .filter((a) => a.status === 'on' && match(a))
       .sort((a, b) => a.date.localeCompare(b.date) || nameOf(a.workerId).localeCompare(nameOf(b.workerId)))
     let left = amount
@@ -162,7 +166,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
     for (const a of open) {
       if (left <= 0.005) break
       const due = dayPay(a)
-      const already = payment(due, a.payStatus, a.paidAmount).paid
+      const already = fresh ? 0 : payment(due, a.payStatus, a.paidAmount).paid
       const owedHere = due - already
       if (owedHere <= 0) continue
       const owedInDisplay = convert(owedHere, a.currency, cur.display, cur.rates) ?? owedHere
@@ -258,6 +262,15 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                 <button
                   type="button"
                   role="radio"
+                  aria-checked={!dayAllPaid && !dayNonePaid}
+                  className={!dayAllPaid && !dayNonePaid ? 'is-on is-part' : ''}
+                  onClick={() => setDayPartialOpen(true)}
+                >
+                  {t('Partly')}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
                   aria-checked={dayAllPaid}
                   className={dayAllPaid ? 'is-on is-good' : ''}
                   onClick={() => {
@@ -268,7 +281,53 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                   {t('Paid')}
                 </button>
               </div>
-              {!dayAllPaid && !dayNonePaid && <span className="field-hint">{t('Some are paid, some are not')}</span>}
+              {dayPartialOpen && (
+                <form
+                  className="partial-pay"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const n = num(dayPartialValue)
+                    if (n === null || n <= 0) return setDayPartialError(t('Enter the amount paid.'))
+                    // Start from nothing paid for this day, then pay out the amount.
+                    setWorkerDaysPaid(crop.id, (a) => a.date === date, false)
+                    if (n >= dayTotal.total - 0.005) setWorkerDaysPaid(crop.id, (a) => a.date === date, true)
+                    else applyPayment(n, (a) => a.date === date, true)
+                    setDayPartialOpen(false)
+                    setDayPartialValue('')
+                    setDayPartialError(null)
+                    setBulk((k) => k + 1)
+                  }}
+                >
+                  <span className="money-input">
+                    <input
+                      id="day-partial"
+                      className="input"
+                      inputMode="decimal"
+                      placeholder={t('Amount paid')}
+                      aria-label={t('Amount paid')}
+                      value={dayPartialValue}
+                      onChange={(e) => setDayPartialValue(e.target.value)}
+                      autoFocus
+                    />
+                    <span className="money-cur money-cur-static">{cur.display}</span>
+                  </span>
+                  <button type="submit" className="btn btn-primary btn-small">
+                    {t('Save')}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-small" onClick={() => setDayPartialOpen(false)}>
+                    {t('Cancel')}
+                  </button>
+                  {dayPartialError && <span className="partial-error">{dayPartialError}</span>}
+                </form>
+              )}
+              {!dayAllPaid && !dayNonePaid && !dayPartialOpen && (
+                <span className="field-hint">
+                  {t('Paid {paid} of {total}', { paid: cur.fmt(dayPaid.total), total: cur.fmt(dayTotal.total) })}
+                </span>
+              )}
+              {dayPartialOpen && (
+                <span className="field-hint all-pay-note">{t('The amount is split between this day’s workers, in name order.')}</span>
+              )}
             </div>
           )}
           <p className="field-hint">{t('Boxes entered here are added to the Harvest for this day.')}</p>
@@ -340,7 +399,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                   id="pay-all-partial"
                   owed={payTotal - paidTotal}
                   currency={cur.display}
-                  onApply={(amount) => applyPayment(amount, () => true)}
+                  onApply={(amount) => applyPayment(amount, inThisPeriod)}
                 />
               )}
               {payTotal - paidTotal <= 0 && (
@@ -409,7 +468,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                               id={`pay-${s.worker.id}`}
                               owed={s.pay.total - s.paid.total}
                               currency={cur.display}
-                              onApply={(amount) => applyPayment(amount, (a) => a.workerId === s.worker.id)}
+                              onApply={(amount) => applyPayment(amount, (a) => a.workerId === s.worker.id && inThisPeriod(a))}
                             />
                           </div>
                         ) : (
