@@ -111,14 +111,15 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
   function submit() {
     if (!f) return
     if (!f.date) return setError(t('Enter the date.'))
-    if (!f.name.trim()) return setError(t('Enter what was bought or paid for.'))
+    if (!f.name.trim()) return setError(f.forWorkers ? t('Enter who was paid.') : t('Enter what was bought or paid for.'))
     if (amount === null || amount < 0) return setError(t('Enter how much was spent.'))
     const data = {
       cropId: crop.id,
       date: f.date,
       name: f.name.trim(),
-      quantity: qty,
-      unit: f.unit.trim(),
+      // Payments to workers have no quantity or unit.
+      quantity: f.forWorkers ? null : qty,
+      unit: f.forWorkers ? '' : f.unit.trim(),
       amount,
       currency: f.currency,
       payStatus: f.payStatus,
@@ -150,7 +151,9 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
       <RateMissing show={spent.missing} />
       {toWorkers.total > 0 && (
         <p className="field-hint">
-          {t('Paid to workers from here: {amount}. It is counted under Workers, not in these totals.', { amount: cur.fmt(toWorkers.total) })}
+          {t('Paid to workers from here: {amount}. It is counted under Workers, not in these totals.', {
+            amount: cur.fmt(toWorkers.total),
+          })}
         </p>
       )}
 
@@ -198,17 +201,19 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
               ))}
             </div>
             {f.forWorkers && (
-              <span className="field-hint">{t('Counted with the workers’ pay (Workers section and overview), not with other expenses.')}</span>
+              <span className="field-hint">
+                {t('Counted with the workers’ pay (Workers section and overview), not with other expenses.')}
+              </span>
             )}
           </div>
-          <Field label={t('Product or service')}>
+          <Field label={f.forWorkers ? t('Who was paid') : t('Product or service')}>
             <input
               id="xp-name"
               className="input"
               list="expense-names"
               value={f.name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={t('e.g. seedlings, fertilizer, fuel, repairs')}
+              placeholder={f.forWorkers ? t('e.g. women workers, 5 people') : t('e.g. seedlings, fertilizer, fuel, repairs')}
             />
             <datalist id="expense-names">
               {names.map((n) => (
@@ -216,32 +221,34 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
               ))}
             </datalist>
           </Field>
-          <Field label={t('Quantity (optional)')}>
-            <div className="qty-input">
-              <input
-                id="xp-qty"
-                className="input"
-                inputMode="decimal"
-                value={f.quantity}
-                onChange={(e) => setF({ ...f, quantity: e.target.value })}
-              />
-              <input
-                id="xp-unit"
-                className="input"
-                list="expense-units"
-                placeholder={t('unit')}
-                aria-label={t('unit')}
-                value={f.unit}
-                onChange={(e) => setF({ ...f, unit: e.target.value })}
-              />
-              <datalist id="expense-units">
-                {units.map((u) => (
-                  <option key={u} value={u} />
-                ))}
-              </datalist>
-            </div>
-          </Field>
-          <Field label={t('Amount spent')}>
+          {!f.forWorkers && (
+            <Field label={t('Quantity (optional)')}>
+              <div className="qty-input">
+                <input
+                  id="xp-qty"
+                  className="input"
+                  inputMode="decimal"
+                  value={f.quantity}
+                  onChange={(e) => setF({ ...f, quantity: e.target.value })}
+                />
+                <input
+                  id="xp-unit"
+                  className="input"
+                  list="expense-units"
+                  placeholder={t('unit')}
+                  aria-label={t('unit')}
+                  value={f.unit}
+                  onChange={(e) => setF({ ...f, unit: e.target.value })}
+                />
+                <datalist id="expense-units">
+                  {units.map((u) => (
+                    <option key={u} value={u} />
+                  ))}
+                </datalist>
+              </div>
+            </Field>
+          )}
+          <Field label={f.forWorkers ? t('Amount paid') : t('Amount spent')}>
             <MoneyInput
               id="xp-amount"
               value={f.amount}
@@ -250,11 +257,13 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
               onChange={(v) => setF({ ...f, amount: v })}
             />
           </Field>
-          <Computed
-            label={t('Price per unit')}
-            value={qty && amount !== null ? `${cur.fmt(amount / qty, f.currency)}${f.unit ? ` / ${f.unit}` : ''}` : '—'}
-            note={qty && amount !== null ? `${cur.fmt(amount, f.currency)} ÷ ${formatNumber(qty)} ${f.unit}` : t('Amount ÷ quantity')}
-          />
+          {!f.forWorkers && (
+            <Computed
+              label={t('Price per unit')}
+              value={qty && amount !== null ? `${cur.fmt(amount / qty, f.currency)}${f.unit ? ` / ${f.unit}` : ''}` : '—'}
+              note={qty && amount !== null ? `${cur.fmt(amount, f.currency)} ÷ ${formatNumber(qty)} ${f.unit}` : t('Amount ÷ quantity')}
+            />
+          )}
           <div className="field field-wide">
             <span className="field-label">{t('Payment')}</span>
             <PaymentControl
@@ -322,4 +331,3 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
     </>
   )
 }
-

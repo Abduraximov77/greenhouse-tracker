@@ -387,4 +387,7 @@ export const uz: Record<string, string> = {
   "Worker days": "Ish kunlari to‘lovi",
   "Other payments": "Boshqa to‘lovlar",
   "Total for workers": "Jami ishchilarga",
+  "Enter who was paid.": "Kimga to‘langanini yozing.",
+  "Who was paid": "Kimga to‘landi",
+  "e.g. women workers, 5 people": "masalan: ayollar, 5 kishi",
 }

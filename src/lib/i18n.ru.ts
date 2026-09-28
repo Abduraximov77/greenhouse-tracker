@@ -387,4 +387,7 @@ export const ru: Record<string, string> = {
   "Worker days": "Рабочие дни (оплата)",
   "Other payments": "Другие выплаты",
   "Total for workers": "Всего работникам",
+  "Enter who was paid.": "Укажите, кому заплатили.",
+  "Who was paid": "Кому заплатили",
+  "e.g. women workers, 5 people": "напр. женщины-работницы, 5 человек",
 }
