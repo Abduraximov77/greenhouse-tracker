@@ -1,5 +1,6 @@
 // Uzbek (Latin) translations. Key = English text.
 export const uz: Record<string, string> = {
+  "A partial payment pays the oldest unpaid days first.": "Qisman to‘lov avval eng eski to‘lanmagan kunlarni yopadi.",
   "Account": "Hisob",
   "Accounts are coming soon": "Hisoblar tez orada qo‘shiladi",
   "Add": "Qo‘shish",
@@ -105,6 +106,7 @@ export const uz: Record<string, string> = {
   "Enter boxes for each worker in the Workers tab, and they will appear here by day.": "Har bir ishchining qutilarini “Ishchilar” bo‘limida kiriting — ular bu yerda kunlar bo‘yicha ko‘rinadi.",
   "Enter how many seedlings (quantity).": "Ko‘chatlar sonini kiriting.",
   "Enter how much was spent.": "Qancha sarflanganini kiriting.",
+  "Enter the amount paid.": "To‘langan summani kiriting.",
   "Enter the area in hectares.": "Maydonni gektarda kiriting.",
   "Enter the date the seedlings arrived.": "Ko‘chat kelgan sanani kiriting.",
   "Enter the date.": "Sanani kiriting.",
@@ -245,6 +247,7 @@ export const uz: Record<string, string> = {
   "Swap": "Almashtirish",
   "Tap again to delete": "O‘chirish uchun yana bosing",
   "Tap again: boxes for this day will be cleared": "Yana bosing: shu kungi qutilar o‘chiriladi",
+  "That is more than is owed ({amount}).": "Bu qarzdan ko‘p ({amount}).",
   "The {season} season already exists.": "{season} mavsumi allaqachon mavjud.",
   "This cannot be undone.": "Buni qaytarib bo‘lmaydi.",
   "This page doesn't exist": "Bunday sahifa yo‘q",

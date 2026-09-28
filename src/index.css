@@ -1161,3 +1161,14 @@ select.input.with-icon { padding-left: 32px; }
 @media (max-width: 480px) {
   .all-pay .segmented { flex: 1 1 100%; }
 }
+
+/* Partly paid (period) */
+.btn-part { color: #8a5a00; }
+.btn-part:hover { background: #fdf3d6; }
+.partial-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.partial-pay .money-input { width: 190px; }
+.partial-pay .input { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+.partial-pay .money-cur { min-height: 36px; }
+.partial-error { flex-basis: 100%; font-size: 0.82rem; color: var(--warn); font-weight: 500; }
+.pay-cell { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.all-pay-note { flex-basis: 100%; margin: 0; }

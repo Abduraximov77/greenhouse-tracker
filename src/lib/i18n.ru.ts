@@ -1,5 +1,6 @@
 // Russian translations. Key = English text.
 export const ru: Record<string, string> = {
+  "A partial payment pays the oldest unpaid days first.": "Частичная оплата сначала закрывает самые ранние неоплаченные дни.",
   "Account": "Аккаунт",
   "Accounts are coming soon": "Аккаунты скоро появятся",
   "Add": "Добавить",
@@ -105,6 +106,7 @@ export const ru: Record<string, string> = {
   "Enter boxes for each worker in the Workers tab, and they will appear here by day.": "Указывайте ящики каждого работника во вкладке «Работники» — они появятся здесь по дням.",
   "Enter how many seedlings (quantity).": "Укажите количество рассады.",
   "Enter how much was spent.": "Укажите, сколько потрачено.",
+  "Enter the amount paid.": "Укажите оплаченную сумму.",
   "Enter the area in hectares.": "Укажите площадь в гектарах.",
   "Enter the date the seedlings arrived.": "Укажите дату поступления рассады.",
   "Enter the date.": "Укажите дату.",
@@ -245,6 +247,7 @@ export const ru: Record<string, string> = {
   "Swap": "Поменять местами",
   "Tap again to delete": "Нажмите ещё раз для удаления",
   "Tap again: boxes for this day will be cleared": "Нажмите ещё раз: ящики за этот день будут удалены",
+  "That is more than is owed ({amount}).": "Это больше, чем долг ({amount}).",
   "The {season} season already exists.": "Сезон {season} уже существует.",
   "This cannot be undone.": "Это действие нельзя отменить.",
   "This page doesn't exist": "Такой страницы нет",

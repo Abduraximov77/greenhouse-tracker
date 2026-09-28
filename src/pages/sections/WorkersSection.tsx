@@ -7,6 +7,8 @@ import {
   removeRecord,
   setDayOffForAll,
   setWorkerDaysPaid,
+  setAttendancePayments,
+  type PayStatus,
   payment,
   setWorkerDay,
   daysBetween,
@@ -17,7 +19,8 @@ import {
   type Worker,
 } from '../../lib/store'
 import { formatDate, formatDateTime, formatMonth, formatNumber, todayISO } from '../../lib/format'
-import { useCurrency, sumIn } from '../../lib/money'
+import { convert, useCurrency, sumIn } from '../../lib/money'
+import { PartialPay } from '../../components/PartialPay'
 import { PaymentControl } from '../../components/PaymentControl'
 import { useT } from '../../lib/i18n'
 import { DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stat, num, str } from '../../components/ui'
@@ -140,6 +143,38 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
     offCount = Math.max(0, daysBetween(from, to) - [...workDates].filter((d) => d >= from && d <= to).length)
   }
   const payMissing = summary.some((s) => s.pay.missing)
+
+  /**
+   * Apply a payment (in the display currency) to unpaid days, oldest first:
+   * days it fully covers become paid, the last one becomes partly paid.
+   */
+  function applyPayment(amount: number, match: (a: Attendance) => boolean) {
+    const nameOf = (id: string) => workers.find((w) => w.id === id)?.name ?? ''
+    const open = inPeriod
+      .filter((a) => a.status === 'on' && match(a))
+      .sort((a, b) => a.date.localeCompare(b.date) || nameOf(a.workerId).localeCompare(nameOf(b.workerId)))
+    let left = amount
+    const updates: Record<string, { payStatus: PayStatus; paidAmount: number | null }> = {}
+    for (const a of open) {
+      if (left <= 0.005) break
+      const due = dayPay(a)
+      const already = payment(due, a.payStatus, a.paidAmount).paid
+      const owedHere = due - already
+      if (owedHere <= 0) continue
+      const owedInDisplay = convert(owedHere, a.currency, cur.display, cur.rates) ?? owedHere
+      const key = attendanceKey(a.cropId, a.workerId, a.date)
+      if (left + 0.005 >= owedInDisplay) {
+        updates[key] = { payStatus: 'paid', paidAmount: null }
+        left -= owedInDisplay
+      } else {
+        const partInDayCurrency = convert(left, cur.display, a.currency, cur.rates) ?? left
+        updates[key] = { payStatus: 'partial', paidAmount: Math.round((already + partInDayCurrency) * 100) / 100 }
+        left = 0
+      }
+    }
+    setAttendancePayments(updates)
+    setBulk((n) => n + 1)
+  }
 
   return (
     <>
@@ -285,7 +320,16 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                 >
                   ✓ {t('Mark everyone paid ({amount})', { amount: cur.fmt(payTotal - paidTotal) })}
                 </button>
-              ) : (
+              ) : null}
+              {payTotal - paidTotal > 0 && (
+                <PartialPay
+                  id="pay-all-partial"
+                  owed={payTotal - paidTotal}
+                  currency={cur.display}
+                  onApply={(amount) => applyPayment(amount, () => true)}
+                />
+              )}
+              {payTotal - paidTotal <= 0 && (
                 <>
                   <span className="pay-badge paid">{t('Everyone is paid')}</span>
                   <button
@@ -299,6 +343,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     {t('Undo')}
                   </button>
                 </>
+              )}
+              {payTotal - paidTotal > 0 && (
+                <span className="field-hint all-pay-note">{t('A partial payment pays the oldest unpaid days first.')}</span>
               )}
             </div>
           )}
@@ -333,16 +380,24 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                       <td className="num text-owed">{cur.fmt(s.pay.total - s.paid.total)}</td>
                       <td>
                         {s.pay.total - s.paid.total > 0 ? (
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-small"
-                            onClick={() => {
-                              setWorkerDaysPaid(crop.id, (a) => a.workerId === s.worker.id && inThisPeriod(a), true)
-                              setBulk((n) => n + 1)
-                            }}
-                          >
-                            ✓ {t('Paid')}
-                          </button>
+                          <div className="pay-cell">
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-small"
+                              onClick={() => {
+                                setWorkerDaysPaid(crop.id, (a) => a.workerId === s.worker.id && inThisPeriod(a), true)
+                                setBulk((n) => n + 1)
+                              }}
+                            >
+                              ✓ {t('Paid')}
+                            </button>
+                            <PartialPay
+                              id={`pay-${s.worker.id}`}
+                              owed={s.pay.total - s.paid.total}
+                              currency={cur.display}
+                              onApply={(amount) => applyPayment(amount, (a) => a.workerId === s.worker.id)}
+                            />
+                          </div>
                         ) : (
                           s.pay.total > 0 && <span className="pay-badge paid">{t('Paid')}</span>
                         )}

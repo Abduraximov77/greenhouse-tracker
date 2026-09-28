@@ -484,6 +484,15 @@ export function setWorkerDaysPaid(cropId: ID, match: (a: Attendance) => boolean,
   commit({ ...db, attendance })
 }
 
+/** Save payment status for several worker days at once (key → status and amount). */
+export function setAttendancePayments(updates: Record<string, { payStatus: PayStatus; paidAmount: number | null }>) {
+  const attendance = { ...db.attendance }
+  for (const [k, u] of Object.entries(updates)) {
+    if (attendance[k]) attendance[k] = { ...attendance[k], ...u, updatedAt: nowIso() }
+  }
+  commit({ ...db, attendance })
+}
+
 /** Worker days for one crop. */
 export function cropDays(d: DB, cropId: ID): Attendance[] {
   return Object.values(d.attendance).filter((a) => a.cropId === cropId)
