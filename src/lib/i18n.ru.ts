@@ -178,6 +178,7 @@ export const ru: Record<string, string> = {
   "No variety set": "Сорт не указан",
   "No weight entered": "Вес не указан",
   "No workers yet": "Пока нет работников",
+  "Nobody worked on this day, so it counts as a day off for everyone.": "В этот день никто не работал, поэтому он считается выходным для всех.",
   "Nobody works on this day. Tap the button again to undo.": "В этот день никто не работает. Нажмите кнопку ещё раз, чтобы отменить.",
   "Not in the list: add as a new crop": "Нет в списке: добавить как новую культуру",
   "Not marked yet": "Ещё не отмечен",

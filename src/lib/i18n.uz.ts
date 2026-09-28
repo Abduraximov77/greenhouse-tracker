@@ -178,6 +178,7 @@ export const uz: Record<string, string> = {
   "No variety set": "Navi ko‘rsatilmagan",
   "No weight entered": "Og‘irligi kiritilmagan",
   "No workers yet": "Hali ishchi yo‘q",
+  "Nobody worked on this day, so it counts as a day off for everyone.": "Bu kuni hech kim ishlamagan, shuning uchun hamma uchun dam olish kuni hisoblanadi.",
   "Nobody works on this day. Tap the button again to undo.": "Bu kuni hech kim ishlamaydi. Bekor qilish uchun tugmani yana bosing.",
   "Not in the list: add as a new crop": "Ro‘yxatda yo‘q: yangi ekin sifatida qo‘shish",
   "Not marked yet": "Hali belgilanmagan",

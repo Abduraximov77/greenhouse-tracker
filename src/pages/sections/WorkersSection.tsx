@@ -107,6 +107,14 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const months = [...new Set([currentMonth, ...days.map((r) => r.date.slice(0, 7))])].sort().reverse()
   const inThisPeriod = (a: Attendance) => period === 'all' || a.date.startsWith(period)
   const inPeriod = days.filter((r) => period === 'all' || r.date.startsWith(period))
+  // The counted range runs from the first recorded day on this crop (or the month start)
+  // up to today (or the month end), so future days and days before work began don't count.
+  const firstDay = days.map((r) => r.date).sort()[0]
+  const today = todayISO()
+  const rangeFrom = firstDay ? (period === 'all' ? firstDay : [firstDay, `${period}-01`].sort()[1]) : ''
+  const rangeTo = [today, period === 'all' ? today : lastDayOfMonth(period)].sort()[0]
+  const rangeDays = firstDay ? daysBetween(rangeFrom, rangeTo) : 0
+  const inRange = (d: string) => d >= rangeFrom && d <= rangeTo
   const summary = workers
     .map((w) => {
       const mine = inPeriod.filter((r) => r.workerId === w.id)
@@ -114,7 +122,8 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
       return {
         worker: w,
         daysOn: on.length,
-        daysOff: mine.length - on.length,
+        // A worker's day off = every day in the range they didn't work (marked or not).
+        daysOff: Math.max(0, rangeDays - new Set(on.filter((r) => inRange(r.date)).map((r) => r.date)).size),
         boxes: on.reduce((a, r) => a + (r.boxes ?? 0), 0),
         pay: sumIn(on.map((r) => ({ amount: dayPay(r), currency: r.currency })), cur.display, cur.rates),
         paid: sumIn(
@@ -124,24 +133,14 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
         ),
       }
     })
-    .filter((s) => s.daysOn + s.daysOff > 0)
+    .filter((s) => s.daysOn > 0 || inPeriod.some((r) => r.workerId === s.worker.id))
   const sum = (k: 'boxes') => summary.reduce((a, s) => a + s[k], 0)
   const payTotal = summary.reduce((a, s) => a + s.pay.total, 0)
   const paidTotal = summary.reduce((a, s) => a + s.paid.total, 0)
   // Calendar days, not worker-days: a day counts once however many people worked.
   const workDates = new Set(inPeriod.filter((r) => r.status === 'on').map((r) => r.date))
-  // Days off = every day in the period with nobody working, including days with nothing recorded.
-  // The period runs from the first recorded day on this crop (or the month start) up to today
-  // (or the month end), so future days and days before work began don't count.
-  const firstDay = days.map((r) => r.date).sort()[0]
-  const today = todayISO()
-  let offCount = 0
-  if (firstDay) {
-    const from = period === 'all' ? firstDay : [firstDay, `${period}-01`].sort()[1]
-    const monthEnd = period === 'all' ? today : lastDayOfMonth(period)
-    const to = [today, monthEnd].sort()[0]
-    offCount = Math.max(0, daysBetween(from, to) - [...workDates].filter((d) => d >= from && d <= to).length)
-  }
+  // Days off for everyone = every day in the range with nobody working, including days with nothing recorded.
+  const offCount = Math.max(0, rangeDays - [...workDates].filter(inRange).length)
   const payMissing = summary.some((s) => s.pay.missing)
 
   /**
@@ -217,6 +216,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             </button>
           </div>
           {allOff && <p className="day-off-note">{t('Nobody works on this day. Tap the button again to undo.')}</p>}
+          {!allOff && onCount === 0 && firstDay && date >= firstDay && date < todayISO() && (
+            <p className="day-off-note">{t('Nobody worked on this day, so it counts as a day off for everyone.')}</p>
+          )}
 
           <div className="day-summary">
             <span>
