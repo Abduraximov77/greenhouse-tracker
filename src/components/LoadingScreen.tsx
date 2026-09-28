@@ -7,12 +7,12 @@ export function LoadingScreen({ leaving }: { leaving: boolean }) {
     <div className={`loading-screen${leaving ? ' is-leaving' : ''}`} role="status" aria-live="polite">
       <div className="loading-inner">
         <div className="loading-mark">
-          <LogoMark size={88} />
+          <LogoMark size={104} />
         </div>
         <h1 className="loading-name">
           Agro<span>Ledger</span>
         </h1>
-        <p className="loading-tagline">{t('Greenhouse records')}</p>
+        <p className="loading-tagline">{t('Greenhouse accounts')}</p>
         <div className="loading-bar" aria-hidden="true">
           <span />
         </div>

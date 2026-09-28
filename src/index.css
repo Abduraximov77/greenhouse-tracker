@@ -112,8 +112,8 @@ body {
   animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .loading-mark {
-  border-radius: 22px;
-  box-shadow: 0 14px 34px rgb(42 127 80 / 0.25);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgb(11 61 56 / 0.28);
 }
 .loading-name {
   margin: 28px 0 6px;
@@ -1340,6 +1340,7 @@ select.input.with-icon { padding-left: 32px; }
   --good: #15803d; --good-soft: #dcf2e3; --warn: #b45309; --warn-soft: #fdecd3;
   --men: #0d655e; --men-soft: #cdebe6;
   --bar: #0f766e; --on-bar: #ffffff; --bar-accent: #a7f3e4;
+  --splash-1: #f7fbfa; --splash-2: #e6f1ee; --splash-3: #d3e6e1;
   --shadow: none;
   font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 15px;
@@ -1350,6 +1351,7 @@ select.input.with-icon { padding-left: 32px; }
   --good: #74d9a0; --good-soft: #1c3a27; --warn: #f2a46c; --warn-soft: #3d2616;
   --men: #6ee0cf; --men-soft: #173a35;
   --bar: #0b3d38; --on-bar: #e8f2ef; --bar-accent: #6ee0cf;
+  --splash-1: #16241f; --splash-2: #0f1a17; --splash-3: #0a1210;
 }
 body { font-size: 15px; }
 .card, .stat, .crop-side, .quick { border-radius: 4px; box-shadow: none; }
@@ -1364,7 +1366,7 @@ body { font-size: 15px; }
 .section-head { margin: 24px 0 10px; }
 .section-title { font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .topbar { background: var(--bar); border-bottom: 0; backdrop-filter: none; }
-.topbar .logo-name { color: var(--on-bar); }
+.topbar .logo, .topbar .logo-name { color: var(--on-bar); }
 .topbar .logo-accent { color: var(--bar-accent); }
 .topbar .input, .topbar .rate-chip, .topbar .icon-link { background-color: rgb(255 255 255 / 0.12); color: var(--on-bar); border-color: rgb(255 255 255 / 0.28); }
 .topbar .input option { color: #1b2421; background: #fff; }
@@ -1383,3 +1385,4 @@ select.topbar-select, .topbar select.input { background-image: url("data:image/s
   .segmented button { white-space: normal; min-width: 0; padding: 6px; line-height: 1.2; }
   .stat-value { font-size: 1.1rem; overflow-wrap: normal; }
 }
+:root[data-theme='night'] .loading-mark { box-shadow: 0 0 0 1px #2d403b, 0 14px 34px rgb(0 0 0 / 0.45); }

@@ -83,7 +83,7 @@ function Header() {
   return (
     <header className="topbar">
       <a href={href()} className="logo-link" aria-label="AgroLedger">
-        <Logo size={36} />
+        <Logo size={40} />
       </a>
       <div className="topbar-controls">
         <label className="control">

@@ -121,7 +121,7 @@ export const ru: Record<string, string> = {
   "Get today’s rate online": "Получить курс на сегодня",
   "Getting today’s rate…": "Получаем курс…",
   "Go to seasons": "К сезонам",
-  "Greenhouse records": "Учёт теплицы",
+  "Greenhouse accounts": "Учёт теплицы",
   "Growing area, hectares": "Площадь, га",
   "Growing area, hectares (optional)": "Площадь, га (необязательно)",
   "Harvest": "Урожай",

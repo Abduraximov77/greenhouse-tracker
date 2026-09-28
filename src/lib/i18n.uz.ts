@@ -121,7 +121,7 @@ export const uz: Record<string, string> = {
   "Get today’s rate online": "Bugungi kursni olish",
   "Getting today’s rate…": "Kurs olinmoqda…",
   "Go to seasons": "Mavsumlarga o‘tish",
-  "Greenhouse records": "Issiqxona hisobi",
+  "Greenhouse accounts": "Issiqxona hisobi",
   "Growing area, hectares": "Maydon, gektar",
   "Growing area, hectares (optional)": "Maydon, gektar (ixtiyoriy)",
   "Harvest": "Hosil",
