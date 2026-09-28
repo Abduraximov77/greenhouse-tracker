@@ -144,7 +144,7 @@ function BackButton() {
 function Routes() {
   const db = useDB()
   const path = usePath()
-  const [first, seasonId, sub, cropId, tab, extra] = path
+  const [first, seasonId, sub, cropId, tab] = path
 
   if (!first) return <SeasonsPage />
   if (first === 'settings') return <SettingsPage />
@@ -155,7 +155,7 @@ function Routes() {
   if (!sub) return <SeasonPage season={season} />
   if (sub === 'crop') {
     const crop = db.crops.find((c) => c.id === cropId && c.seasonId === season.id)
-    if (crop) return <CropPage key={crop.id} season={season} crop={crop} tab={tab ?? 'overview'} extra={extra} />
+    if (crop) return <CropPage key={crop.id} season={season} crop={crop} tab={tab ?? 'overview'} />
   }
   return <NotFound />
 }

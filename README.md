@@ -9,8 +9,8 @@ Built as a website first, designed so it can become a phone app later.
 - For each crop (tabs):
   - **Workers**: each day worked/day off, daily salary + boxes prepared × pay per box, paid / partly / not paid, pay summary with amounts still owed.
     The worker list is shared by all seasons and crops.
-  - **Expenses**: everything bought or paid for, by category (seedlings, fertilizer & nutrition, fuel, repairs, other),
-    with quantity, amount, paid / partly / not paid, and a per-hectare helper for fertilizer
+  - **Expenses**: everything bought or paid for (you type what it was: seedlings, fertilizer, fuel…),
+    with quantity, amount and paid / partly / not paid
   - **Harvest**: boxes per day, including the boxes entered for workers, plus any other boxes
   - **Export**: trucks with truck number, driver, boxes and delivery price; boxes in stock
 - Records are grouped under bold date headings

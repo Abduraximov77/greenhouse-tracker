@@ -61,7 +61,7 @@ function SectionIcon({ id }: { id: SectionId }) {
   )
 }
 
-export function CropPage({ season, crop, tab, extra }: { season: Season; crop: SeasonCrop; tab: string; extra?: string }) {
+export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCrop; tab: string }) {
   const db = useDB()
   const t = useT()
   const lang = db.settings.lang
@@ -131,7 +131,7 @@ export function CropPage({ season, crop, tab, extra }: { season: Season; crop: S
 
         {active === 'overview' && <Overview season={season} crop={crop} />}
         {active === 'workers' && <WorkersSection crop={crop} />}
-        {active === 'expenses' && <ExpensesSection crop={crop} filter={extra} />}
+        {active === 'expenses' && <ExpensesSection crop={crop} />}
         {active === 'harvest' && <HarvestSection season={season} crop={crop} />}
         {active === 'export' && <ExportSection crop={crop} />}
       </div>
@@ -166,10 +166,8 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
 
       <SectionHead title={t('Costs')} />
       <div className="stat-grid">
-        <Stat label={t('Seedlings')} value={money(tt.plantingCost)} />
-        <Stat label={t('Fertilizer & nutrition')} value={money(tt.nutritionCost)} />
         <Stat label={t('Workers')} value={money(tt.workerPay)} />
-        <Stat label={t('Other expenses')} value={money(tt.otherExpensesCost)} />
+        <Stat label={t('Expenses')} value={money(tt.expensesCost)} />
         <Stat label={t('Delivery')} value={money(tt.deliveryCost)} />
         <Stat label={t('Total')} value={money(tt.totalCost)} />
       </div>
@@ -180,18 +178,10 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
         <Stat label={t('Paid')} value={money(tt.paid)} tone={tt.paid > 0 ? 'good' : undefined} />
         <Stat label={t('Still to pay')} value={money(tt.owed)} tone={tt.owed > 0 ? 'warn' : undefined} />
       </div>
-      <p className="field-hint">{t('All costs: expenses (seedlings, nutrition and others), workers and delivery. Paid + still to pay = total.')}</p>
+      <p className="field-hint">{t('All costs: expenses, workers and delivery. Paid + still to pay = total.')}</p>
 
       <SectionHead title={t('Record something')} />
       <div className="quick-grid">
-        <button className="quick" onClick={() => go('expenses', 'seedlings')}>
-          <b>{t('Seedlings')}</b>
-          <span>{t('Seedlings bought (in Expenses)')}</span>
-        </button>
-        <button className="quick" onClick={() => go('expenses', 'nutrition')}>
-          <b>{t('Fertilizer & nutrition')}</b>
-          <span>{t('Fertilizer given (in Expenses)')}</span>
-        </button>
         <button className="quick" onClick={() => go('workers')}>
           <b>{t('Workers')}</b>
           <span>{t('Days worked and boxes prepared')}</span>
@@ -257,10 +247,6 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
           <div>
             <span className="stat-label">{t('Area')}</span>
             <span>{crop.areaHa ? `${formatNumber(crop.areaHa)} ${t('ha')}` : '—'}</span>
-          </div>
-          <div>
-            <span className="stat-label">{t('Seedlings')}</span>
-            <span>{formatNumber(tt.seedlings, 0)}</span>
           </div>
         </div>
       )}

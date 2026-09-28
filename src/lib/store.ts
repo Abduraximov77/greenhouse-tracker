@@ -68,7 +68,8 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = ['seedlings', 'nutrition', 
 /** Something bought or paid for on a day: seedlings, fertilizer, fuel, repairs… */
 export interface Expense extends Meta {
   cropId: ID
-  category: ExpenseCategory
+  /** Only on older records; no longer shown or asked for. */
+  category?: ExpenseCategory
   date: string
   name: string
   quantity: number | null

@@ -13,12 +13,7 @@ export function cropTotals(db: DB, cropId: ID) {
 
   const delivery = sumIn(shipments.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })), to, rates)
   const pay = sumIn(days.map((r) => ({ amount: dayPay(r), currency: r.currency })), to, rates)
-  const spentOn = (match: (c: string) => boolean) =>
-    sumIn(expenses.filter((r) => match(r.category)).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  const planting = spentOn((c) => c === 'seedlings')
-  const feed = spentOn((c) => c === 'nutrition')
-  const other = spentOn((c) => c !== 'seedlings' && c !== 'nutrition')
-  const spent = spentOn(() => true)
+  const spent = sumIn(expenses.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
   // Money actually paid out, for every kind of cost (the rest is still owed).
   const paidOf = (due: number | null, r: { payStatus: PayStatus; paidAmount: number | null; currency: string }) => ({
     amount: payment(due ?? 0, r.payStatus, r.paidAmount).paid,
@@ -40,12 +35,8 @@ export function cropTotals(db: DB, cropId: ID) {
   const boxesExported = sum(shipments, (r) => r.boxes)
 
   return {
-    seedlings: sum(expenses.filter((r) => r.category === 'seedlings'), (r) => r.quantity),
-    plantingCost: planting.total,
-    nutritionCost: feed.total,
     deliveryCost: delivery.total,
     workerPay: pay.total,
-    otherExpensesCost: other.total,
     expensesCost: spent.total,
     totalCost: delivery.total + pay.total + spent.total,
     paid: paidOut.total,
