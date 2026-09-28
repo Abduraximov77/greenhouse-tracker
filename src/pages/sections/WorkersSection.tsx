@@ -105,6 +105,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
 
   // ----- summary for the chosen period -----
   const months = [...new Set([currentMonth, ...days.map((r) => r.date.slice(0, 7))])].sort().reverse()
+  // A past day (after work began) where nobody worked counts as a day off for everyone automatically.
+  const firstWorkDay = days.map((r) => r.date).sort()[0]
+  const nobodyWorkedPast = !!firstWorkDay && date >= firstWorkDay && date < todayISO() && onCount === 0
   const inThisPeriod = (a: Attendance) => period === 'all' || a.date.startsWith(period)
   const inPeriod = days.filter((r) => period === 'all' || r.date.startsWith(period))
   // The counted range runs from the first recorded day on this crop (or the month start)
@@ -112,7 +115,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const firstDay = days.map((r) => r.date).sort()[0]
   const today = todayISO()
   const rangeFrom = firstDay ? (period === 'all' ? firstDay : [firstDay, `${period}-01`].sort()[1]) : ''
-  const rangeTo = [today, period === 'all' ? today : lastDayOfMonth(period)].sort()[0]
+  // Up to today, or up to the latest recorded day if work was entered for a later date.
+  const lastDay = [today, ...inPeriod.map((r) => r.date)].sort().at(-1)!
+  const rangeTo = period === 'all' ? lastDay : [lastDay, lastDayOfMonth(period)].sort()[0]
   const rangeDays = firstDay ? daysBetween(rangeFrom, rangeTo) : 0
   const inRange = (d: string) => d >= rangeFrom && d <= rangeTo
   const summary = workers
@@ -216,7 +221,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             </button>
           </div>
           {allOff && <p className="day-off-note">{t('Nobody works on this day. Tap the button again to undo.')}</p>}
-          {!allOff && onCount === 0 && firstDay && date >= firstDay && date < todayISO() && (
+          {!allOff && nobodyWorkedPast && (
             <p className="day-off-note">{t('Nobody worked on this day, so it counts as a day off for everyone.')}</p>
           )}
 
@@ -270,7 +275,14 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
 
           <ul className="att-list">
             {workers.map((w) => (
-              <WorkerDayRow key={`${w.id}|${date}|${bulk}`} crop={crop} worker={w} date={date} day={dayOf(w)} />
+              <WorkerDayRow
+                key={`${w.id}|${date}|${bulk}`}
+                crop={crop}
+                worker={w}
+                date={date}
+                day={dayOf(w)}
+                autoOff={nobodyWorkedPast}
+              />
             ))}
           </ul>
         </div>
@@ -504,7 +516,20 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
 }
 
 /** One worker on one day: worked / day off, boxes prepared and pay per box. */
-function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: Worker; date: string; day?: Attendance }) {
+function WorkerDayRow({
+  crop,
+  worker,
+  date,
+  day,
+  autoOff,
+}: {
+  crop: SeasonCrop
+  worker: Worker
+  date: string
+  day?: Attendance
+  /** Nobody worked this past day: show it as a day off even though nothing was entered. */
+  autoOff?: boolean
+}) {
   const t = useT()
   const cur = useCurrency()
   const currency = day?.currency ?? worker.currency
@@ -513,6 +538,7 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
   const [boxes, setBoxes] = useState(str(day?.boxes))
   const [perBox, setPerBox] = useState(str(day?.payPerBox ?? (worker.payPerBox || null)))
   const worked = day?.status === 'on'
+  const isOff = day?.status === 'off' || (!day && autoOff)
   const ok = (v: string) => v.trim() === '' || ((num(v) ?? -1) >= 0)
 
   function saveSalary(v: string) {
@@ -536,7 +562,7 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
         <span className="att-name">
           {worker.name}
           <span className="stamp">
-            {day ? t('Updated {time}', { time: formatDateTime(day.updatedAt) }) : t('Not marked yet')}
+            {day ? t('Updated {time}', { time: formatDateTime(day.updatedAt) }) : autoOff ? t('Day off (automatic)') : t('Not marked yet')}
           </span>
         </span>
         <div className="segmented" role="radiogroup" aria-label={`${worker.name}, ${formatDate(date)}`}>
@@ -558,8 +584,9 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
           <button
             type="button"
             role="radio"
-            aria-checked={day?.status === 'off'}
-            className={day?.status === 'off' ? 'is-on is-off' : ''}
+            aria-checked={isOff}
+            className={isOff ? 'is-on is-off' : ''}
+            title={!day && autoOff ? t('Automatic: nobody worked this day') : undefined}
             onClick={() => {
               setBoxes('')
               setWorkerDay(crop, worker, date, { status: day?.status === 'off' ? null : 'off' })
@@ -570,7 +597,7 @@ function WorkerDayRow({ crop, worker, date, day }: { crop: SeasonCrop; worker: W
         </div>
       </div>
 
-      {day?.status !== 'off' && (
+      {!isOff && (
         <div className="att-work">
           <label className="mini-field" htmlFor={`${id}-salary`}>
             <span>
