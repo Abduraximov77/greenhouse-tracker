@@ -372,4 +372,8 @@ export const uz: Record<string, string> = {
   "of {left}": "{left} dan",
   "When everything is given back, tap “All given back”. If only part came back, tap “Partly…” and enter how much. When all of it is back, the entry is done.": "Hammasi qaytarilsa, “Hammasi qaytarildi”ni bosing. Bir qismi qaytgan bo‘lsa, “Qisman…”ni bosib, qanchaligini yozing. Hammasi qaytgach, yozuv yopiladi.",
   "Partly…": "Qisman…",
+  "Get Central Bank rate": "Markaziy bank kursini olish",
+  "Central Bank of Uzbekistan, rate for {date}": "O‘zbekiston Markaziy banki, {date} kursi",
+  "Updated with the Central Bank of Uzbekistan rate.": "O‘zbekiston Markaziy banki kursi bilan yangilandi.",
+  "The Central Bank rate was not available, so today’s rate from another source was used.": "Markaziy bank kursini olib bo‘lmadi, shuning uchun boshqa manbadagi bugungi kurs olindi.",
 }

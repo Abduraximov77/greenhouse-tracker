@@ -15,6 +15,7 @@ Built as a website first, designed so it can become a phone app later.
 - **Logo**: A | L mark — serif initials split by a gold ledger column line, underlined (header, loading screen, tab icon, phone icon).
 - **Look**: "Ixcham" design — IBM Plex Sans, compact, teal top bar, sharp corners (day and night).
 - **Currencies**: USD, UZS and RUB always available in entries, exchange rates and the converter.
+- **Exchange rates**: official rates of the Central Bank of Uzbekistan (cbu.uz). The bank's feed can't be read from a browser, so `scripts/fetch-cbu-rates.mjs` fetches it while the site is built and publishes it as `rates.json`; the deploy workflow also runs on a schedule (5 times a day) to keep it current. If it is missing, the app falls back to open.er-api.com. Rates typed in by hand in Settings are kept until "Get Central Bank rate" is pressed.
 - **Day / night screen** (Settings): light, dark, or automatic (follows the device).
   - **Expenses**: everything bought or paid for (you type what it was: seedlings, fertilizer, fuel…),
     with quantity, amount and paid / partly / not paid

@@ -140,12 +140,17 @@ export interface Settings {
   /** Exchange rates: how many units of each currency equal 1 USD (USD = 1). */
   rates: Record<string, number>
   ratesUpdatedAt: string | null
-  ratesSource: 'manual' | 'online' | null
+  ratesSource: RatesSource | null
+  /** For Central Bank rates: the date the bank set them for (e.g. "26.09.2026"). */
+  ratesDate?: string | null
   /** Screen look: day (light), night (dark) or follow the phone/computer. */
   theme: Theme
 }
 
 export type Theme = 'day' | 'night' | 'auto'
+
+/** Where the exchange rates came from: Central Bank of Uzbekistan, another online source, or typed in. */
+export type RatesSource = 'cbu' | 'online' | 'manual'
 
 export interface DB {
   version: 7
@@ -599,10 +604,16 @@ export function setLang(lang: Lang) {
 }
 
 /** Save exchange rates (units per 1 USD). */
-export function setRates(rates: Record<string, number>, source: 'manual' | 'online') {
+export function setRates(rates: Record<string, number>, source: RatesSource, date: string | null = null) {
   commit({
     ...db,
-    settings: { ...db.settings, rates: { ...db.settings.rates, ...rates, USD: 1 }, ratesUpdatedAt: nowIso(), ratesSource: source },
+    settings: {
+      ...db.settings,
+      rates: { ...db.settings.rates, ...rates, USD: 1 },
+      ratesUpdatedAt: nowIso(),
+      ratesSource: source,
+      ratesDate: date,
+    },
   })
 }
 

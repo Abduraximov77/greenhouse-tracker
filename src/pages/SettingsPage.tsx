@@ -22,29 +22,29 @@ export function SettingsPage() {
   const s = db.settings
   const others = useUsedCurrencies().filter((c) => c !== 'USD')
 
-  const [draft, setDraft] = useState<Record<string, string>>(() =>
-    Object.fromEntries(others.map((c) => [c, str(s.rates[c] ?? null)])),
-  )
+  // Only the rates being typed in right now; every other box shows the saved rate.
+  const [draft, setDraft] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<null | 'saved' | 'loading' | 'online-ok' | 'online-fail'>(null)
 
   function save() {
     const next: Record<string, number> = {}
     for (const c of others) {
-      const n = num(draft[c] ?? '')
+      const n = num(shown(c))
       if (n && n > 0) next[c] = n
     }
     setRates(next, 'manual')
+    setDraft({})
     setStatus('saved')
   }
 
   async function updateOnline() {
     setStatus('loading')
     const ok = await fetchRatesOnline()
+    if (ok) setDraft({})
     setStatus(ok ? 'online-ok' : 'online-fail')
   }
 
-  // Keep the inputs in step with rates fetched online.
-  const shown = (c: string) => (status === 'online-ok' ? str(s.rates[c] ?? null) : (draft[c] ?? ''))
+  const shown = (c: string) => draft[c] ?? str(s.rates[c] ? Math.round(s.rates[c] * 10000) / 10000 : null)
 
   // ----- converter -----
   const [amount, setAmount] = useState('100')
@@ -130,7 +130,7 @@ export function SettingsPage() {
                   inputMode="decimal"
                   value={shown(c)}
                   onChange={(e) => {
-                    setDraft({ ...Object.fromEntries(others.map((x) => [x, shown(x)])), [c]: e.target.value })
+                    setDraft({ ...draft, [c]: e.target.value })
                     setStatus(null)
                   }}
                 />
@@ -143,7 +143,12 @@ export function SettingsPage() {
           {s.ratesUpdatedAt
             ? t('Last updated {time} ({source})', {
                 time: formatDateTime(s.ratesUpdatedAt),
-                source: s.ratesSource === 'online' ? t('online') : t('entered by hand'),
+                source:
+                  s.ratesSource === 'cbu'
+                    ? t('Central Bank of Uzbekistan, rate for {date}', { date: s.ratesDate ?? '' })
+                    : s.ratesSource === 'online'
+                      ? t('online')
+                      : t('entered by hand'),
               })
             : t('No exchange rate saved yet.')}
         </p>
@@ -152,11 +157,17 @@ export function SettingsPage() {
             {t('Save rate')}
           </button>
           <button className="btn btn-ghost" onClick={updateOnline} disabled={status === 'loading'}>
-            {status === 'loading' ? t('Getting today’s rate…') : t('Get today’s rate online')}
+            {status === 'loading' ? t('Getting today’s rate…') : t('Get Central Bank rate')}
           </button>
         </div>
         {status === 'saved' && <p className="form-ok">{t('Saved. All totals now use this rate.')}</p>}
-        {status === 'online-ok' && <p className="form-ok">{t('Updated with today’s rate.')}</p>}
+        {status === 'online-ok' && (
+          <p className="form-ok">
+            {s.ratesSource === 'cbu'
+              ? t('Updated with the Central Bank of Uzbekistan rate.')
+              : t('The Central Bank rate was not available, so today’s rate from another source was used.')}
+          </p>
+        )}
         {status === 'online-fail' && (
           <p className="form-error">{t('Couldn’t get the rate online here. Type it in and press Save rate.')}</p>
         )}

@@ -1,11 +1,15 @@
 # Builds the website and publishes it to the gh-pages branch (GitHub Pages)
-# every time something is saved to main.
+# every time something is saved to main, and every few hours so the
+# Central Bank of Uzbekistan exchange rates published with it stay current.
 name: Publish website
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # Tashkent time 06:10, 09:10, 12:10, 15:10, 18:10 (the bank publishes new rates each day)
+    - cron: '10 1,4,7,10,13 * * *'
 
 permissions:
   contents: write
@@ -20,6 +24,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Get Central Bank of Uzbekistan rates
+        run: node scripts/fetch-cbu-rates.mjs
       - run: npm run build
       - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v4

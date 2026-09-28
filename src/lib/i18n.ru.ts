@@ -372,4 +372,8 @@ export const ru: Record<string, string> = {
   "of {left}": "из {left}",
   "When everything is given back, tap “All given back”. If only part came back, tap “Partly…” and enter how much. When all of it is back, the entry is done.": "Если вернули всё, нажмите «Вернули всё». Если вернули часть, нажмите «Частично…» и укажите сколько. Когда вернут всё, запись закрывается.",
   "Partly…": "Частично…",
+  "Get Central Bank rate": "Курс Центробанка",
+  "Central Bank of Uzbekistan, rate for {date}": "Центральный банк Узбекистана, курс на {date}",
+  "Updated with the Central Bank of Uzbekistan rate.": "Обновлено по курсу Центрального банка Узбекистана.",
+  "The Central Bank rate was not available, so today’s rate from another source was used.": "Курс Центробанка недоступен, поэтому взят сегодняшний курс из другого источника.",
 }

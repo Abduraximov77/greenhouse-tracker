@@ -61,19 +61,45 @@ export function useCurrency() {
   return { display, rates, fmt, both, sum: (items: { amount: number | null; currency: string }[]) => sumIn(items, display, rates) }
 }
 
+/** Turn "so'm per 1 unit" (how the Central Bank publishes rates) into "units per 1 USD" (how the app stores them). */
+function fromUzsPerUnit(uzsPerUnit: Record<string, number>) {
+  const usd = uzsPerUnit.USD
+  const rates: Record<string, number> = { USD: 1, UZS: usd }
+  for (const [ccy, uzs] of Object.entries(uzsPerUnit)) if (uzs > 0 && ccy !== 'USD') rates[ccy] = usd / uzs
+  return rates
+}
+
+/** Official rates of the Central Bank of Uzbekistan, saved with the website a few times a day (rates.json). */
+async function fetchCbuRates(): Promise<boolean> {
+  const res = await fetch(`./rates.json?t=${Date.now()}`, { cache: 'no-store' })
+  if (!res.ok) return false
+  const data = await res.json()
+  if (data?.source !== 'cbu' || !data.uzsPerUnit?.USD) return false
+  setRates(fromUzsPerUnit(data.uzsPerUnit), 'cbu', data.date ?? null)
+  return true
+}
+
+/** Backup source, used only if the Central Bank rates can't be loaded. */
+async function fetchOtherRates(): Promise<boolean> {
+  const res = await fetch('https://open.er-api.com/v6/latest/USD')
+  if (!res.ok) return false
+  const data = await res.json()
+  if (data?.result !== 'success' || typeof data.rates !== 'object') return false
+  setRates(data.rates as Record<string, number>, 'online')
+  return true
+}
+
 /**
- * Try to fetch today's rates online. Works when the site is hosted on its own address;
- * inside a locked-down preview the request is blocked and this returns false.
+ * Get today's rates: the Central Bank of Uzbekistan first, another online source if that fails.
+ * Inside a locked-down preview both requests are blocked and this returns false.
  */
 export async function fetchRatesOnline(): Promise<boolean> {
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD')
-    if (!res.ok) return false
-    const data = await res.json()
-    if (data?.result !== 'success' || typeof data.rates !== 'object') return false
-    setRates(data.rates as Record<string, number>, 'online')
-    return true
-  } catch {
-    return false
+  for (const get of [fetchCbuRates, fetchOtherRates]) {
+    try {
+      if (await get()) return true
+    } catch {
+      // try the next source
+    }
   }
+  return false
 }

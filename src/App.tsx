@@ -35,7 +35,8 @@ export default function App() {
   useEffect(() => {
     const s = currentSettings()
     const old = !s.ratesUpdatedAt || Date.now() - new Date(s.ratesUpdatedAt).getTime() > 12 * 3600 * 1000
-    if (s.ratesSource !== 'manual' && old) void fetchRatesOnline()
+    // Also switch right away to the Central Bank rates if the saved ones came from elsewhere.
+    if (s.ratesSource !== 'manual' && (old || s.ratesSource !== 'cbu')) void fetchRatesOnline()
   }, [])
 
   useEffect(() => {
