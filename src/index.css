@@ -30,7 +30,7 @@
   --splash-3: #d3ebdb;
 
   color-scheme: light;
-  font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--text);
@@ -1332,3 +1332,57 @@ select.input.with-icon { padding-left: 32px; }
 .deal-lines span { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .deal-none { margin: 0; color: var(--muted); }
 .pay-badge { white-space: nowrap; }
+
+/* ---------- Katta look: large text, big buttons, thick borders, strong contrast (chosen design) ---------- */
+:root {
+  --bg: #ffffff; --surface: #ffffff; --text: #0d1a12; --muted: #34453a; --line: #9fb5a6;
+  --brand: #15803d; --brand-soft: #dcfce7; --brand-accent: #116b33; --on-brand: #ffffff;
+  --good: #116b33; --good-soft: #dcfce7; --warn: #b3380a; --warn-soft: #ffe8d9;
+  --shadow: none;
+  font-size: 18px;
+}
+:root body { font-size: 18px; }
+:root .card, :root .stat, :root .crop-side, :root .quick { border-width: 2px; border-radius: 12px; box-shadow: none; }
+:root .btn { min-height: 52px; font-size: 1.05rem; font-weight: 700; border-radius: 12px; border-width: 2px; }
+:root .btn-ghost { border-color: var(--text); }
+:root .input { min-height: 52px; border-width: 2px; font-size: 18px; }
+:root .stat-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+:root .stat-value { font-size: 1.7rem; font-weight: 800; }
+:root .page-title { font-weight: 800; font-size: 2.4rem; }
+:root .section-title { font-size: 1.3rem; font-weight: 800; }
+:root .crop-nav-item { min-height: 52px; font-size: 1.08rem; font-weight: 600; color: var(--text); }
+:root .crop-nav-item.is-active { background: var(--brand); color: #fff; border-left-color: var(--brand); }
+:root .crop-nav-item.is-active .nav-icon { color: #fff; }
+:root .topbar { background: var(--surface); border-bottom: 2px solid var(--line); }
+
+/* Night version of the Katta look: same size and weight, light text on dark, clearly visible borders. */
+:root[data-theme='night'] {
+  --bg: #0e1712;
+  --surface: #15211a;
+  --text: #f2f8f4;
+  --muted: #c3d4c9;
+  --line: #4a6656;
+  --brand: #22a05a;
+  --brand-soft: #1d3a29;
+  --brand-accent: #7fe3a9;
+  --good: #7fe3a9;
+}
+:root[data-theme='night'] .btn-ghost { border-color: var(--muted); }
+:root .btn-small { min-height: 42px; padding: 6px 14px; font-size: 0.95rem; }
+:root .btn-icon { min-height: 48px; width: 48px; padding: 0; }
+:root .input-compact { min-height: 44px; font-size: 16px; }
+:root .segmented button { min-height: 44px; font-size: 1rem; font-weight: 600; }
+:root .segmented { border-width: 2px; }
+@media (max-width: 520px) {
+  :root .segmented button { white-space: normal; min-width: 0; padding: 6px 6px; font-size: 0.92rem; line-height: 1.2; }
+  :root .page-title { font-size: 2rem; }
+}
+@media (max-width: 520px) {
+  :root .btn { white-space: normal; text-align: center; line-height: 1.25; }
+  :root .record { flex-wrap: wrap; }
+  :root .record-actions { flex-wrap: wrap; }
+}
+@media (max-width: 520px) {
+  /* Amounts wrap only before the currency code, never inside a number. */
+  :root .stat-value { font-size: 1.25rem; overflow-wrap: normal; }
+}
