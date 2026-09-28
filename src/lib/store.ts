@@ -113,7 +113,11 @@ export interface Settings {
   rates: Record<string, number>
   ratesUpdatedAt: string | null
   ratesSource: 'manual' | 'online' | null
+  /** Screen look: day (light), night (dark) or follow the phone/computer. */
+  theme: Theme
 }
+
+export type Theme = 'day' | 'night' | 'auto'
 
 export interface DB {
   version: 7
@@ -160,7 +164,7 @@ function seed(): DB {
     expenses: [],
     workers: [],
     attendance: {},
-    settings: { currency: 'USD', lang: 'en', rates: { USD: 1 }, ratesUpdatedAt: null, ratesSource: null },
+    settings: { currency: 'USD', lang: 'en', rates: { USD: 1 }, ratesUpdatedAt: null, ratesSource: null, theme: 'day' },
   }
 }
 
@@ -548,6 +552,10 @@ export function cropDays(d: DB, cropId: ID): Attendance[] {
 
 export function setCurrency(currency: string) {
   commit({ ...db, settings: { ...db.settings, currency } })
+}
+
+export function setTheme(theme: Theme) {
+  commit({ ...db, settings: { ...db.settings, theme } })
 }
 
 export function setLang(lang: Lang) {

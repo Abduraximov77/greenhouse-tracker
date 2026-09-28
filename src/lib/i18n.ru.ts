@@ -277,4 +277,9 @@ export const ru: Record<string, string> = {
   "{group}, total": "{group}, итого",
   "{n} workers": "Работников: {n}",
   "Tap Edit and choose man or woman.": "Нажмите «Изменить» и выберите: мужчина или женщина.",
+  "Screen": "Режим экрана",
+  "Day": "Дневной",
+  "Night": "Ночной",
+  "Automatic": "Авто",
+  "Night makes the screen dark, easier on the eyes in the evening. Automatic follows your phone or computer.": "Ночной режим делает экран тёмным — вечером так легче для глаз. «Авто» следует настройке телефона или компьютера.",
 }

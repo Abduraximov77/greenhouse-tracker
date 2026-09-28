@@ -10,6 +10,7 @@ Built as a website first, designed so it can become a phone app later.
   - **Workers**: each day worked/day off, daily salary + boxes prepared × pay per box, paid / partly / not paid, pay summary with amounts still owed.
     The worker list is shared by all seasons and crops. Each worker is a man or a woman, and men and women are shown
     separately (daily list, pay summary with subtotals, worker list).
+- **Day / night screen** (Settings): light, dark, or automatic (follows the device).
   - **Expenses**: everything bought or paid for (you type what it was: seedlings, fertilizer, fuel…),
     with quantity, amount and paid / partly / not paid
   - **Harvest**: boxes per day, including the boxes entered for workers, plus any other boxes

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { removeRecord, seasonLabel, setCurrency, setLang, setRates, useDB, type Lang } from '../lib/store'
+import { removeRecord, seasonLabel, setCurrency, setLang, setRates, setTheme, useDB, type Lang, type Theme } from '../lib/store'
 import { cropName } from '../lib/crops'
 import { ConfirmDelete } from '../components/ConfirmDelete'
 import { CURRENCIES, formatDateTime, formatNumber } from '../lib/format'
@@ -89,6 +89,32 @@ export function SettingsPage() {
               ))}
             </select>
           </Field>
+          <div className="field field-wide">
+            <span className="field-label" id="set-theme-label">
+              {t('Screen')}
+            </span>
+            <div className="segmented theme-switch" role="radiogroup" aria-labelledby="set-theme-label">
+              {(
+                [
+                  ['day', '☀', t('Day')],
+                  ['night', '☾', t('Night')],
+                  ['auto', '◐', t('Automatic')],
+                ] as [Theme, string, string][]
+              ).map(([k, icon, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={(s.theme ?? 'day') === k}
+                  className={(s.theme ?? 'day') === k ? 'is-on is-good' : ''}
+                  onClick={() => setTheme(k)}
+                >
+                  <span aria-hidden="true">{icon}</span> {label}
+                </button>
+              ))}
+            </div>
+            <span className="field-hint">{t('Night makes the screen dark, easier on the eyes in the evening. Automatic follows your phone or computer.')}</span>
+          </div>
         </div>
       </div>
 

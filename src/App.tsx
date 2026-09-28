@@ -5,7 +5,7 @@ import { Empty } from './components/ui'
 import { CURRENCIES } from './lib/format'
 import { LANGS, LOCALES, useT } from './lib/i18n'
 import { goBack, href, usePath } from './lib/router'
-import { currentSettings, setCurrency, setLang, useDB, type Lang } from './lib/store'
+import { currentSettings, setCurrency, setLang, useDB, type Lang, type Theme } from './lib/store'
 import { SeasonsPage } from './pages/SeasonsPage'
 import { SeasonPage } from './pages/SeasonPage'
 import { CropPage } from './pages/CropPage'
@@ -18,7 +18,8 @@ const FADE_MS = 600
 
 export default function App() {
   const [phase, setPhase] = useState<'loading' | 'leaving' | 'done'>('loading')
-  const lang = useDB().settings.lang
+  const { lang, theme } = useDB().settings
+  useTheme(theme)
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('leaving'), MIN_SPLASH_MS)
@@ -53,6 +54,22 @@ export default function App() {
       </div>
     </>
   )
+}
+
+/** Puts data-theme="day" or "night" on the page; "auto" follows the device and changes with it. */
+function useTheme(theme: Theme) {
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const night = theme === 'night' || (theme === 'auto' && !!media?.matches)
+      document.documentElement.dataset.theme = night ? 'night' : 'day'
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', night ? '#0f1a14' : '#eef6f0')
+    }
+    apply()
+    if (theme !== 'auto' || !media) return
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [theme])
 }
 
 function Header() {

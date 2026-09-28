@@ -714,7 +714,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                 <tbody>
                   {summaryGroups.map((g) => (
                     <Fragment key={g.key}>
-                      <tr className="group-row">
+                      <tr className={`group-row gender-${g.key}`}>
                         <th colSpan={8} scope="colgroup">
                           {t(g.label)}
                         </th>

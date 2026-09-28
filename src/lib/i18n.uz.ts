@@ -277,4 +277,9 @@ export const uz: Record<string, string> = {
   "{group}, total": "{group}, jami",
   "{n} workers": "{n} ta ishchi",
   "Tap Edit and choose man or woman.": "“Tahrirlash”ni bosing va erkak yoki ayolni tanlang.",
+  "Screen": "Ekran rejimi",
+  "Day": "Kunduzgi",
+  "Night": "Tungi",
+  "Automatic": "Avtomatik",
+  "Night makes the screen dark, easier on the eyes in the evening. Automatic follows your phone or computer.": "Tungi rejim ekranni qorong‘i qiladi — kechqurun ko‘zga yengil. “Avtomatik” telefon yoki kompyuter sozlamasiga qarab o‘zgaradi.",
 }
