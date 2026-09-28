@@ -6,7 +6,7 @@ import {
   dayPay,
   removeRecord,
   setDayOffForAll,
-  setDayPaidForAll,
+  setWorkerDaysPaid,
   payment,
   setWorkerDay,
   daysBetween,
@@ -96,11 +96,13 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
     cur.display,
     cur.rates,
   )
+  const dayNonePaid = todays.filter((d) => d.status === 'on').every((d) => d.payStatus === 'unpaid')
   const dayAllPaid = todays.some((d) => d.status === 'on') && todays.filter((d) => d.status === 'on').every((d) => d.payStatus === 'paid')
   const dayTotal = sumIn(todays.map((d) => ({ amount: dayPay(d), currency: d.currency })), cur.display, cur.rates)
 
   // ----- summary for the chosen period -----
   const months = [...new Set([currentMonth, ...days.map((r) => r.date.slice(0, 7))])].sort().reverse()
+  const inThisPeriod = (a: Attendance) => period === 'all' || a.date.startsWith(period)
   const inPeriod = days.filter((r) => period === 'all' || r.date.startsWith(period))
   const summary = workers
     .map((w) => {
@@ -194,19 +196,39 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             <span>
               {t('Paid')}: <b>{cur.fmt(dayPaid.total)}</b>
             </span>
-            {onCount > 0 && dayTotal.total > 0 && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-small"
-                onClick={() => {
-                  setDayPaidForAll(crop.id, date, !dayAllPaid)
-                  setBulk((n) => n + 1)
-                }}
-              >
-                {dayAllPaid ? t('Mark this day as not paid') : `✓ ${t('Mark everyone paid for this day')}`}
-              </button>
-            )}
           </div>
+          {onCount > 0 && dayTotal.total > 0 && (
+            <div className="all-pay">
+              <span className="all-pay-label">{t('All workers, this day')}:</span>
+              <div className="segmented" role="radiogroup" aria-label={t('All workers, this day')}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={dayNonePaid}
+                  className={dayNonePaid ? 'is-on is-off' : ''}
+                  onClick={() => {
+                    setWorkerDaysPaid(crop.id, (a) => a.date === date, false)
+                    setBulk((n) => n + 1)
+                  }}
+                >
+                  {t('Not paid')}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={dayAllPaid}
+                  className={dayAllPaid ? 'is-on is-good' : ''}
+                  onClick={() => {
+                    setWorkerDaysPaid(crop.id, (a) => a.date === date, true)
+                    setBulk((n) => n + 1)
+                  }}
+                >
+                  {t('Paid')}
+                </button>
+              </div>
+              {!dayAllPaid && !dayNonePaid && <span className="field-hint">{t('Some are paid, some are not')}</span>}
+            </div>
+          )}
           <p className="field-hint">{t('Boxes entered here are added to the Harvest for this day.')}</p>
 
           <ul className="att-list">
@@ -247,6 +269,39 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
             <Stat label={t('Days off')} value={formatNumber(offCount, 0)} />
           </div>
           <RateMissing show={payMissing || dayTotal.missing} />
+          {summary.length > 0 && (
+            <div className="all-pay period-pay">
+              <span className="all-pay-label">
+                {period === 'all' ? t('Whole season') : formatMonth(period)}, {t('all workers')}:
+              </span>
+              {payTotal - paidTotal > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-small"
+                  onClick={() => {
+                    setWorkerDaysPaid(crop.id, inThisPeriod, true)
+                    setBulk((n) => n + 1)
+                  }}
+                >
+                  ✓ {t('Mark everyone paid ({amount})', { amount: cur.fmt(payTotal - paidTotal) })}
+                </button>
+              ) : (
+                <>
+                  <span className="pay-badge paid">{t('Everyone is paid')}</span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-small"
+                    onClick={() => {
+                      setWorkerDaysPaid(crop.id, inThisPeriod, false)
+                      setBulk((n) => n + 1)
+                    }}
+                  >
+                    {t('Undo')}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           {summary.length === 0 ? (
             <Empty title={t('Nothing recorded in this period')} />
           ) : (
@@ -261,6 +316,9 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     <th className="num">{t('Earned')}</th>
                     <th className="num">{t('Paid')}</th>
                     <th className="num">{t('Still to pay')}</th>
+                    <th>
+                      <span className="sr-only">{t('Payment')}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -273,6 +331,22 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                       <td className="num">{cur.fmt(s.pay.total)}</td>
                       <td className="num">{cur.fmt(s.paid.total)}</td>
                       <td className="num text-owed">{cur.fmt(s.pay.total - s.paid.total)}</td>
+                      <td>
+                        {s.pay.total - s.paid.total > 0 ? (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-small"
+                            onClick={() => {
+                              setWorkerDaysPaid(crop.id, (a) => a.workerId === s.worker.id && inThisPeriod(a), true)
+                              setBulk((n) => n + 1)
+                            }}
+                          >
+                            ✓ {t('Paid')}
+                          </button>
+                        ) : (
+                          s.pay.total > 0 && <span className="pay-badge paid">{t('Paid')}</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -285,6 +359,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     <td className="num">{cur.fmt(payTotal)}</td>
                     <td className="num">{cur.fmt(paidTotal)}</td>
                     <td className="num text-owed">{cur.fmt(payTotal - paidTotal)}</td>
+                    <td />
                   </tr>
                 </tfoot>
               </table>

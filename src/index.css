@@ -1142,3 +1142,22 @@ select.input.with-icon { padding-left: 32px; }
 .day-summary .btn { margin-left: auto; }
 .att-row .pay-control { padding-top: 2px; }
 .qty-input { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 6px; }
+
+/* Pay everyone at once */
+.all-pay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.all-pay-label { font-weight: 600; font-size: 0.95rem; }
+.all-pay .segmented { flex: 0 1 260px; }
+.period-pay { margin-top: 12px; background: var(--surface); }
+@media (max-width: 480px) {
+  .all-pay .segmented { flex: 1 1 100%; }
+}

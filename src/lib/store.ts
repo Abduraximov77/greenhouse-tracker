@@ -473,11 +473,11 @@ export function payment(due: number, status: PayStatus, paidAmount: number | nul
   return { paid, owed: Math.max(0, due - paid) }
 }
 
-/** Mark every worked day on a crop and date as paid (or back to not paid). */
-export function setDayPaidForAll(cropId: ID, date: string, paid: boolean) {
+/** Mark worked days on a crop as paid (or back to not paid). `match` picks which days. */
+export function setWorkerDaysPaid(cropId: ID, match: (a: Attendance) => boolean, paid: boolean) {
   const attendance = { ...db.attendance }
   for (const [k, a] of Object.entries(attendance)) {
-    if (a.cropId === cropId && a.date === date && a.status === 'on') {
+    if (a.cropId === cropId && a.status === 'on' && match(a)) {
       attendance[k] = { ...a, payStatus: paid ? 'paid' : 'unpaid', paidAmount: null, updatedAt: nowIso() }
     }
   }
