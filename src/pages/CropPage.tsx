@@ -200,7 +200,7 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
         <Stat label={t('Paid')} value={money(tt.paid)} tone={tt.paid > 0 ? 'good' : undefined} />
         <Stat label={t('Still to pay')} value={money(tt.owed)} tone={tt.owed > 0 ? 'warn' : undefined} />
       </div>
-      <p className="field-hint">{t('Worker pay and expenses. Mark them paid in the Workers and Expenses sections.')}</p>
+      <p className="field-hint">{t('All costs: seedlings, nutrition, workers, expenses and delivery. Paid + still to pay = total.')}</p>
 
       <SectionHead title={t('Record something')} />
       <div className="quick-grid">

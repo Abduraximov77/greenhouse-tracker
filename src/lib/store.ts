@@ -33,6 +33,8 @@ export interface Planting extends Meta {
   unitPrice: number
   totalCost: number
   currency: string // currency of the prices above
+  payStatus: PayStatus
+  paidAmount: number | null
   note: string
 }
 
@@ -49,6 +51,8 @@ export interface Nutrition extends Meta {
   pricePerUnit: number | null
   totalCost: number | null
   currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
   note: string
 }
 
@@ -70,6 +74,8 @@ export interface Shipment extends Meta {
   boxes: number
   deliveryPrice: number
   currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
   destination: string
   note: string
 }
@@ -134,7 +140,7 @@ export interface Settings {
 }
 
 export interface DB {
-  version: 5
+  version: 6
   seasons: Season[]
   crops: SeasonCrop[]
   plantings: Planting[]
@@ -174,7 +180,7 @@ function seed(): DB {
   const t = nowIso()
   const year = new Date().getFullYear()
   return {
-    version: 5,
+    version: 6,
     seasons: [year, year + 1].map((y) => ({ id: newId(), startYear: y, createdAt: t, updatedAt: t })),
     crops: [],
     plantings: [],
@@ -197,7 +203,8 @@ function load(): DB {
       if (d && d.version === 2) d = migrateV2(d)
       if (d && d.version === 3) d = migrateV3(d)
       if (d && d.version === 4) d = migrateV4(d)
-      if (d && d.version === 5) {
+      if (d && d.version === 5) d = migrateV5(d)
+      if (d && d.version === 6) {
         const base = seed()
         return { ...base, ...d, settings: { ...base.settings, ...d.settings } } as DB
       }
@@ -262,7 +269,7 @@ function migrateV3(old: any): any {
   const add = (list: any[] = []) => list.map((r) => ({ currency: cur, ...r }))
   return {
     ...old,
-    version: 5,
+    version: 6,
     plantings: add(old.plantings),
     nutrition: add(old.nutrition),
     shipments: add(old.shipments),
@@ -274,11 +281,22 @@ function migrateV3(old: any): any {
 function migrateV4(old: any): any {
   return {
     ...old,
-    version: 5,
+    version: 6,
     expenses: old.expenses ?? [],
     attendance: Object.fromEntries(
       Object.entries(old.attendance ?? {}).map(([k, a]: [string, any]) => [k, { payStatus: 'unpaid', paidAmount: null, ...a }]),
     ),
+  }
+}
+/** v6 adds payment status to seedlings, nutrition and deliveries. Existing ones count as paid. */
+function migrateV5(old: any): any {
+  const add = (list: any[] = []) => list.map((r) => ({ payStatus: 'paid', paidAmount: null, ...r }))
+  return {
+    ...old,
+    version: 6,
+    plantings: add(old.plantings),
+    nutrition: add(old.nutrition),
+    shipments: add(old.shipments),
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

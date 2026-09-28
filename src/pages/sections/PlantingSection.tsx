@@ -6,12 +6,15 @@ import {
   removeRecord,
   updateRecord,
   useDB,
+  payment,
+  type PayStatus,
   type Planting,
   type SeasonCrop,
 } from '../../lib/store'
 import { formatDate, formatNumber, round, todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
 import { useT } from '../../lib/i18n'
+import { PayBadge, PaymentControl } from '../../components/PaymentControl'
 import {
   Computed,
   DayHeading,
@@ -36,6 +39,8 @@ type Form = {
   unitPrice: string
   totalCost: string
   currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
   note: string
 }
 
@@ -74,6 +79,8 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
         unitPrice: list[0] ? str(list[0].unitPrice) : '',
         totalCost: '',
         currency: list[0]?.currency ?? last?.currency ?? cur.display,
+        payStatus: 'paid',
+        paidAmount: null,
         note: '',
       })
       setEditing('new')
@@ -86,6 +93,8 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
         unitPrice: str(rec.unitPrice),
         totalCost: str(rec.totalCost),
         currency: rec.currency,
+        payStatus: rec.payStatus,
+        paidAmount: rec.paidAmount,
         note: rec.note,
       })
       setEditing(rec.id)
@@ -109,6 +118,8 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
       unitPrice: unitPrice ?? round((totalCost ?? 0) / quantity, 4),
       totalCost: totalCost ?? round(quantity * (unitPrice ?? 0)),
       currency: f.currency,
+      payStatus: f.payStatus,
+      paidAmount: f.payStatus === 'partial' ? f.paidAmount : null,
       note: f.note.trim(),
     }
     if (editing === 'new') addRecord('plantings', data)
@@ -119,6 +130,7 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
   const totalQty = list.reduce((a, r) => a + r.quantity, 0)
   const total = cur.sum(list.map((r) => ({ amount: r.totalCost, currency: r.currency })))
   const qty = f ? num(f.quantity) : null
+  const paidSum = cur.sum(list.map((r) => ({ amount: payment(r.totalCost, r.payStatus, r.paidAmount).paid, currency: r.currency })))
   const setCurrency = (currency: string) => f && setF({ ...f, currency })
 
   return (
@@ -127,6 +139,7 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Seedlings')} value={formatNumber(totalQty, 0)} />
         <Stat label={t('Total cost')} value={cur.fmt(total.total)} />
         <Stat label={t('Average per seedling')} value={totalQty ? cur.fmt(total.total / totalQty) : '—'} />
+        <Stat label={t('Still to pay')} value={cur.fmt(total.total - paidSum.total)} tone={total.total - paidSum.total > 0 ? 'warn' : undefined} />
       </div>
       <RateMissing show={total.missing} />
 
@@ -202,6 +215,17 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
                 : undefined
             }
           />
+          <div className="field field-wide">
+            <span className="field-label">{t('Payment')}</span>
+            <PaymentControl
+              id="pl-pay"
+              due={num(f.totalCost) ?? 0}
+              currency={f.currency}
+              status={f.payStatus}
+              paidAmount={f.paidAmount}
+              onChange={(payStatus, paidAmount) => setF({ ...f, payStatus, paidAmount })}
+            />
+          </div>
           <Field label={t('Note (optional)')} wide>
             <input id="pl-note" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
           </Field>
@@ -220,7 +244,8 @@ export function PlantingSection({ crop }: { crop: SeasonCrop }) {
                   <li key={r.id} className="card record">
                     <div className="record-main">
                       <span className="record-title">
-                        {t('{n} seedlings', { n: formatNumber(r.quantity, 0) })} · {cur.both(r.totalCost, r.currency)}
+                        {t('{n} seedlings', { n: formatNumber(r.quantity, 0) })} · {cur.both(r.totalCost, r.currency)}{' '}
+                        <PayBadge due={r.totalCost} currency={r.currency} status={r.payStatus} paidAmount={r.paidAmount} />
                       </span>
                       <span className="record-sub">
                         {r.plantedOn ? t('Planted {date}', { date: formatDate(r.plantedOn) }) : t('Not planted yet')}

@@ -1172,3 +1172,4 @@ select.input.with-icon { padding-left: 32px; }
 .partial-error { flex-basis: 100%; font-size: 0.82rem; color: var(--warn); font-weight: 500; }
 .pay-cell { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .all-pay-note { flex-basis: 100%; margin: 0; }
+.pay-badge-owed { display: block; font-size: 0.88rem; font-weight: 500; color: var(--warn); margin-top: 2px; }

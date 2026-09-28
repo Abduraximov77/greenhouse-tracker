@@ -7,12 +7,15 @@ import {
   updateRecord,
   useDB,
   type AmountUnit,
+  payment,
+  type PayStatus,
   type Nutrition,
   type SeasonCrop,
 } from '../../lib/store'
 import { formatNumber, round, todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
 import { useT } from '../../lib/i18n'
+import { PayBadge, PaymentControl } from '../../components/PaymentControl'
 import {
   Computed,
   DayHeading,
@@ -38,6 +41,8 @@ type Form = {
   areaHa: string
   pricePerUnit: string
   currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
   note: string
 }
 
@@ -64,6 +69,8 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
         areaHa: str(crop.areaHa),
         pricePerUnit: '',
         currency: allSorted[0]?.currency ?? cur.display,
+        payStatus: 'paid',
+        paidAmount: null,
         note: '',
       })
       setEditing('new')
@@ -76,6 +83,8 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
         areaHa: str(rec.areaHa),
         pricePerUnit: str(rec.pricePerUnit),
         currency: rec.currency,
+        payStatus: rec.payStatus,
+        paidAmount: rec.paidAmount,
         note: rec.note,
       })
       setEditing(rec.id)
@@ -121,6 +130,8 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
       pricePerUnit: price,
       totalCost,
       currency: f.currency,
+      payStatus: f.payStatus,
+      paidAmount: f.payStatus === 'partial' ? f.paidAmount : null,
       note: f.note.trim(),
     }
     if (editing === 'new') addRecord('nutrition', data)
@@ -132,6 +143,7 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
 
   const cost = cur.sum(list.map((r) => ({ amount: r.totalCost, currency: r.currency })))
   const lastDate = list[0]?.date
+  const paidSum = cur.sum(list.map((r) => ({ amount: payment(r.totalCost ?? 0, r.payStatus, r.paidAmount).paid, currency: r.currency })))
 
   return (
     <>
@@ -139,6 +151,7 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Applications')} value={formatNumber(list.length, 0)} />
         <Stat label={t('Total cost')} value={cur.fmt(cost.total)} />
         <Stat label={t('Last given')} value={lastDate ? formatDate(lastDate) : '—'} />
+        <Stat label={t('Still to pay')} value={cur.fmt(cost.total - paidSum.total)} tone={cost.total - paidSum.total > 0 ? 'warn' : undefined} />
       </div>
       <RateMissing show={cost.missing} />
 
@@ -231,6 +244,19 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
                 : t('Add a price to calculate cost')
             }
           />
+          {totalCost !== null && totalCost > 0 && (
+            <div className="field field-wide">
+              <span className="field-label">{t('Payment')}</span>
+              <PaymentControl
+                id="nu-pay"
+                due={totalCost}
+                currency={f.currency}
+                status={f.payStatus}
+                paidAmount={f.paidAmount}
+                onChange={(payStatus, paidAmount) => setF({ ...f, payStatus, paidAmount })}
+              />
+            </div>
+          )}
           <Field label={t('Note (optional)')} wide>
             <input id="nu-note" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
           </Field>
@@ -249,7 +275,10 @@ export function NutritionSection({ crop }: { crop: SeasonCrop }) {
                   <li key={r.id} className="card record">
                     <div className="record-main">
                       <span className="record-title">
-                        {r.product} · {formatNumber(r.totalAmount, 3)} {unitLabel(r.unit)}
+                        {r.product} · {formatNumber(r.totalAmount, 3)} {unitLabel(r.unit)}{' '}
+                        {r.totalCost !== null && r.totalCost > 0 && (
+                          <PayBadge due={r.totalCost} currency={r.currency} status={r.payStatus} paidAmount={r.paidAmount} />
+                        )}
                       </span>
                       <span className="record-sub">
                         {t('{rate} {unit}/ha on {area} ha', {

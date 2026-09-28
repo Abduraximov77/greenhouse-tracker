@@ -1,4 +1,4 @@
-import { cropDays, dayPay, payment, type DB, type ID } from '../lib/store'
+import { cropDays, dayPay, payment, type DB, type ID, type PayStatus } from '../lib/store'
 import { sumIn } from '../lib/money'
 
 /** Summary numbers for one crop. Money totals are converted into the display currency. */
@@ -18,11 +18,18 @@ export function cropTotals(db: DB, cropId: ID) {
   const delivery = sumIn(shipments.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })), to, rates)
   const pay = sumIn(days.map((r) => ({ amount: dayPay(r), currency: r.currency })), to, rates)
   const spent = sumIn(expenses.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  // Money actually paid out for worker days and expenses (the rest is still owed).
+  // Money actually paid out, for every kind of cost (the rest is still owed).
+  const paidOf = (due: number | null, r: { payStatus: PayStatus; paidAmount: number | null; currency: string }) => ({
+    amount: payment(due ?? 0, r.payStatus, r.paidAmount).paid,
+    currency: r.currency,
+  })
   const paidOut = sumIn(
     [
-      ...days.map((r) => ({ amount: payment(dayPay(r), r.payStatus, r.paidAmount).paid, currency: r.currency })),
-      ...expenses.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })),
+      ...plantings.map((r) => paidOf(r.totalCost, r)),
+      ...nutrition.map((r) => paidOf(r.totalCost, r)),
+      ...shipments.map((r) => paidOf(r.deliveryPrice, r)),
+      ...days.map((r) => paidOf(dayPay(r), r)),
+      ...expenses.map((r) => paidOf(r.amount, r)),
     ],
     to,
     rates,
@@ -42,7 +49,7 @@ export function cropTotals(db: DB, cropId: ID) {
     expensesCost: spent.total,
     totalCost: planting.total + feed.total + delivery.total + pay.total + spent.total,
     paid: paidOut.total,
-    owed: pay.total + spent.total - paidOut.total,
+    owed: planting.total + feed.total + delivery.total + pay.total + spent.total - paidOut.total,
     rateMissing: planting.missing || feed.missing || delivery.missing || pay.missing || spent.missing,
     boxesByWorkers,
     boxesOther,

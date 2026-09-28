@@ -6,12 +6,15 @@ import {
   removeRecord,
   updateRecord,
   useDB,
+  payment,
+  type PayStatus,
   type SeasonCrop,
   type Shipment,
 } from '../../lib/store'
 import { formatNumber, todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
 import { useT } from '../../lib/i18n'
+import { PayBadge, PaymentControl } from '../../components/PaymentControl'
 import {
   Computed,
   DayHeading,
@@ -37,6 +40,8 @@ type Form = {
   boxes: string
   deliveryPrice: string
   currency: string
+  payStatus: PayStatus
+  paidAmount: number | null
   destination: string
   note: string
 }
@@ -66,6 +71,8 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         boxes: '',
         deliveryPrice: '',
         currency: allShipments[0]?.currency ?? cur.display,
+        payStatus: 'paid',
+        paidAmount: null,
         destination: '',
         note: '',
       })
@@ -79,6 +86,8 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         boxes: str(rec.boxes),
         deliveryPrice: str(rec.deliveryPrice),
         currency: rec.currency,
+        payStatus: rec.payStatus,
+        paidAmount: rec.paidAmount,
         destination: rec.destination,
         note: rec.note,
       })
@@ -117,6 +126,8 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
       boxes,
       deliveryPrice: price,
       currency: f.currency,
+      payStatus: f.payStatus,
+      paidAmount: f.payStatus === 'partial' ? f.paidAmount : null,
       destination: f.destination.trim(),
       note: f.note.trim(),
     }
@@ -126,6 +137,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
   }
 
   const delivery = cur.sum(list.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })))
+  const deliveryPaid = cur.sum(list.map((r) => ({ amount: payment(r.deliveryPrice, r.payStatus, r.paidAmount).paid, currency: r.currency })))
 
   return (
     <>
@@ -134,6 +146,11 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Boxes exported')} value={formatNumber(totals.boxesExported, 0)} />
         <Stat label={t('Trucks sent')} value={formatNumber(totals.trucks, 0)} />
         <Stat label={t('Delivery cost')} value={cur.fmt(delivery.total)} />
+        <Stat
+          label={t('Delivery still to pay')}
+          value={cur.fmt(delivery.total - deliveryPaid.total)}
+          tone={delivery.total - deliveryPaid.total > 0 ? 'warn' : undefined}
+        />
       </div>
       <RateMissing show={delivery.missing} />
 
@@ -226,6 +243,17 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
                 : t('Delivery price ÷ boxes')
             }
           />
+          <div className="field field-wide">
+            <span className="field-label">{t('Delivery payment')}</span>
+            <PaymentControl
+              id="ex-pay"
+              due={price ?? 0}
+              currency={f.currency}
+              status={f.payStatus}
+              paidAmount={f.paidAmount}
+              onChange={(payStatus, paidAmount) => setF({ ...f, payStatus, paidAmount })}
+            />
+          </div>
           <Field label={t('Note (optional)')} wide>
             <input id="ex-note" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
           </Field>
@@ -245,7 +273,8 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
                     <div className="record-main">
                       <span className="record-title">
                         <span className="plate">{r.truckNumber}</span> {t('{n} boxes', { n: formatNumber(r.boxes, 0) })} ·{' '}
-                        {cur.both(r.deliveryPrice, r.currency)}
+                        {cur.both(r.deliveryPrice, r.currency)}{' '}
+                        <PayBadge due={r.deliveryPrice} currency={r.currency} status={r.payStatus} paidAmount={r.paidAmount} />
                       </span>
                       {r.destination && <span className="record-sub">{t('To {place}', { place: r.destination })}</span>}
                       <span className="record-sub">

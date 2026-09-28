@@ -72,3 +72,30 @@ export function PaymentControl({
     </div>
   )
 }
+
+/** Small coloured label: Paid / Partly / Not paid, plus what is still owed. */
+export function PayBadge({
+  due,
+  currency,
+  status,
+  paidAmount,
+}: {
+  due: number
+  currency: string
+  status: PayStatus
+  paidAmount: number | null
+}) {
+  const t = useT()
+  const cur = useCurrency()
+  const { owed } = payment(due, status, paidAmount)
+  return (
+    <>
+      <span className={`pay-badge ${status}`}>
+        {status === 'paid' ? t('Paid') : status === 'partial' ? t('Partly') : t('Not paid')}
+      </span>
+      {status !== 'paid' && due > 0 && (
+        <span className="pay-badge-owed">{t('Still to pay: {amount}', { amount: cur.fmt(owed, currency) })}</span>
+      )}
+    </>
+  )
+}
