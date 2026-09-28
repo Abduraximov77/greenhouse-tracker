@@ -24,6 +24,7 @@ import { convert, useCurrency, sumIn } from '../../lib/money'
 import { PartialPay } from '../../components/PartialPay'
 import { PaymentControl } from '../../components/PaymentControl'
 import { useT } from '../../lib/i18n'
+import { href } from '../../lib/router'
 import { DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stat, num, str } from '../../components/ui'
 
 function lastDayOfMonth(ym: string) {
@@ -212,6 +213,16 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   // Days off for everyone = every day in the range with nobody working, including days with nothing recorded.
   const offCount = Math.max(0, rangeDays - [...workDates].filter(inRange).length)
   const payMissing = summary.some((s) => s.pay.missing)
+  // Payments to workers entered under Expenses ("for workers"), in the chosen period.
+  const extra = db.expenses
+    .filter((r) => r.cropId === crop.id && r.forWorkers && (period === 'all' || r.date.startsWith(period)))
+    .sort((a, b) => b.date.localeCompare(a.date))
+  const extraSum = sumIn(extra.map((r) => ({ amount: r.amount, currency: r.currency })), cur.display, cur.rates)
+  const extraPaid = sumIn(
+    extra.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })),
+    cur.display,
+    cur.rates,
+  )
   // The same numbers for men and for women separately.
   const summaryGroups = grouped
     .map((g) => {
@@ -663,6 +674,46 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
               'Working days count each calendar day once. Every day with nobody working counts as a day off, even if nothing was entered.',
             )}
           </p>
+        </>
+      )}
+
+      {extra.length > 0 && (
+        <>
+          <SectionHead title={t('Other payments to workers')} />
+          <p className="field-hint">
+            {t('Entered under Expenses as “For workers”.')}{' '}
+            <a href={href('season', crop.seasonId, 'crop', crop.id, 'expenses')}>{t('Open Expenses')}</a>
+          </p>
+          <div className="stat-grid">
+            <Stat label={t('Worker days')} value={cur.fmt(payTotal)} />
+            <Stat label={t('Other payments')} value={cur.fmt(extraSum.total)} />
+            <Stat label={t('Total for workers')} value={cur.fmt(payTotal + extraSum.total)} />
+            <Stat
+              label={t('Still to pay')}
+              value={cur.fmt(payTotal - paidTotal + extraSum.total - extraPaid.total)}
+              tone={payTotal - paidTotal + extraSum.total - extraPaid.total > 0.005 ? 'warn' : undefined}
+            />
+          </div>
+          <RateMissing show={extraSum.missing} />
+          <ul className="records">
+            {extra.map((r) => (
+              <li key={r.id} className="card record record-workers">
+                <div className="record-main">
+                  <span className="record-title">
+                    {r.name}
+                    {r.quantity !== null && ` · ${formatNumber(r.quantity)} ${r.unit}`} · {cur.both(r.amount, r.currency)}{' '}
+                    <span className={`pay-badge ${r.payStatus}`}>
+                      {r.payStatus === 'paid' ? t('Paid') : r.payStatus === 'partial' ? t('Partly') : t('Not paid')}
+                    </span>
+                  </span>
+                  <span className="record-sub">
+                    {formatDate(r.date)}
+                    {r.note && ` · ${r.note}`}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </>
       )}
 

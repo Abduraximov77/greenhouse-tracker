@@ -82,6 +82,8 @@ export interface Expense extends Meta {
   payStatus: PayStatus
   paidAmount: number | null
   note: string
+  /** Money paid to workers entered as an expense (e.g. a day's pay for a group): counted with the workers' costs. */
+  forWorkers?: boolean
 }
 
 /**

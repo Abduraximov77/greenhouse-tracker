@@ -1387,3 +1387,7 @@ select.topbar-select, .topbar select.input { background-image: url("data:image/s
   .stat-value { font-size: 1.1rem; overflow-wrap: normal; }
 }
 :root[data-theme='night'] .loading-mark { box-shadow: 0 0 0 1px #2d403b, 0 14px 34px rgb(0 0 0 / 0.45); }
+/* Expenses paid to workers */
+.kind-badge { display: inline-block; padding: 1px 8px; border-radius: 3px; background: var(--men-soft); color: var(--men); font-size: 0.78rem; font-weight: 600; vertical-align: 2px; white-space: nowrap; }
+.record-workers { border-left: 4px solid var(--men); }
+.kind-switch { max-width: 420px; }

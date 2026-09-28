@@ -15,7 +15,9 @@ export function cropTotals(db: DB, cropId: ID) {
 
   const delivery = sumIn(shipments.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })), to, rates)
   const pay = sumIn(days.map((r) => ({ amount: dayPay(r), currency: r.currency })), to, rates)
-  const spent = sumIn(expenses.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
+  // Expenses marked "for workers" count as worker costs, not as ordinary expenses.
+  const spent = sumIn(expenses.filter((r) => !r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
+  const workerExtra = sumIn(expenses.filter((r) => r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
   // Money actually paid out, for every kind of cost (the rest is still owed).
   const paidOf = (due: number | null, r: { payStatus: PayStatus; paidAmount: number | null; currency: string }) => ({
     amount: payment(due ?? 0, r.payStatus, r.paidAmount).paid,
@@ -32,7 +34,7 @@ export function cropTotals(db: DB, cropId: ID) {
   )
 
   const income = sumIn(incomes.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  const totalCost = delivery.total + pay.total + spent.total
+  const totalCost = delivery.total + pay.total + workerExtra.total + spent.total
   const people = dealBalances(deals, to, rates)
 
   const boxesByWorkers = sum(days, (r) => r.boxes)
@@ -42,7 +44,9 @@ export function cropTotals(db: DB, cropId: ID) {
 
   return {
     deliveryCost: delivery.total,
-    workerPay: pay.total,
+    workerPay: pay.total + workerExtra.total,
+    workerDaysPay: pay.total,
+    workerExtra: workerExtra.total,
     expensesCost: spent.total,
     totalCost,
     income: income.total,
@@ -58,8 +62,8 @@ export function cropTotals(db: DB, cropId: ID) {
     dealsDone: [...dealProgress(deals).values()].filter((p) => p.done).length,
     dealsMissing: people.some((p) => p.missing),
     paid: paidOut.total,
-    owed: delivery.total + pay.total + spent.total - paidOut.total,
-    rateMissing: delivery.missing || pay.missing || spent.missing,
+    owed: totalCost - paidOut.total,
+    rateMissing: delivery.missing || pay.missing || spent.missing || workerExtra.missing,
     boxesByWorkers,
     boxesOther,
     boxesHarvested,

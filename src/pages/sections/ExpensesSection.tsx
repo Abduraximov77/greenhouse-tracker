@@ -41,7 +41,11 @@ type Form = {
   payStatus: PayStatus
   paidAmount: number | null
   note: string
+  forWorkers: boolean
 }
+
+/** Names that usually mean a payment to workers (so the "for workers" choice is suggested). */
+const WORKER_WORDS = /ishchi|ayol|erkak|ish ?haqi|oylik|kunlik|mardikor|rabo|работ|рабоч|зарплат|worker|labou?r|wage|salary/i
 
 export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
   const db = useDB()
@@ -57,6 +61,7 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
 
   function open(rec?: Expense) {
     setError(null)
+    setKindTouched(false)
     if (!rec) {
       setF({
         date: todayISO(),
@@ -68,6 +73,7 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
         payStatus: 'paid',
         paidAmount: null,
         note: '',
+        forWorkers: false,
       })
       setEditing('new')
     } else {
@@ -81,17 +87,22 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
         payStatus: rec.payStatus,
         paidAmount: rec.paidAmount,
         note: rec.note,
+        forWorkers: !!rec.forWorkers,
       })
       setEditing(rec.id)
     }
   }
 
-  /** Typing a product used before fills in its last unit and currency. */
+  // Once "for workers" is chosen by hand, the name no longer changes it.
+  const [kindTouched, setKindTouched] = useState(false)
+
+  /** Typing a product used before fills in its last unit, currency and kind; worker words suggest "for workers". */
   function setName(name: string) {
     if (!f) return
     const last = all.find((r) => r.name.toLowerCase() === name.trim().toLowerCase())
-    if (last && editing === 'new' && !f.unit) setF({ ...f, name, unit: last.unit, currency: last.currency })
-    else setF({ ...f, name })
+    const forWorkers = kindTouched || editing !== 'new' ? f.forWorkers : last ? !!last.forWorkers : WORKER_WORDS.test(name)
+    if (last && editing === 'new' && !f.unit) setF({ ...f, name, unit: last.unit, currency: last.currency, forWorkers })
+    else setF({ ...f, name, forWorkers })
   }
 
   const amount = f ? num(f.amount) : null
@@ -113,16 +124,20 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
       payStatus: f.payStatus,
       paidAmount: f.payStatus === 'partial' ? f.paidAmount : null,
       note: f.note.trim(),
+      forWorkers: f.forWorkers,
     }
     if (editing === 'new') addRecord('expenses', data)
     else if (editing) updateRecord('expenses', editing, data)
     setEditing(null)
   }
 
-  const spent = cur.sum(list.map((r) => ({ amount: r.amount, currency: r.currency })))
-  const paid = cur.sum(list.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })))
+  // The totals here are ordinary expenses only; payments marked "for workers" are counted under Workers.
+  const own = list.filter((r) => !r.forWorkers)
+  const toWorkers = cur.sum(list.filter((r) => r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })))
+  const spent = cur.sum(own.map((r) => ({ amount: r.amount, currency: r.currency })))
+  const paid = cur.sum(own.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })))
   const owed = spent.total - paid.total
-  const today = cur.sum(list.filter((r) => r.date === todayISO()).map((r) => ({ amount: r.amount, currency: r.currency })))
+  const today = cur.sum(own.filter((r) => r.date === todayISO()).map((r) => ({ amount: r.amount, currency: r.currency })))
 
   return (
     <>
@@ -133,6 +148,11 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Still to pay')} value={cur.fmt(owed)} tone={owed > 0 ? 'warn' : undefined} />
       </div>
       <RateMissing show={spent.missing} />
+      {toWorkers.total > 0 && (
+        <p className="field-hint">
+          {t('Paid to workers from here: {amount}. It is counted under Workers, not in these totals.', { amount: cur.fmt(toWorkers.total) })}
+        </p>
+      )}
 
       <SectionHead
         title=""
@@ -156,6 +176,31 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
           <Field label={t('Date')}>
             <input id="xp-date" className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
           </Field>
+          <div className="field field-wide">
+            <span className="field-label" id="xp-kind-label">
+              {t('What kind of spending')}
+            </span>
+            <div className="segmented kind-switch" role="radiogroup" aria-labelledby="xp-kind-label">
+              {([false, true] as const).map((w) => (
+                <button
+                  key={String(w)}
+                  type="button"
+                  role="radio"
+                  aria-checked={f.forWorkers === w}
+                  className={f.forWorkers === w ? 'is-on is-good' : ''}
+                  onClick={() => {
+                    setKindTouched(true)
+                    setF({ ...f, forWorkers: w })
+                  }}
+                >
+                  {w ? t('For workers') : t('Other expense')}
+                </button>
+              ))}
+            </div>
+            {f.forWorkers && (
+              <span className="field-hint">{t('Counted with the workers’ pay (Workers section and overview), not with other expenses.')}</span>
+            )}
+          </div>
           <Field label={t('Product or service')}>
             <input
               id="xp-name"
@@ -240,11 +285,12 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
                   {rows.map((r) => {
                     const p = payment(r.amount, r.payStatus, r.paidAmount)
                     return (
-                      <li key={r.id} className="card record">
+                      <li key={r.id} className={`card record${r.forWorkers ? ' record-workers' : ''}`}>
                         <div className="record-main">
                           <span className="record-title">
                             {r.name}
                             {r.quantity !== null && ` · ${formatNumber(r.quantity)} ${r.unit}`} · {cur.both(r.amount, r.currency)}{' '}
+                            {r.forWorkers && <span className="kind-badge">{t('For workers')}</span>}{' '}
                             <span className={`pay-badge ${r.payStatus}`}>
                               {r.payStatus === 'paid' ? t('Paid') : r.payStatus === 'partial' ? t('Partly') : t('Not paid')}
                             </span>
