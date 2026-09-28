@@ -700,7 +700,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
               <li key={r.id} className="card record record-workers">
                 <div className="record-main">
                   <span className="record-title">
-                    {r.name}
+                    {r.name || t('Workers')}
                     {r.quantity !== null && ` · ${formatNumber(r.quantity)} ${r.unit}`} · {cur.both(r.amount, r.currency)}{' '}
                     <span className={`pay-badge ${r.payStatus}`}>
                       {r.payStatus === 'paid' ? t('Paid') : r.payStatus === 'partial' ? t('Partly') : t('Not paid')}

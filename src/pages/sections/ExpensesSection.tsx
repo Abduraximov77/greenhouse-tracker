@@ -111,7 +111,8 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
   function submit() {
     if (!f) return
     if (!f.date) return setError(t('Enter the date.'))
-    if (!f.name.trim()) return setError(f.forWorkers ? t('Enter who was paid.') : t('Enter what was bought or paid for.'))
+    // A payment to workers needs no name; it is shown as "Workers".
+    if (!f.forWorkers && !f.name.trim()) return setError(t('Enter what was bought or paid for.'))
     if (amount === null || amount < 0) return setError(t('Enter how much was spent.'))
     const data = {
       cropId: crop.id,
@@ -206,21 +207,23 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
               </span>
             )}
           </div>
-          <Field label={f.forWorkers ? t('Who was paid') : t('Product or service')}>
-            <input
-              id="xp-name"
-              className="input"
-              list="expense-names"
-              value={f.name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={f.forWorkers ? t('e.g. women workers, 5 people') : t('e.g. seedlings, fertilizer, fuel, repairs')}
-            />
-            <datalist id="expense-names">
-              {names.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-          </Field>
+          {!f.forWorkers && (
+            <Field label={t('Product or service')}>
+              <input
+                id="xp-name"
+                className="input"
+                list="expense-names"
+                value={f.name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('e.g. seedlings, fertilizer, fuel, repairs')}
+              />
+              <datalist id="expense-names">
+                {names.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </Field>
+          )}
           {!f.forWorkers && (
             <Field label={t('Quantity (optional)')}>
               <div className="qty-input">
@@ -297,7 +300,7 @@ export function ExpensesSection({ crop }: { crop: SeasonCrop }) {
                       <li key={r.id} className={`card record${r.forWorkers ? ' record-workers' : ''}`}>
                         <div className="record-main">
                           <span className="record-title">
-                            {r.name}
+                            {r.name || t('Workers')}
                             {r.quantity !== null && ` · ${formatNumber(r.quantity)} ${r.unit}`} · {cur.both(r.amount, r.currency)}{' '}
                             {r.forWorkers && <span className="kind-badge">{t('For workers')}</span>}{' '}
                             <span className={`pay-badge ${r.payStatus}`}>
