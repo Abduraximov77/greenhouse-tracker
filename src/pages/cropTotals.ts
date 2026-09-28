@@ -53,6 +53,9 @@ export function cropTotals(db: DB, cropId: ID) {
     owedToUs: people.reduce((a, p) => a + Math.max(0, p.balance), 0),
     weOwe: people.reduce((a, p) => a + Math.max(0, -p.balance), 0),
     dealPeople: people.length,
+    dealPeopleList: people,
+    dealsOpen: [...dealProgress(deals).values()].filter((p) => !p.done).length,
+    dealsDone: [...dealProgress(deals).values()].filter((p) => p.done).length,
     dealsMissing: people.some((p) => p.missing),
     paid: paidOut.total,
     owed: delivery.total + pay.total + spent.total - paidOut.total,
@@ -67,9 +70,23 @@ export function cropTotals(db: DB, cropId: ID) {
   }
 }
 
+/** How much of each entry has been given back, and whether it is done. Only for original entries (not give-backs). */
+export function dealProgress(deals: Deal[]) {
+  const out = new Map<ID, { total: number; returned: number; remaining: number; done: boolean }>()
+  for (const d of deals) {
+    if (d.returnOf) continue
+    const size = (r: Deal) => (r.kind === 'product' ? (r.quantity ?? 0) : (r.amount ?? 0))
+    const total = size(d)
+    const returned = deals.filter((r) => r.returnOf === d.id).reduce((a, r) => a + size(r), 0)
+    const remaining = Math.max(0, total - returned)
+    out.set(d.id, { total, returned, remaining, done: remaining <= 1e-9 })
+  }
+  return out
+}
+
 /**
- * Oldi-berdi, person by person. `balance` > 0: they owe us (we gave more), < 0: we owe them.
- * Money and product values count in the balance; products also keep a quantity balance per item.
+ * Oldi-berdi, person by person. Money and products are kept apart:
+ * `balance` is money only (> 0: they owe us, < 0: we owe them); products keep a quantity balance per item.
  */
 export function dealBalances(deals: Deal[], to: string, rates: Settings['rates']) {
   const byPerson = new Map<string, { person: string; rows: Deal[] }>()
@@ -80,8 +97,9 @@ export function dealBalances(deals: Deal[], to: string, rates: Settings['rates']
   }
   return [...byPerson.values()]
     .map(({ person, rows }) => {
+      const cash = rows.filter((r) => r.kind === 'money')
       const valued = (dir: Deal['direction']) =>
-        sumIn(rows.filter((r) => r.direction === dir).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
+        sumIn(cash.filter((r) => r.direction === dir).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
       const given = valued('gave')
       const got = valued('got')
       const products = new Map<string, { item: string; unit: string; net: number }>()
@@ -91,16 +109,20 @@ export function dealBalances(deals: Deal[], to: string, rates: Settings['rates']
         if (!products.has(k)) products.set(k, { item: r.item.trim(), unit: r.unit.trim(), net: 0 })
         products.get(k)!.net += r.direction === 'gave' ? r.quantity : -r.quantity
       }
+      const open = [...products.values()].filter((p) => Math.abs(p.net) > 1e-9)
+      const balance = given.total - got.total
       return {
         person,
         count: rows.length,
         last: rows.map((r) => r.date).sort().at(-1)!,
+        hasMoney: cash.length > 0,
         given: given.total,
         got: got.total,
-        balance: given.total - got.total,
-        products: [...products.values()].filter((p) => Math.abs(p.net) > 1e-9),
+        balance,
+        products: open,
+        settled: Math.abs(balance) < 0.005 && open.length === 0,
         missing: given.missing || got.missing,
       }
     })
-    .sort((a, b) => b.last.localeCompare(a.last))
+    .sort((a, b) => Number(a.settled) - Number(b.settled) || b.last.localeCompare(a.last))
 }

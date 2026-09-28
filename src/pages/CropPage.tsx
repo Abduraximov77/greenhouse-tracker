@@ -210,16 +210,13 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
 
       <SectionHead title={t('Give & take')} />
       <div className="stat-grid">
-        <Stat label={t('We gave')} value={money(tt.dealsGiven)} />
-        <Stat label={t('We got')} value={money(tt.dealsGot)} />
+        <Stat label={t('We gave (money)')} value={money(tt.dealsGiven)} />
+        <Stat label={t('We got (money)')} value={money(tt.dealsGot)} />
         <Stat label={t('They owe us')} value={money(tt.owedToUs)} tone={tt.owedToUs > 0 ? 'good' : undefined} />
         <Stat label={t('We owe')} value={money(tt.weOwe)} tone={tt.weOwe > 0 ? 'warn' : undefined} />
       </div>
       <RateMissing show={tt.dealsMissing} />
-      <p className="field-hint">
-        {t('Kept separately: give & take is not counted in costs or profit.')}{' '}
-        {tt.dealPeople > 0 && t('{n} people', { n: tt.dealPeople })}
-      </p>
+      <DealsOverview people={tt.dealPeopleList} open={tt.dealsOpen} done={tt.dealsDone} />
 
       <SectionHead title={t('Record something')} />
       <div className="quick-grid">
@@ -299,6 +296,53 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
           </div>
         </div>
       )}
+    </>
+  )
+}
+
+/** Who still has to give back what (money and products), both ways. */
+function DealsOverview({ people, open, done }: { people: ReturnType<typeof cropTotals>['dealPeopleList']; open: number; done: number }) {
+  const t = useT()
+  const { fmt } = useCurrency()
+  if (people.length === 0) return null
+  const lines = (sign: 1 | -1) =>
+    people.flatMap((p) => [
+      ...(p.hasMoney && p.balance * sign > 0.005 ? [{ person: p.person, what: fmt(Math.abs(p.balance)) }] : []),
+      ...p.products
+        .filter((x) => x.net * sign > 0)
+        .map((x) => ({ person: p.person, what: `${x.item} · ${formatNumber(Math.abs(x.net))} ${x.unit}`.trim() })),
+    ])
+  const toUs = lines(1)
+  const fromUs = lines(-1)
+  const List = ({ rows, cls }: { rows: { person: string; what: string }[]; cls: string }) =>
+    rows.length === 0 ? (
+      <p className="deal-none">✓ {t('Nothing')}</p>
+    ) : (
+      <ul className="deal-lines">
+        {rows.map((r, i) => (
+          <li key={i}>
+            <b>{r.person}</b>
+            <span className={cls}>{r.what}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  return (
+    <>
+      <div className="deal-overview">
+        <div className="card deal-col deal-col-in">
+          <h3>{t('They have to give back to us')}</h3>
+          <List rows={toUs} cls="text-income" />
+        </div>
+        <div className="card deal-col deal-col-out">
+          <h3>{t('We have to give back')}</h3>
+          <List rows={fromUs} cls="text-owed" />
+        </div>
+      </div>
+      <p className="field-hint">
+        {t('Open: {open} · Done: {done} · People: {n}.', { open, done, n: people.length })}{' '}
+        {t('Kept separately: give & take is not counted in costs or profit.')}
+      </p>
     </>
   )
 }

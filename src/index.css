@@ -1315,3 +1315,20 @@ select.input.with-icon { padding-left: 32px; }
 .deal-badge.got { background: var(--got-soft); color: var(--got); }
 .segmented button.is-gave { background: var(--gave); color: var(--surface); }
 .segmented button.is-got { background: var(--got); color: var(--surface); }
+.deal-badge.back { background: var(--good-soft); color: var(--good); }
+.record.is-done { opacity: 0.72; }
+.table tr.row-done td { color: var(--muted); }
+.give-back { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.give-back .mini-field { width: 180px; }
+.give-back .money-input { display: flex; }
+.deal-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+@media (max-width: 560px) { .deal-overview { grid-template-columns: 1fr; } }
+.deal-col { padding: 14px 16px; border-top: 4px solid var(--income); }
+.deal-col-out { border-top-color: var(--warn); }
+.deal-col h3 { margin: 0 0 8px; font-size: 0.95rem; }
+.deal-lines { list-style: none; margin: 0; padding: 0; }
+.deal-lines li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+.deal-lines li:first-child { border-top: 0; }
+.deal-lines span { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.deal-none { margin: 0; color: var(--muted); }
+.pay-badge { white-space: nowrap; }

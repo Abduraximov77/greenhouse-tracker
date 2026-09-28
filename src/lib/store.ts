@@ -128,6 +128,8 @@ export interface Deal extends Meta {
   amount: number | null // money given/taken, or the value of the product (optional)
   currency: string
   note: string
+  /** Set on a give-back: the entry being returned (always the opposite direction). */
+  returnOf?: ID | null
 }
 
 export type Lang = 'en' | 'ru' | 'uz'

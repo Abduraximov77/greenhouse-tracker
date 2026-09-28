@@ -11,7 +11,7 @@ Built as a website first, designed so it can become a phone app later.
     The worker list is shared by all seasons and crops. Each worker is a man or a woman, and men and women are shown
     separately (daily list, pay summary with subtotals, worker list).
 - **Income (Kirim)**: money that came in, by day, with what it's from and who paid. Overview shows income, all costs and profit (or loss).
-- **Give & take (Oldi-berdi)**: money or products given to or taken from other people; balance per person (who owes whom, also per product). Shown separately on the Overview and not counted in profit.
+- **Give & take (Oldi-berdi)**: money or products given to or taken from other people. Each entry can be given back in full or partly; when all is back it is done. Balance per person (money and each product separately). Shown separately on the Overview and not counted in profit.
 - **Day / night screen** (Settings): light, dark, or automatic (follows the device).
   - **Expenses**: everything bought or paid for (you type what it was: seedlings, fertilizer, fuel…),
     with quantity, amount and paid / partly / not paid
