@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { cropDays, seasonLabel, updateRecord, useDB, type Season, type SeasonCrop } from '../lib/store'
-import { href, navigate } from '../lib/router'
+import { useEffect, useRef } from 'react'
+import { cropDays, seasonLabel, useDB, type Season, type SeasonCrop } from '../lib/store'
+import { href } from '../lib/router'
 import { cropName } from '../lib/crops'
 import { formatNumber } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
-import { Breadcrumbs, Field, FormCard, PageHead, RateMissing, SectionHead, Stat, num, str } from '../components/ui'
+import { Breadcrumbs, PageHead, RateMissing, SectionHead, Stat } from '../components/ui'
 import { cropTotals } from './cropTotals'
 import { HarvestSection } from './sections/HarvestSection'
 import { WorkersSection } from './sections/WorkersSection'
@@ -142,7 +142,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
         />
         <PageHead title={t(section.label)} sub={t(section.sub)} />
 
-        {active === 'overview' && <Overview season={season} crop={crop} />}
+        {active === 'overview' && <Overview crop={crop} />}
         {active === 'workers' && <WorkersSection crop={crop} />}
         {active === 'expenses' && <ExpensesSection crop={crop} />}
         {active === 'income' && <IncomeSection crop={crop} />}
@@ -154,17 +154,11 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
   )
 }
 
-function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
+function Overview({ crop }: { crop: SeasonCrop }) {
   const db = useDB()
   const t = useT()
   const { fmt: money } = useCurrency()
   const tt = cropTotals(db, crop.id)
-  const [editing, setEditing] = useState(false)
-  const [variety, setVariety] = useState(crop.variety)
-  const [area, setArea] = useState(str(crop.areaHa))
-
-  const go = (...parts: string[]) => navigate('season', season.id, 'crop', crop.id, ...parts)
-
   return (
     <>
       <SectionHead title={t('Harvest & export')} />
@@ -218,84 +212,6 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
       <RateMissing show={tt.dealsMissing} />
       <DealsOverview people={tt.dealPeopleList} open={tt.dealsOpen} done={tt.dealsDone} />
 
-      <SectionHead title={t('Record something')} />
-      <div className="quick-grid">
-        <button className="quick" onClick={() => go('workers')}>
-          <b>{t('Workers')}</b>
-          <span>{t('Days worked and boxes prepared')}</span>
-        </button>
-        <button className="quick" onClick={() => go('expenses')}>
-          <b>{t('Expenses')}</b>
-          <span>{t('Something bought or paid for')}</span>
-        </button>
-        <button className="quick" onClick={() => go('income')}>
-          <b>{t('Income')}</b>
-          <span>{t('Money that came in')}</span>
-        </button>
-        <button className="quick" onClick={() => go('deals')}>
-          <b>{t('Give & take')}</b>
-          <span>{t('Given to or taken from someone')}</span>
-        </button>
-        <button className="quick" onClick={() => go('harvest')}>
-          <b>{t('Harvest')}</b>
-          <span>{t('Boxes packed by day')}</span>
-        </button>
-        <button className="quick" onClick={() => go('export')}>
-          <b>{t('Export')}</b>
-          <span>{t('Truck loaded')}</span>
-        </button>
-      </div>
-
-      <SectionHead
-        title={t('Crop details')}
-        action={
-          !editing && (
-            <button
-              className="btn btn-ghost btn-small"
-              onClick={() => {
-                setVariety(crop.variety)
-                setArea(str(crop.areaHa))
-                setEditing(true)
-              }}
-            >
-              {t('Edit')}
-            </button>
-          )
-        }
-      />
-      {editing ? (
-        <FormCard
-          title={t('Edit crop details')}
-          submitLabel={t('Save')}
-          onCancel={() => setEditing(false)}
-          onSubmit={() => {
-            updateRecord('crops', crop.id, { variety: variety.trim(), areaHa: num(area) })
-            setEditing(false)
-          }}
-        >
-          <Field label={t('Variety')}>
-            <input id="edit-variety" className="input" value={variety} onChange={(e) => setVariety(e.target.value)} />
-          </Field>
-          <Field label={t('Growing area, hectares')}>
-            <input id="edit-area" className="input" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
-          </Field>
-        </FormCard>
-      ) : (
-        <div className="card details">
-          <div>
-            <span className="stat-label">{t('Crop')}</span>
-            <span>{cropName(crop.crop, db.settings.lang)}</span>
-          </div>
-          <div>
-            <span className="stat-label">{t('Variety')}</span>
-            <span>{crop.variety || '—'}</span>
-          </div>
-          <div>
-            <span className="stat-label">{t('Area')}</span>
-            <span>{crop.areaHa ? `${formatNumber(crop.areaHa)} ${t('ha')}` : '—'}</span>
-          </div>
-        </div>
-      )}
     </>
   )
 }
