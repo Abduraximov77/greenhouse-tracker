@@ -593,7 +593,9 @@ function WorkerDayRow({
   const cur = useCurrency()
   const currency = day?.currency ?? worker.currency
   // Inputs keep their own text so typing "0." or "12," isn't interrupted.
-  const [salary, setSalary] = useState(str(day ? day.salary : worker.dailySalary || null))
+  // On a day not marked yet, the worker's usual salary is only a suggestion (shown in grey).
+  const [salary, setSalary] = useState(day ? str(day.salary) : '')
+  const salaryOrDefault = () => num(salary) ?? worker.dailySalary ?? 0
   const [boxes, setBoxes] = useState(str(day?.boxes))
   const [perBox, setPerBox] = useState(str(day?.payPerBox ?? (worker.payPerBox || null)))
   const worked = day?.status === 'on'
@@ -606,7 +608,7 @@ function WorkerDayRow({
   }
   function saveBoxes(v: string) {
     setBoxes(v)
-    if (ok(v)) setWorkerDay(crop, worker, date, { status: 'on', boxes: num(v), payPerBox: num(perBox), salary: num(salary) ?? 0 })
+    if (ok(v)) setWorkerDay(crop, worker, date, { status: 'on', boxes: num(v), payPerBox: num(perBox), salary: salaryOrDefault() })
   }
   function savePerBox(v: string) {
     setPerBox(v)
@@ -630,13 +632,14 @@ function WorkerDayRow({
             role="radio"
             aria-checked={worked}
             className={worked ? 'is-on is-good' : ''}
-            onClick={() =>
+            onClick={() => {
+              if (!worked && salary.trim() === '' && worker.dailySalary) setSalary(str(worker.dailySalary))
               setWorkerDay(crop, worker, date, {
                 status: worked ? null : 'on',
                 payPerBox: num(perBox),
-                salary: num(salary) ?? 0,
+                salary: salaryOrDefault(),
               })
-            }
+            }}
           >
             {t('Worked')}
           </button>
@@ -666,7 +669,7 @@ function WorkerDayRow({
               id={`${id}-salary`}
               className="input"
               inputMode="decimal"
-              placeholder="0"
+              placeholder={worker.dailySalary ? String(worker.dailySalary) : '0'}
               value={salary}
               onChange={(e) => saveSalary(e.target.value)}
             />
@@ -704,6 +707,7 @@ function WorkerDayRow({
           <div className="att-pay">
             <span>{t('Pay for the day')}</span>
             <b>{worked && day ? cur.both(due, day.currency) : '—'}</b>
+            {!day && <small>{t('Tap “Worked” or type an amount')}</small>}
           </div>
         </div>
       )}

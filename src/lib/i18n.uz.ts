@@ -217,6 +217,7 @@ export const uz: Record<string, string> = {
   "Swap": "Almashtirish",
   "Tap again to delete": "O‘chirish uchun yana bosing",
   "Tap again: boxes for this day will be cleared": "Yana bosing: shu kungi qutilar o‘chiriladi",
+  "Tap “Worked” or type an amount": "“Ishladi”ni bosing yoki summani kiriting",
   "That is more than is owed ({amount}).": "Bu qarzdan ko‘p ({amount}).",
   "The amount is split between this day’s workers, in name order.": "Summa shu kungi ishchilar o‘rtasida ism tartibida taqsimlanadi.",
   "The {season} season already exists.": "{season} mavsumi allaqachon mavjud.",

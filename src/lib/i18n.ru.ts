@@ -217,6 +217,7 @@ export const ru: Record<string, string> = {
   "Swap": "Поменять местами",
   "Tap again to delete": "Нажмите ещё раз для удаления",
   "Tap again: boxes for this day will be cleared": "Нажмите ещё раз: ящики за этот день будут удалены",
+  "Tap “Worked” or type an amount": "Нажмите «Работал» или введите сумму",
   "That is more than is owed ({amount}).": "Это больше, чем долг ({amount}).",
   "The amount is split between this day’s workers, in name order.": "Сумма распределяется между работниками этого дня по алфавиту.",
   "The {season} season already exists.": "Сезон {season} уже существует.",
