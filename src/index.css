@@ -30,7 +30,7 @@
   --splash-3: #d3ebdb;
 
   color-scheme: light;
-  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--text);
@@ -1333,56 +1333,53 @@ select.input.with-icon { padding-left: 32px; }
 .deal-none { margin: 0; color: var(--muted); }
 .pay-badge { white-space: nowrap; }
 
-/* ---------- Katta look: large text, big buttons, thick borders, strong contrast (chosen design) ---------- */
+/* ---------- Ixcham look (chosen design): compact, professional, teal top bar, sharp corners ---------- */
 :root {
-  --bg: #ffffff; --surface: #ffffff; --text: #0d1a12; --muted: #34453a; --line: #9fb5a6;
-  --brand: #15803d; --brand-soft: #dcfce7; --brand-accent: #116b33; --on-brand: #ffffff;
-  --good: #116b33; --good-soft: #dcfce7; --warn: #b3380a; --warn-soft: #ffe8d9;
+  --bg: #f1f4f3; --surface: #ffffff; --text: #1b2421; --muted: #55635e; --line: #d5ddda;
+  --brand: #0f766e; --brand-soft: #dff1ee; --brand-accent: #0d655e; --on-brand: #ffffff;
+  --good: #15803d; --good-soft: #dcf2e3; --warn: #b45309; --warn-soft: #fdecd3;
+  --men: #0d655e; --men-soft: #cdebe6;
+  --bar: #0f766e; --on-bar: #ffffff; --bar-accent: #a7f3e4;
   --shadow: none;
-  font-size: 18px;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
 }
-:root body { font-size: 18px; }
-:root .card, :root .stat, :root .crop-side, :root .quick { border-width: 2px; border-radius: 12px; box-shadow: none; }
-:root .btn { min-height: 52px; font-size: 1.05rem; font-weight: 700; border-radius: 12px; border-width: 2px; }
-:root .btn-ghost { border-color: var(--text); }
-:root .input { min-height: 52px; border-width: 2px; font-size: 18px; }
-:root .stat-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
-:root .stat-value { font-size: 1.7rem; font-weight: 800; }
-:root .page-title { font-weight: 800; font-size: 2.4rem; }
-:root .section-title { font-size: 1.3rem; font-weight: 800; }
-:root .crop-nav-item { min-height: 52px; font-size: 1.08rem; font-weight: 600; color: var(--text); }
-:root .crop-nav-item.is-active { background: var(--brand); color: #fff; border-left-color: var(--brand); }
-:root .crop-nav-item.is-active .nav-icon { color: #fff; }
-:root .topbar { background: var(--surface); border-bottom: 2px solid var(--line); }
-
-/* Night version of the Katta look: same size and weight, light text on dark, clearly visible borders. */
 :root[data-theme='night'] {
-  --bg: #0e1712;
-  --surface: #15211a;
-  --text: #f2f8f4;
-  --muted: #c3d4c9;
-  --line: #4a6656;
-  --brand: #22a05a;
-  --brand-soft: #1d3a29;
-  --brand-accent: #7fe3a9;
-  --good: #7fe3a9;
+  --bg: #0d1614; --surface: #15211e; --text: #e8f2ef; --muted: #a8bcb6; --line: #2d403b;
+  --brand: #14a394; --brand-soft: #173a35; --brand-accent: #6ee0cf;
+  --good: #74d9a0; --good-soft: #1c3a27; --warn: #f2a46c; --warn-soft: #3d2616;
+  --men: #6ee0cf; --men-soft: #173a35;
+  --bar: #0b3d38; --on-bar: #e8f2ef; --bar-accent: #6ee0cf;
 }
-:root[data-theme='night'] .btn-ghost { border-color: var(--muted); }
-:root .btn-small { min-height: 42px; padding: 6px 14px; font-size: 0.95rem; }
-:root .btn-icon { min-height: 48px; width: 48px; padding: 0; }
-:root .input-compact { min-height: 44px; font-size: 16px; }
-:root .segmented button { min-height: 44px; font-size: 1rem; font-weight: 600; }
-:root .segmented { border-width: 2px; }
+body { font-size: 15px; }
+.card, .stat, .crop-side, .quick { border-radius: 4px; box-shadow: none; }
+.btn, .input, .segmented, .crop-nav-item, .segmented button, .computed, .form-error { border-radius: 3px; }
+.btn { font-weight: 600; }
+.input:not(.input-compact) { min-height: 40px; padding: 7px 10px; }
+.stat { padding: 10px 12px; border-top: 3px solid var(--brand); }
+.stat-warn { border-top-color: var(--warn); }
+.stat-value { font-weight: 600; font-size: 1.25rem; }
+.stat-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.page-title { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.01em; }
+.section-head { margin: 24px 0 10px; }
+.section-title { font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.topbar { background: var(--bar); border-bottom: 0; backdrop-filter: none; }
+.topbar .logo-name { color: var(--on-bar); }
+.topbar .logo-accent { color: var(--bar-accent); }
+.topbar .input, .topbar .rate-chip, .topbar .icon-link { background-color: rgb(255 255 255 / 0.12); color: var(--on-bar); border-color: rgb(255 255 255 / 0.28); }
+.topbar .input option { color: #1b2421; background: #fff; }
+.topbar .control-icon, .topbar .control-icon-inline { color: var(--on-bar); }
+.crop-nav-item { min-height: 40px; font-size: 0.95rem; }
+.crop-nav-item.is-active { background: var(--brand-soft); border-left-color: var(--brand); }
+
+select.topbar-select, .topbar select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+:root[data-theme='night'] select.input:not(.topbar select) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5' fill='none' stroke='%23a8bcb6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.money-cur { border-radius: 0 3px 3px 0; }
+
+/* Phones: long buttons and switches wrap instead of running off the screen; amounts wrap only before the currency. */
 @media (max-width: 520px) {
-  :root .segmented button { white-space: normal; min-width: 0; padding: 6px 6px; font-size: 0.92rem; line-height: 1.2; }
-  :root .page-title { font-size: 2rem; }
-}
-@media (max-width: 520px) {
-  :root .btn { white-space: normal; text-align: center; line-height: 1.25; }
-  :root .record { flex-wrap: wrap; }
-  :root .record-actions { flex-wrap: wrap; }
-}
-@media (max-width: 520px) {
-  /* Amounts wrap only before the currency code, never inside a number. */
-  :root .stat-value { font-size: 1.25rem; overflow-wrap: normal; }
+  .btn { white-space: normal; text-align: center; line-height: 1.25; }
+  .record, .record-actions { flex-wrap: wrap; }
+  .segmented button { white-space: normal; min-width: 0; padding: 6px; line-height: 1.2; }
+  .stat-value { font-size: 1.1rem; overflow-wrap: normal; }
 }

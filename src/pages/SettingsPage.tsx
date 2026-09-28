@@ -10,7 +10,7 @@ import { Breadcrumbs, Field, PageHead, SectionHead, num, str } from '../componen
 /** Every currency used anywhere in the saved records. */
 function useUsedCurrencies() {
   const db = useDB()
-  const used = new Set<string>([db.settings.currency, 'USD', 'UZS'])
+  const used = new Set<string>([db.settings.currency, 'USD', 'UZS', 'RUB'])
   for (const list of [db.expenses, db.shipments, db.workers, db.incomes, db.deals]) for (const r of list) used.add(r.currency)
   for (const a of Object.values(db.attendance)) used.add(a.currency)
   return [...used]

@@ -210,7 +210,7 @@ export function MoneyInput({
 }) {
   const t = useT()
   const display = useDB().settings.currency
-  const options = [...new Set([currency, display, 'USD'])]
+  const options = [...new Set([currency, display, 'USD', 'UZS', 'RUB'])]
   return (
     <div className={`money-input${className ? ` ${className}` : ''}`}>
       <input id={id} className="input" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} />
