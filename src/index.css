@@ -489,9 +489,10 @@ a.card:focus-visible, .btn:focus-visible, .input:focus-visible, .tab:focus-visib
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
+@media (max-width: 560px) { .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .quick {
   display: flex;
   flex-direction: column;
@@ -1294,3 +1295,23 @@ select.input.with-icon { padding-left: 32px; }
 .table .group-row.gender-none th { border-left-color: var(--unset); color: var(--unset); background: var(--unset-soft); }
 .table .subtotal-row td { font-weight: 600; background: var(--subtotal-bg); }
 .theme-switch { max-width: 420px; }
+
+/* ---------- Income and give & take ---------- */
+:root { --income: #1b7a44; --income-soft: #d4f0de; --gave: #9a4d0c; --gave-soft: #fbe3cf; --got: #1e5fa0; --got-soft: #d9e8f8; }
+:root[data-theme='night'] { --income: #7fe0a8; --income-soft: #1b3d29; --gave: #f5ae74; --gave-soft: #43291a; --got: #8cc2f5; --got-soft: #1b3047; }
+.text-income { color: var(--income); font-weight: 600; }
+.record-income { border-left: 4px solid var(--income); }
+.record-gave { border-left: 4px solid var(--gave); }
+.record-got { border-left: 4px solid var(--got); }
+.deal-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+.deal-badge.gave { background: var(--gave-soft); color: var(--gave); }
+.deal-badge.got { background: var(--got-soft); color: var(--got); }
+.segmented button.is-gave { background: var(--gave); color: var(--surface); }
+.segmented button.is-got { background: var(--got); color: var(--surface); }

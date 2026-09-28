@@ -11,7 +11,7 @@ import { Breadcrumbs, Field, PageHead, SectionHead, num, str } from '../componen
 function useUsedCurrencies() {
   const db = useDB()
   const used = new Set<string>([db.settings.currency, 'USD', 'UZS'])
-  for (const list of [db.expenses, db.shipments, db.workers]) for (const r of list) used.add(r.currency)
+  for (const list of [db.expenses, db.shipments, db.workers, db.incomes, db.deals]) for (const r of list) used.add(r.currency)
   for (const a of Object.values(db.attendance)) used.add(a.currency)
   return [...used]
 }

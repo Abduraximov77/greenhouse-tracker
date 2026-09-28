@@ -104,6 +104,32 @@ export interface Attendance {
   updatedAt: string
 }
 
+/** Money that came in (kirim): a sale, a payment, anything received. */
+export interface Income extends Meta {
+  cropId: ID
+  date: string
+  source: string // what the money is from
+  from: string // who paid (optional)
+  amount: number
+  currency: string
+  note: string
+}
+
+/** One give-or-take with another person (oldi-berdi): money or a product. */
+export interface Deal extends Meta {
+  cropId: ID
+  date: string
+  person: string
+  direction: 'gave' | 'got' // we gave to them / we got from them
+  kind: 'money' | 'product'
+  item: string // product name (for products)
+  quantity: number | null
+  unit: string
+  amount: number | null // money given/taken, or the value of the product (optional)
+  currency: string
+  note: string
+}
+
 export type Lang = 'en' | 'ru' | 'uz'
 
 export interface Settings {
@@ -126,6 +152,8 @@ export interface DB {
   harvests: Harvest[]
   shipments: Shipment[]
   expenses: Expense[]
+  incomes: Income[]
+  deals: Deal[]
   workers: Worker[]
   attendance: Record<string, Attendance> // key: `${cropId}|${workerId}|${date}`
   settings: Settings
@@ -137,6 +165,8 @@ type Collections = {
   harvests: Harvest
   shipments: Shipment
   expenses: Expense
+  incomes: Income
+  deals: Deal
   workers: Worker
 }
 export type CollectionName = keyof Collections
@@ -162,6 +192,8 @@ function seed(): DB {
     harvests: [],
     shipments: [],
     expenses: [],
+    incomes: [],
+    deals: [],
     workers: [],
     attendance: {},
     settings: { currency: 'USD', lang: 'en', rates: { USD: 1 }, ratesUpdatedAt: null, ratesSource: null, theme: 'day' },
@@ -414,6 +446,8 @@ function dropCropChildren(d: DB, cropIds: Set<ID>): DB {
       harvests: keep(d.harvests),
       shipments: keep(d.shipments),
       expenses: keep(d.expenses),
+      incomes: keep(d.incomes),
+      deals: keep(d.deals),
     },
     (a) => cropIds.has(a.cropId),
   )

@@ -11,13 +11,17 @@ import { HarvestSection } from './sections/HarvestSection'
 import { WorkersSection } from './sections/WorkersSection'
 import { ExportSection } from './sections/ExportSection'
 import { ExpensesSection } from './sections/ExpensesSection'
+import { IncomeSection } from './sections/IncomeSection'
+import { DealsSection } from './sections/DealsSection'
 
-type SectionId = 'overview' | 'workers' | 'expenses' | 'harvest' | 'export'
+type SectionId = 'overview' | 'workers' | 'expenses' | 'income' | 'deals' | 'harvest' | 'export'
 
 const SECTIONS: { id: SectionId; label: string; sub: string }[] = [
   { id: 'overview', label: 'Overview', sub: 'Summary of this crop' },
   { id: 'workers', label: 'Workers', sub: 'Days worked, boxes prepared and pay' },
   { id: 'expenses', label: 'Expenses', sub: 'What was bought or paid for, by day' },
+  { id: 'income', label: 'Income', sub: 'Money that came in, by day' },
+  { id: 'deals', label: 'Give & take', sub: 'Money or products given to and taken from other people' },
   { id: 'harvest', label: 'Harvest', sub: 'Packed boxes ready for export' },
   { id: 'export', label: 'Export', sub: 'Trucks leaving with boxes' },
 ]
@@ -49,6 +53,13 @@ function SectionIcon({ id }: { id: SectionId }) {
           <path d="M3 10h18M7 15h4" {...p} />
         </>
       )}
+      {id === 'income' && (
+        <>
+          <path d="M12 3v11M7.5 9.5 12 14l4.5-4.5" {...p} />
+          <path d="M4 14v4.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V14" {...p} />
+        </>
+      )}
+      {id === 'deals' && <path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5" {...p} />}
       {id === 'harvest' && <path d="M3 9l9-5 9 5v9l-9 4-9-4zM3 9l9 4 9-4M12 13v9" {...p} />}
       {id === 'export' && (
         <>
@@ -89,6 +100,8 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
     ]).size,
     export: db.shipments.filter((r) => r.cropId === crop.id).length,
     expenses: db.expenses.filter((r) => r.cropId === crop.id).length,
+    income: db.incomes.filter((r) => r.cropId === crop.id).length,
+    deals: db.deals.filter((r) => r.cropId === crop.id).length,
   }
 
   return (
@@ -132,6 +145,8 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
         {active === 'overview' && <Overview season={season} crop={crop} />}
         {active === 'workers' && <WorkersSection crop={crop} />}
         {active === 'expenses' && <ExpensesSection crop={crop} />}
+        {active === 'income' && <IncomeSection crop={crop} />}
+        {active === 'deals' && <DealsSection crop={crop} />}
         {active === 'harvest' && <HarvestSection season={season} crop={crop} />}
         {active === 'export' && <ExportSection crop={crop} />}
       </div>
@@ -164,6 +179,19 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
         <Stat label={t('Trucks sent')} value={formatNumber(tt.trucks, 0)} />
       </div>
 
+      <SectionHead title={t('Income and profit')} />
+      <div className="stat-grid">
+        <Stat label={t('Income')} value={money(tt.income)} tone={tt.income > 0 ? 'good' : undefined} />
+        <Stat label={t('All costs')} value={money(tt.totalCost)} />
+        <Stat
+          label={tt.profit < 0 ? t('Loss') : t('Profit')}
+          value={money(Math.abs(tt.profit))}
+          tone={tt.profit > 0 ? 'good' : tt.profit < 0 ? 'warn' : undefined}
+        />
+      </div>
+      <RateMissing show={tt.incomeMissing} />
+      <p className="field-hint">{t('Profit = income − all costs (workers, expenses, delivery).')}</p>
+
       <SectionHead title={t('Costs')} />
       <div className="stat-grid">
         <Stat label={t('Workers')} value={money(tt.workerPay)} />
@@ -180,6 +208,19 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
       </div>
       <p className="field-hint">{t('All costs: expenses, workers and delivery. Paid + still to pay = total.')}</p>
 
+      <SectionHead title={t('Give & take')} />
+      <div className="stat-grid">
+        <Stat label={t('We gave')} value={money(tt.dealsGiven)} />
+        <Stat label={t('We got')} value={money(tt.dealsGot)} />
+        <Stat label={t('They owe us')} value={money(tt.owedToUs)} tone={tt.owedToUs > 0 ? 'good' : undefined} />
+        <Stat label={t('We owe')} value={money(tt.weOwe)} tone={tt.weOwe > 0 ? 'warn' : undefined} />
+      </div>
+      <RateMissing show={tt.dealsMissing} />
+      <p className="field-hint">
+        {t('Kept separately: give & take is not counted in costs or profit.')}{' '}
+        {tt.dealPeople > 0 && t('{n} people', { n: tt.dealPeople })}
+      </p>
+
       <SectionHead title={t('Record something')} />
       <div className="quick-grid">
         <button className="quick" onClick={() => go('workers')}>
@@ -189,6 +230,14 @@ function Overview({ season, crop }: { season: Season; crop: SeasonCrop }) {
         <button className="quick" onClick={() => go('expenses')}>
           <b>{t('Expenses')}</b>
           <span>{t('Something bought or paid for')}</span>
+        </button>
+        <button className="quick" onClick={() => go('income')}>
+          <b>{t('Income')}</b>
+          <span>{t('Money that came in')}</span>
+        </button>
+        <button className="quick" onClick={() => go('deals')}>
+          <b>{t('Give & take')}</b>
+          <span>{t('Given to or taken from someone')}</span>
         </button>
         <button className="quick" onClick={() => go('harvest')}>
           <b>{t('Harvest')}</b>
