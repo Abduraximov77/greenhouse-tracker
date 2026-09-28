@@ -1210,3 +1210,35 @@ select.input.with-icon { padding-left: 32px; }
 }
 .per-ha-row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .per-ha-row .input { max-width: 140px; }
+
+/* ---------- Men / women groups (workers) ---------- */
+.gender-group { margin-top: 18px; }
+.attendance .gender-group:first-of-type { margin-top: 16px; }
+.gender-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.gender-female .gender-head { background: #f7eef3; }
+.gender-none .gender-head { background: var(--warn-soft); }
+.gender-head-info { font-size: 0.88rem; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gender-group .att-list { margin-top: 0; }
+.gender-group .att-list .att-row:first-child { border-top: 0; }
+.gender-group .records { margin-top: 8px; }
+.table .group-row th {
+  padding-top: 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--brand-accent);
+  background: var(--brand-soft);
+}
+.table .subtotal-row td { font-weight: 600; background: #fafcf9; }

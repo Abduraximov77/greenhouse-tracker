@@ -52,10 +52,13 @@ export interface Shipment extends Meta {
 export interface Worker extends Meta {
   name: string
   phone: string
+  gender?: Gender // older workers may not have it yet
   dailySalary: number // 0 if paid only per box
   payPerBox: number // default value for each box prepared
   currency: string // currency of salary and pay per box
 }
+
+export type Gender = 'male' | 'female'
 
 export type DayStatus = 'on' | 'off'
 
