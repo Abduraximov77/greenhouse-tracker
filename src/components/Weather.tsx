@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { setPlace, updateRecord, useDB, type Lang, type SeasonCrop } from '../lib/store'
 import { useT, type T } from '../lib/i18n'
 import { href } from '../lib/router'
 import { formatDate, formatNumber, todayISO } from '../lib/format'
 import {
   dayOfCrop,
+  DEFAULT_PLACE_NAMES,
   locateDevice,
+  placeName,
   searchPlaces,
   useForecast,
   weatherLook,
@@ -77,6 +79,18 @@ export function WeatherCard() {
   const place = db.settings.place
   const { data, loading, error } = useForecast(place)
   const lang = db.settings.lang
+
+  // Places saved from GPS before the town name was looked up: find the name once (e.g. "Kunshan").
+  useEffect(() => {
+    if (!place || place.source !== 'gps' || !DEFAULT_PLACE_NAMES.includes(place.name)) return
+    let alive = true
+    void placeName(place.lat, place.lon, lang).then((name) => {
+      if (alive && name) setPlace({ ...place, name })
+    })
+    return () => {
+      alive = false
+    }
+  }, [place, lang])
 
   if (!place) {
     return (
@@ -181,7 +195,8 @@ export function LocationSettings() {
     setMsg(null)
     try {
       const { lat, lon } = await locateDevice()
-      setPlace({ name: place?.name || t('My farm'), lat, lon, source: 'gps' })
+      const name = (await placeName(lat, lon, db.settings.lang)) ?? (place?.name || t('My farm'))
+      setPlace({ name, lat, lon, source: 'gps' })
       setResults(null)
       setMsg(t('Location saved from your phone.'))
     } catch (e) {

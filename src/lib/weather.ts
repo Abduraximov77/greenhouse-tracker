@@ -172,6 +172,26 @@ export async function searchPlaces(q: string, lang: Lang): Promise<PlaceResult[]
   }))
 }
 
+/**
+ * Town name for a GPS point (e.g. "Kunshan"), from BigDataCloud's free client-side lookup (no key).
+ * Returns null if it can't be found; the caller keeps a default name then.
+ */
+export async function placeName(lat: number, lon: number, lang: Lang): Promise<string | null> {
+  try {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${lang}`
+    const r = await fetch(url)
+    if (!r.ok) return null
+    const j = (await r.json()) as { city?: string; locality?: string; principalSubdivision?: string }
+    const name = (j.city || j.locality || j.principalSubdivision || '').trim()
+    return name || null
+  } catch {
+    return null
+  }
+}
+
+/** Default names given before the town could be looked up. */
+export const DEFAULT_PLACE_NAMES = ['My farm', 'Моё хозяйство', 'Mening fermam']
+
 /** Ask the phone for its location (the browser shows its own permission question). */
 export function locateDevice(): Promise<{ lat: number; lon: number }> {
   return new Promise((resolve, reject) => {
