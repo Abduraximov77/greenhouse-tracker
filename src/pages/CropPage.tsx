@@ -100,7 +100,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
     ]).size,
     export: db.shipments.filter((r) => r.cropId === crop.id).length,
     expenses: db.expenses.filter((r) => r.cropId === crop.id).length,
-    income: db.incomes.filter((r) => r.cropId === crop.id).length,
+    income: db.incomes.filter((r) => r.cropId === crop.id).length + db.sales.filter((r) => r.cropId === crop.id).length,
     deals: db.deals.filter((r) => r.cropId === crop.id).length,
   }
 

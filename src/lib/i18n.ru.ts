@@ -431,4 +431,8 @@ export const ru: Record<string, string> = {
   "from the scale": "по весам",
   "Left on the truck: {kg} kg": "Осталось в машине: {kg} кг",
   "Type the real weight": "Введите фактический вес",
+  "Truck sales are entered under Export and appear here automatically.": "Продажи с машин вводятся в «Экспорте» и сами появляются здесь.",
+  "Export sale": "Продажа экспорта",
+  "Buyer": "Покупатель",
+  "Edit in Export": "Изменить в экспорте",
 }

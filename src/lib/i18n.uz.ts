@@ -431,4 +431,8 @@ export const uz: Record<string, string> = {
   "from the scale": "tarozidan",
   "Left on the truck: {kg} kg": "Mashinada qoldi: {kg} kg",
   "Type the real weight": "Haqiqiy og‘irlikni yozing",
+  "Truck sales are entered under Export and appear here automatically.": "Mashinalar sotuvi “Eksport”da kiritiladi va bu yerda avtomatik ko‘rinadi.",
+  "Export sale": "Eksport sotuvi",
+  "Buyer": "Xaridor",
+  "Edit in Export": "Eksportda tahrirlash",
 }

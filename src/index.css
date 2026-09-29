@@ -1438,3 +1438,5 @@ select.topbar-select, .topbar select.input { background-image: url("data:image/s
 .chart-note { margin: 0; font-size: 0.88rem; color: var(--muted); }
 .chart-note b { color: var(--text); }
 .mini-hint { font-size: 0.76rem; color: var(--muted); }
+a.btn { text-decoration: none; }
+:root:not([data-theme='night']) { --part-soft: #fbe3a4; --part: #7a4f00; }
