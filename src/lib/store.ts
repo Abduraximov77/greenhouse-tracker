@@ -114,8 +114,11 @@ export interface Sale extends Meta {
   shipmentId: ID
   date: string
   boxes: number
-  pricePerBox: number
-  amount: number // boxes × price per box
+  /** Weight sold in kg; the price is per kg (older sales may have only a price per box). */
+  kg?: number | null
+  pricePerKg?: number | null
+  pricePerBox?: number | null
+  amount: number // kg × price per kg (older sales: boxes × price per box)
   currency: string
   buyer: string
   payStatus: PayStatus // has the buyer paid us

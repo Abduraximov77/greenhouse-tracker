@@ -421,4 +421,11 @@ export const uz: Record<string, string> = {
   "Enter the total weight in kg, or leave it empty.": "Umumiy og‘irlikni kg da kiriting yoki bo‘sh qoldiring.",
   "t": "t",
   "Weight sent": "Jo‘natilgan og‘irlik",
+  "Enter the weight sold in kg.": "Sotilgan og‘irlikni kg da kiriting.",
+  "Enter the price per kg.": "Bir kg narxini kiriting.",
+  "Weight, kg": "Og‘irligi, kg",
+  "≈ {kg} kg per box": "bir qutida ≈ {kg} kg",
+  "Price per kg": "Bir kg narxi",
+  "Only {n} kg are left on this truck.": "Bu mashinada faqat {n} kg qolgan.",
+  "Weight sold": "Sotilgan og‘irlik",
 }

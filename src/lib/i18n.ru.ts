@@ -421,4 +421,11 @@ export const ru: Record<string, string> = {
   "Enter the total weight in kg, or leave it empty.": "Укажите общий вес в кг или оставьте пустым.",
   "t": "т",
   "Weight sent": "Отправлено по весу",
+  "Enter the weight sold in kg.": "Укажите проданный вес в кг.",
+  "Enter the price per kg.": "Укажите цену за кг.",
+  "Weight, kg": "Вес, кг",
+  "≈ {kg} kg per box": "≈ {kg} кг в ящике",
+  "Price per kg": "Цена за кг",
+  "Only {n} kg are left on this truck.": "В этой машине осталось только {n} кг.",
+  "Weight sold": "Продано по весу",
 }

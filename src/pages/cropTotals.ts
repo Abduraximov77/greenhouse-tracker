@@ -60,6 +60,7 @@ export function cropTotals(db: DB, cropId: ID) {
     salesReceived: soldPaid.total,
     buyersOwe: sold.total - soldPaid.total,
     boxesSold: sales.reduce((a, r) => a + r.boxes, 0),
+    kgSold: sales.reduce((a, r) => a + (r.kg ?? 0), 0),
     profit: income.total - totalCost,
     incomeMissing: income.missing,
     dealsGiven: people.reduce((a, p) => a + p.given, 0),

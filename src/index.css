@@ -1437,3 +1437,4 @@ select.topbar-select, .topbar select.input { background-image: url("data:image/s
 .chart-tip b { color: var(--text); font-size: 0.98rem; font-variant-numeric: tabular-nums; }
 .chart-note { margin: 0; font-size: 0.88rem; color: var(--muted); }
 .chart-note b { color: var(--text); }
+.mini-hint { font-size: 0.76rem; color: var(--muted); }
