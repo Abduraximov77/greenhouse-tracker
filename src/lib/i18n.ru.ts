@@ -506,4 +506,9 @@ export const ru: Record<string, string> = {
   "No place set": "Место не указано",
   "Set": "Указать",
   "The weather, warnings and advice for this crop use this place.": "Погода, предупреждения и советы для этой культуры будут по этому месту.",
+  "City (regional centre)": "Город (центр области)",
+  "City": "Город",
+  "Town": "Посёлок / райцентр",
+  "Village": "Село",
+  "On the map": "На карте",
 }

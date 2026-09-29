@@ -1553,3 +1553,20 @@ a.btn { text-decoration: none; }
 .loc-others ul { margin: 4px 0 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
 .crop-side .place-choice .loc-actions { flex-direction: column; align-items: stretch; }
 .crop-side .loc-search { flex-basis: auto; }
+.loc-results li { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+.loc-results li:last-child { border-bottom: 0; }
+.loc-results .search-item { flex: 1; min-width: 0; }
+.loc-result-text { min-width: 0; }
+.loc-map { display: flex; align-items: center; padding: 0 12px; font-size: 0.85rem; white-space: nowrap; border-left: 1px solid var(--line); }
+.loc-kind { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 3px; font-size: 0.75rem; font-weight: 600; vertical-align: 1px; background: var(--line); color: var(--muted); }
+.loc-kind-capital, .loc-kind-city { background: var(--brand-soft); color: var(--brand); }
+/* In a crop's narrow side panel everything stacks, so nothing spills over the page. */
+.crop-side .planted, .crop-side .place-choice, .crop-side .place-editor, .crop-side .loc-saved > div { min-width: 0; }
+.crop-side .loc-actions, .crop-side .loc-search { flex-direction: column; align-items: stretch; flex-basis: auto; width: 100%; }
+.crop-side .loc-actions .btn { white-space: normal; }
+.crop-side .place-choice .place-editor { padding: 8px; }
+.crop-side .loc-results li { flex-direction: column; }
+.crop-side .loc-map { border-left: 0; border-top: 1px dashed var(--line); padding: 6px 14px; }
+.crop-side .search-item { padding: 10px; }
+.crop-side .loc-saved { flex-wrap: wrap; }
+.crop-side .loc-results .search-tag { display: none; }

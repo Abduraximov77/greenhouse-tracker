@@ -506,4 +506,9 @@ export const uz: Record<string, string> = {
   "No place set": "Joy kiritilmagan",
   "Set": "Kiritish",
   "The weather, warnings and advice for this crop use this place.": "Shu ekin uchun ob-havo, ogohlantirish va maslahatlar shu joy bo‘yicha beriladi.",
+  "City (regional centre)": "Shahar (viloyat markazi)",
+  "City": "Shahar",
+  "Town": "Shaharcha / tuman markazi",
+  "Village": "Qishloq",
+  "On the map": "Xaritada",
 }

@@ -11,6 +11,7 @@ import {
   samePlace,
   DEFAULT_PLACE_NAMES,
   locateDevice,
+  mapLink,
   placeName,
   searchPlaces,
   useForecast,
@@ -37,6 +38,8 @@ function dayName(iso: string, lang: Lang, t: T) {
   if (dt.toDateString() === tomorrow.toDateString()) return t('Tomorrow')
   return `${SHORT_DAYS[lang][dt.getDay()]} ${d}`
 }
+
+const KIND_LABEL = { capital: 'City (regional centre)', city: 'City', town: 'Town', village: 'Village' } as const
 
 const deg = (n: number) => `${Math.round(n)}°`
 
@@ -305,7 +308,11 @@ export function PlaceEditor({
               onChange={(e) => onChange({ ...place, name: e.target.value })}
             />
             <span className="field-hint">
-              {formatNumber(place.lat, 4)}, {formatNumber(place.lon, 4)} · {place.source === 'gps' ? t('from the phone') : t('from search')}
+              {formatNumber(place.lat, 4)}, {formatNumber(place.lon, 4)} · {place.source === 'gps' ? t('from the phone') : t('from search')}{' '}
+              ·{' '}
+              <a href={mapLink(place)} target="_blank" rel="noreferrer">
+                {t('On the map')} ↗
+              </a>
             </span>
           </div>
           {removable && (
@@ -360,12 +367,20 @@ export function PlaceEditor({
                   setMsg(t('Location saved.'))
                 }}
               >
-                <span>
-                  <span className="search-name">{r.name}</span>
-                  <span className="search-group">{r.region}</span>
+                <span className="loc-result-text">
+                  <span className="search-name">
+                    {r.name} <span className={`loc-kind loc-kind-${r.kind}`}>{t(KIND_LABEL[r.kind])}</span>
+                  </span>
+                  <span className="search-group">
+                    {[r.region, r.country].filter(Boolean).join(', ')}
+                    {r.population ? ` · ${t('{n} people', { n: formatNumber(r.population, 0) })}` : ''}
+                  </span>
                 </span>
                 <span className="search-tag">{t('Choose')}</span>
               </button>
+              <a className="loc-map" href={mapLink(r)} target="_blank" rel="noreferrer">
+                {t('On the map')} ↗
+              </a>
             </li>
           ))}
         </ul>

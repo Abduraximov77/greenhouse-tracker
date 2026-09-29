@@ -165,21 +165,68 @@ export function weatherLook(code: number): { icon: string; label: string } {
 }
 
 export interface PlaceResult extends Place {
+  /** Tuman and viloyat, e.g. "Baliqchi tumani, Andijon viloyati". */
   region: string
+  country: string
+  /** Town (city, district centre) or a village. */
+  kind: 'capital' | 'city' | 'town' | 'village'
+  population: number | null
 }
 
-/** Search towns and villages by name (Open-Meteo geocoding). */
+type GeoRow = {
+  name: string
+  latitude: number
+  longitude: number
+  feature_code?: string
+  population?: number
+  admin1?: string
+  admin2?: string
+  country?: string
+}
+
+function placeKind(r: GeoRow): PlaceResult['kind'] {
+  const f = r.feature_code ?? ''
+  const pop = r.population ?? 0
+  if (f === 'PPLC' || f === 'PPLA') return 'capital'
+  if (f === 'PPLA2' || pop >= 20000) return 'city'
+  if (f === 'PPLA3' || f === 'PPLA4' || pop >= 3000) return 'town'
+  return 'village'
+}
+
+const KIND_ORDER = { capital: 0, city: 1, town: 2, village: 3 }
+
+/**
+ * Search towns and villages by name (Open-Meteo geocoding, built on the GeoNames database).
+ * GeoNames includes small villages, and many share a name, so each result carries its district,
+ * whether it is a town or a village, and towns come first.
+ */
 export async function searchPlaces(q: string, lang: Lang): Promise<PlaceResult[]> {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&format=json&language=${lang}`
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=30&format=json&language=${lang}`
   const r = await fetch(url)
   if (!r.ok) throw new Error('geocode ' + r.status)
   const j = await r.json()
-  return ((j.results ?? []) as { name: string; latitude: number; longitude: number; admin1?: string; country?: string }[]).map((x) => ({
-    name: x.name,
-    lat: Math.round(x.latitude * 10000) / 10000,
-    lon: Math.round(x.longitude * 10000) / 10000,
-    region: [x.admin1, x.country].filter(Boolean).join(', '),
-  }))
+  const rows = (j.results ?? []) as GeoRow[]
+  const out: PlaceResult[] = []
+  for (const x of rows) {
+    const p: PlaceResult = {
+      name: x.name,
+      lat: Math.round(x.latitude * 10000) / 10000,
+      lon: Math.round(x.longitude * 10000) / 10000,
+      region: [x.admin2, x.admin1].filter(Boolean).join(', '),
+      country: x.country ?? '',
+      kind: placeKind(x),
+      population: x.population ?? null,
+    }
+    // the same spot listed twice: keep one
+    if (!out.some((o) => samePlace(o, p))) out.push(p)
+  }
+  out.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || (b.population ?? 0) - (a.population ?? 0))
+  return out.slice(0, 12)
+}
+
+/** Link to the spot on OpenStreetMap, to check it is the right place. */
+export function mapLink(p: { lat: number; lon: number }) {
+  return `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=13/${p.lat}/${p.lon}`
 }
 
 /**
