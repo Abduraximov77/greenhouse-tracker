@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Lang, Place } from './store'
+import type { DB, Lang, Place, SeasonCrop } from './store'
 
 /**
  * Weather from Open-Meteo (no key needed). Its free plan is for non-commercial use;
@@ -34,22 +34,33 @@ export interface WeatherWarning {
   level: 'danger' | 'warn'
 }
 
-const CACHE_KEY = 'agroledger:weather'
+const CACHE_KEY = 'agroledger:weather2'
 const CACHE_MS = 60 * 60 * 1000 // refresh at most once an hour
 
-function readCache(p: Place): Forecast | null {
+const placeKey = (p: { lat: number; lon: number }) => `${p.lat},${p.lon}`
+
+// One forecast per place; several places are kept at once (a farm can have crops in different towns).
+function readAll(): Record<string, Forecast> {
   try {
-    const f = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as Forecast | null
-    if (f && f.lat === p.lat && f.lon === p.lon) return f
+    return (JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as Record<string, Forecast> | null) ?? {}
   } catch {
-    // no storage
+    return {}
   }
-  return null
+}
+
+function readCache(p: Place): Forecast | null {
+  return readAll()[placeKey(p)] ?? null
 }
 
 function writeCache(f: Forecast) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(f))
+    const all = readAll()
+    all[placeKey(f)] = f
+    // keep only the 12 newest places
+    const keep = Object.entries(all)
+      .sort((a, b) => b[1].fetchedAt - a[1].fetchedAt)
+      .slice(0, 12)
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(keep)))
   } catch {
     // no storage
   }
@@ -93,34 +104,33 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
 
 /** The forecast for the saved place: shown from the cache straight away, refreshed when older than an hour. */
 export function useForecast(place: Place | null | undefined) {
-  const [state, setState] = useState<{ data: Forecast | null; loading: boolean; error: boolean }>(() => ({
-    data: place ? readCache(place) : null,
-    loading: false,
-    error: false,
-  }))
-  const key = place ? `${place.lat},${place.lon}` : ''
+  const key = place ? placeKey(place) : ''
+  type S = { key: string; data: Forecast | null; loading: boolean; error: boolean }
+  const [state, setState] = useState<S>(() => ({ key, data: place ? readCache(place) : null, loading: false, error: false }))
 
   useEffect(() => {
     if (!place) {
-      setState({ data: null, loading: false, error: false })
+      setState({ key, data: null, loading: false, error: false })
       return
     }
     const cached = readCache(place)
     if (cached && Date.now() - cached.fetchedAt < CACHE_MS) {
-      setState({ data: cached, loading: false, error: false })
+      setState({ key, data: cached, loading: false, error: false })
       return
     }
     let alive = true
-    setState({ data: cached, loading: true, error: false })
+    setState({ key, data: cached, loading: true, error: false })
     fetchForecast(place)
-      .then((data) => alive && setState({ data, loading: false, error: false }))
-      .catch(() => alive && setState({ data: cached, loading: false, error: true }))
+      .then((data) => alive && setState({ key, data, loading: false, error: false }))
+      .catch(() => alive && setState({ key, data: cached, loading: false, error: true }))
     return () => {
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
+  // Right after switching places, never show the previous place's forecast.
+  if (state.key !== key) return { data: place ? readCache(place) : null, loading: !!place, error: false }
   return state
 }
 
@@ -211,4 +221,26 @@ export function dayOfCrop(plantedAt: string, today = new Date()): number {
   const now = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   const diff = Math.round((now - start) / 86400000)
   return diff >= 0 ? diff + 1 : diff
+}
+
+/** Two places closer than about 1 km count as the same place. */
+export function samePlace(a: Place | null | undefined, b: Place | null | undefined) {
+  if (!a || !b) return false
+  return Math.abs(a.lat - b.lat) < 0.01 && Math.abs(a.lon - b.lon) < 0.01
+}
+
+/** Where a crop grows: its own place, or the farm's main place. */
+export function cropPlace(db: DB, crop: SeasonCrop): Place | null {
+  return crop.place ?? db.settings.place ?? null
+}
+
+/** Every place of the farm, main place first, without repeats. */
+export function farmPlaces(db: DB): Place[] {
+  const out: Place[] = []
+  const add = (p: Place | null | undefined) => {
+    if (p && !out.some((x) => samePlace(x, p))) out.push(p)
+  }
+  add(db.settings.place)
+  for (const c of db.crops) add(c.place)
+  return out
 }

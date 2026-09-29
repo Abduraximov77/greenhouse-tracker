@@ -1525,3 +1525,31 @@ a.btn { text-decoration: none; }
 .planted-date { color: var(--muted); }
 .planted-edit { gap: 6px; }
 .planted-btns { display: flex; gap: 6px; justify-content: flex-end; }
+.wx-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: -2px 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.wx-tab, .place-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.wx-tab.is-on, .place-chip.is-on { border-color: var(--brand); background: var(--brand-soft); font-weight: 600; box-shadow: inset 0 0 0 1px var(--brand); }
+.wx-tab-dot { font-size: 0.8rem; font-weight: 600; color: var(--warn); }
+.wx-tab-danger { color: var(--danger); }
+.wx-crops { font-weight: 400; color: var(--muted); }
+.place-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.place-chip small { color: var(--muted); font-weight: 400; }
+.place-choice { display: grid; gap: 10px; }
+.place-choice .place-editor { padding: 10px; border: 1px dashed var(--line); border-radius: 4px; }
+.place-editor { display: grid; gap: 8px; }
+.place-editor .loc-saved { margin-bottom: 0; }
+.loc-others { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.loc-others ul { margin: 4px 0 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
+.crop-side .place-choice .loc-actions { flex-direction: column; align-items: stretch; }
+.crop-side .loc-search { flex-basis: auto; }

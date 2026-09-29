@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { setPlace, updateRecord, useDB, type Lang, type SeasonCrop } from '../lib/store'
+import { setPlace, updateRecord, useDB, type Lang, type Place, type SeasonCrop } from '../lib/store'
+import { cropName } from '../lib/crops'
 import { useT, type T } from '../lib/i18n'
 import { href } from '../lib/router'
 import { formatDate, formatNumber, todayISO } from '../lib/format'
 import {
+  cropPlace,
   dayOfCrop,
+  farmPlaces,
+  samePlace,
   DEFAULT_PLACE_NAMES,
   locateDevice,
   placeName,
@@ -72,25 +76,30 @@ function WarningList({ warnings }: { warnings: WeatherWarning[] }) {
   )
 }
 
-/** Weather on the first page: now, the next 7 days, and warnings. */
-export function WeatherCard() {
-  const db = useDB()
-  const t = useT()
-  const place = db.settings.place
-  const { data, loading, error } = useForecast(place)
-  const lang = db.settings.lang
-
-  // Places saved from GPS before the town name was looked up: find the name once (e.g. "Kunshan").
+/** Places saved from GPS before the town name was looked up: find the name once (e.g. "Kunshan"). */
+function useNameLookup(place: Place | null | undefined, save: (p: Place) => void) {
+  const lang = useDB().settings.lang
   useEffect(() => {
     if (!place || place.source !== 'gps' || !DEFAULT_PLACE_NAMES.includes(place.name)) return
     let alive = true
     void placeName(place.lat, place.lon, lang).then((name) => {
-      if (alive && name) setPlace({ ...place, name })
+      if (alive && name) save({ ...place, name })
     })
     return () => {
       alive = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [place, lang])
+}
+
+/** Weather on the first page: one tab per place of the farm, each with now, 7 days and warnings. */
+export function WeatherCard() {
+  const db = useDB()
+  const t = useT()
+  const places = farmPlaces(db)
+  const [pick, setPick] = useState(0)
+  const place = places[Math.min(pick, places.length - 1)] ?? null
+  useNameLookup(db.settings.place, setPlace)
 
   if (!place) {
     return (
@@ -109,13 +118,54 @@ export function WeatherCard() {
     )
   }
 
-  const warnings = data ? weatherWarnings(data) : []
+  const cropsHere = db.crops.filter((c) => samePlace(cropPlace(db, c), place))
+  const seasonYear = (id: string) => db.seasons.find((s) => s.id === id)?.startYear ?? 0
+  const latest = Math.max(0, ...cropsHere.map((c) => seasonYear(c.seasonId)))
+  const names = [...new Set(cropsHere.filter((c) => seasonYear(c.seasonId) === latest).map((c) => cropName(c.crop, db.settings.lang)))]
+
   return (
     <section className="card wx-card" aria-label={t('Weather')}>
+      {places.length > 1 && (
+        <div className="wx-tabs" role="tablist" aria-label={t('Places')}>
+          {places.map((p, i) => (
+            <PlaceTab key={`${p.lat},${p.lon}`} place={p} active={p === place} onClick={() => setPick(i)} />
+          ))}
+        </div>
+      )}
+      <PlaceWeather key={`${place.lat},${place.lon}`} place={place} crops={names} />
+    </section>
+  )
+}
+
+function PlaceTab({ place, active, onClick }: { place: Place; active: boolean; onClick: () => void }) {
+  const t = useT()
+  const { data } = useForecast(place)
+  const warn = data ? weatherWarnings(data) : []
+  const danger = warn.some((w) => w.level === 'danger')
+  return (
+    <button type="button" role="tab" aria-selected={active} className={`wx-tab${active ? ' is-on' : ''}`} onClick={onClick}>
+      📍 {place.name}
+      {warn.length > 0 && (
+        <span className={`wx-tab-dot${danger ? ' wx-tab-danger' : ''}`} title={t('Weather warnings')}>
+          ⚠ {warn.length}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
+  const t = useT()
+  const lang = useDB().settings.lang
+  const { data, loading, error } = useForecast(place)
+  const warnings = data ? weatherWarnings(data) : []
+  return (
+    <>
       <div className="wx-head">
         <div>
           <p className="wx-title">
             {t('Weather')} · {place.name}
+            {crops.length > 0 && <span className="wx-crops"> · {crops.join(', ')}</span>}
           </p>
           {data ? (
             <p className="wx-now">
@@ -128,7 +178,7 @@ export function WeatherCard() {
           )}
         </div>
         <a className="wx-place-link" href={href('settings', 'location')}>
-          {t('Change')}
+          {t('Places')}
         </a>
       </div>
 
@@ -160,35 +210,48 @@ export function WeatherCard() {
           <p className="wx-ok">✓ {t('No weather warnings for the next 3 days.')}</p>
         ))}
       {error && data && <p className="field-hint">{t('Could not refresh; showing the last forecast.')}</p>}
-    </section>
+    </>
   )
 }
 
-/** Only the warnings, for a crop's overview. Shows nothing when all is calm. */
-export function WeatherWarningsBanner() {
+/** Only the warnings for where this crop grows, for its overview. Shows nothing when all is calm. */
+export function WeatherWarningsBanner({ crop }: { crop: SeasonCrop }) {
   const t = useT()
-  const place = useDB().settings.place
+  const db = useDB()
+  const place = cropPlace(db, crop)
   const { data } = useForecast(place)
   if (!place || !data) return null
   const warnings = weatherWarnings(data)
   if (!warnings.length) return null
   return (
     <div className="card wx-card wx-banner" role="status">
-      <p className="wx-title">⚠ {t('Weather warnings')}</p>
+      <p className="wx-title">
+        ⚠ {t('Weather warnings')} · 📍 {place.name}
+      </p>
       <WarningList warnings={warnings} />
     </div>
   )
 }
 
-/** Settings: where the farm is. GPS from the phone, or search by town name. */
-export function LocationSettings() {
+/** Pick a place: from this phone's GPS, or by searching a town name. Also lets the name be changed. */
+export function PlaceEditor({
+  place,
+  onChange,
+  idPrefix,
+  removable = true,
+}: {
+  place: Place | null
+  onChange: (p: Place | null) => void
+  idPrefix: string
+  removable?: boolean
+}) {
   const db = useDB()
   const t = useT()
-  const place = db.settings.place
   const [q, setQ] = useState('')
   const [results, setResults] = useState<PlaceResult[] | null>(null)
   const [busy, setBusy] = useState<null | 'gps' | 'search'>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  useNameLookup(place, onChange)
 
   async function useGps() {
     setBusy('gps')
@@ -196,7 +259,7 @@ export function LocationSettings() {
     try {
       const { lat, lon } = await locateDevice()
       const name = (await placeName(lat, lon, db.settings.lang)) ?? (place?.name || t('My farm'))
-      setPlace({ name, lat, lon, source: 'gps' })
+      onChange({ name, lat, lon, source: 'gps' })
       setResults(null)
       setMsg(t('Location saved from your phone.'))
     } catch (e) {
@@ -227,50 +290,55 @@ export function LocationSettings() {
   }
 
   return (
-    <div className="card settings-card" id="location">
-      {place ? (
+    <div className="place-editor">
+      {place && (
         <div className="loc-saved">
           <span aria-hidden="true">📍</span>
           <div>
-            <label className="field-label" htmlFor="loc-name">
+            <label className="field-label" htmlFor={`${idPrefix}-name`}>
               {t('Place name')}
             </label>
-            <input id="loc-name" className="input" value={place.name} onChange={(e) => setPlace({ ...place, name: e.target.value })} />
+            <input
+              id={`${idPrefix}-name`}
+              className="input"
+              value={place.name}
+              onChange={(e) => onChange({ ...place, name: e.target.value })}
+            />
             <span className="field-hint">
               {formatNumber(place.lat, 4)}, {formatNumber(place.lon, 4)} · {place.source === 'gps' ? t('from the phone') : t('from search')}
             </span>
           </div>
-          <button type="button" className="btn btn-ghost btn-small" onClick={() => setPlace(null)}>
-            {t('Remove')}
-          </button>
+          {removable && (
+            <button type="button" className="btn btn-ghost btn-small" onClick={() => onChange(null)}>
+              {t('Remove')}
+            </button>
+          )}
         </div>
-      ) : (
-        <p className="field-hint">{t('Used for the weather forecast and warnings. Only the place is saved, nothing else.')}</p>
       )}
 
       <div className="loc-actions">
         <button type="button" className="btn btn-primary" onClick={useGps} disabled={busy !== null}>
           📍 {busy === 'gps' ? t('Finding…') : place ? t('Update from this phone') : t('Use this phone’s location')}
         </button>
-        <form
-          className="loc-search"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void search()
-          }}
-        >
+        <div className="loc-search">
           <input
-            id="loc-search"
+            id={`${idPrefix}-search`}
             className="input"
             placeholder={t('Or type a town or district, e.g. Chirchiq')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void search()
+              }
+            }}
             aria-label={t('Search for a place')}
           />
-          <button type="submit" className="btn btn-ghost" disabled={busy !== null || q.trim().length < 2}>
+          <button type="button" className="btn btn-ghost" onClick={() => void search()} disabled={busy !== null || q.trim().length < 2}>
             {busy === 'search' ? t('Searching…') : t('Search')}
           </button>
-        </form>
+        </div>
       </div>
 
       {msg && (
@@ -286,7 +354,7 @@ export function LocationSettings() {
                 type="button"
                 className="search-item"
                 onClick={() => {
-                  setPlace({ name: r.name, lat: r.lat, lon: r.lon, source: 'search' })
+                  onChange({ name: r.name, lat: r.lat, lon: r.lon, source: 'search' })
                   setResults(null)
                   setQ('')
                   setMsg(t('Location saved.'))
@@ -302,6 +370,154 @@ export function LocationSettings() {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+/** Settings: the farm's main place, and the other places its crops are in. */
+export function LocationSettings() {
+  const db = useDB()
+  const t = useT()
+  const main = db.settings.place ?? null
+  const others = farmPlaces(db).filter((p) => !samePlace(p, main))
+  return (
+    <div className="card settings-card" id="location">
+      <p className="field-label">{t('Main place')}</p>
+      <p className="field-hint">{t('Used for crops that have no place of their own. Only the place is saved, nothing else.')}</p>
+      <PlaceEditor place={main} onChange={setPlace} idPrefix="loc" />
+      {others.length > 0 && (
+        <div className="loc-others">
+          <p className="field-label">{t('Other places (set on each crop)')}</p>
+          <ul>
+            {others.map((p) => {
+              const crops = db.crops.filter((c) => samePlace(c.place, p))
+              return (
+                <li key={`${p.lat},${p.lon}`}>
+                  📍 <b>{p.name}</b> — {crops.map((c) => cropName(c.crop, db.settings.lang)).join(', ')}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Choose where a crop grows: one of the farm's places, or a new one.
+ * value null = the main place.
+ */
+export function PlaceChoice({ value, onChange, idPrefix }: { value: Place | null; onChange: (p: Place | null) => void; idPrefix: string }) {
+  const db = useDB()
+  const t = useT()
+  const main = db.settings.place ?? null
+  const known = farmPlaces(db)
+  const isKnown = !value || known.some((p) => samePlace(p, value))
+  const [adding, setAdding] = useState(!isKnown)
+  const [draft, setDraft] = useState<Place | null>(isKnown ? null : value)
+
+  return (
+    <div className="place-choice">
+      <div className="place-chips" role="radiogroup" aria-label={t('Where is it?')}>
+        {known.map((p) => {
+          const on = !adding && (value ? samePlace(p, value) : samePlace(p, main))
+          return (
+            <button
+              key={`${p.lat},${p.lon}`}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`place-chip${on ? ' is-on' : ''}`}
+              onClick={() => {
+                setAdding(false)
+                onChange(samePlace(p, main) ? null : p)
+              }}
+            >
+              📍 {p.name}
+              {samePlace(p, main) && <small> · {t('main')}</small>}
+            </button>
+          )
+        })}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={adding}
+          className={`place-chip${adding ? ' is-on' : ''}`}
+          onClick={() => {
+            setAdding(true)
+            onChange(draft)
+          }}
+        >
+          + {t('Another place')}
+        </button>
+      </div>
+      {adding && (
+        <PlaceEditor
+          place={draft}
+          onChange={(p) => {
+            setDraft(p)
+            onChange(p)
+          }}
+          idPrefix={idPrefix}
+          removable={false}
+        />
+      )}
+      {!known.length && !adding && (
+        <p className="field-hint">{t('No place yet. Add one so the weather and warnings are for this crop.')}</p>
+      )}
+    </div>
+  )
+}
+
+/** Crop side panel: "📍 Kunshan", with a way to change it. */
+export function CropPlace({ crop }: { crop: SeasonCrop }) {
+  const db = useDB()
+  const t = useT()
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState<Place | null>(crop.place ?? null)
+  const place = cropPlace(db, crop)
+
+  if (editing) {
+    return (
+      <div className="planted planted-edit">
+        <span className="field-label">{t('Where is it?')}</span>
+        <PlaceChoice value={value} onChange={setValue} idPrefix={`cp-${crop.id}`} />
+        <div className="planted-btns">
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditing(false)}>
+            {t('Cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-small"
+            onClick={() => {
+              // a place equal to the main one is stored as "main", so moving the main place moves this crop too
+              updateRecord('crops', crop.id, { place: value && !samePlace(value, db.settings.place) ? value : null })
+              setEditing(false)
+            }}
+          >
+            {t('Save')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="planted">
+      <span className="planted-date">
+        📍 {place ? <b className="crop-place-name">{place.name}</b> : t('No place set')}{' '}
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => {
+            setValue(crop.place ?? null)
+            setEditing(true)
+          }}
+        >
+          {place ? t('Change') : t('Set')}
+        </button>
+      </span>
     </div>
   )
 }

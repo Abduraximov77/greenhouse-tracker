@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import { addRecord, seasonLabel, useDB, type Season } from '../lib/store'
+import { addRecord, seasonLabel, setPlace, useDB, type Place, type Season } from '../lib/store'
+import { PlaceChoice } from '../components/Weather'
+import { cropPlace } from '../lib/weather'
 import { href, navigate } from '../lib/router'
 import { CROP_CATALOG, cropName } from '../lib/crops'
 import { formatNumber, todayISO } from '../lib/format'
@@ -20,6 +22,7 @@ export function SeasonPage({ season }: { season: Season }) {
   const [variety, setVariety] = useState('')
   const [area, setArea] = useState('')
   const [planted, setPlanted] = useState('')
+  const [place, setCropPlace] = useState<Place | null>(null)
 
   // Search matches the crop name in any of the three languages.
   const results = useMemo(() => {
@@ -34,17 +37,25 @@ export function SeasonPage({ season }: { season: Season }) {
     setVariety('')
     setArea('')
     setPlanted('')
+    setCropPlace(null)
     setQuery('')
   }
 
   function addCrop() {
     if (!picked) return
+    // The first place ever set becomes the farm's main place.
+    let own = place
+    if (own && !db.settings.place) {
+      setPlace(own)
+      own = null
+    }
     const rec = addRecord('crops', {
       seasonId: season.id,
       crop: picked,
       variety: variety.trim(),
       areaHa: num(area),
       plantedAt: planted || null,
+      place: own,
     })
     setPicked(null)
     navigate('season', season.id, 'crop', rec.id)
@@ -122,6 +133,11 @@ export function SeasonPage({ season }: { season: Season }) {
           <Field label={t('Growing area, hectares (optional)')} hint={t('Used to calculate fertilizer totals')}>
             <input id="crop-area" className="input" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
           </Field>
+          <div className="field field-wide">
+            <span className="field-label">{t('Where is it?')}</span>
+            <PlaceChoice value={place} onChange={setCropPlace} idPrefix="crop-place" />
+            <span className="field-hint">{t('The weather, warnings and advice for this crop use this place.')}</span>
+          </div>
           <Field label={t('Seedlings planted on (optional)')} hint={t('Days are counted from this date for advice and alerts')}>
             <input
               id="crop-planted"
@@ -146,7 +162,13 @@ export function SeasonPage({ season }: { season: Season }) {
               <a key={c.id} className="card crop-card" href={href('season', season.id, 'crop', c.id)}>
                 <span className="crop-name">{cropName(c.crop, lang)}</span>
                 <span className="crop-variety">
-                  {[c.variety, c.areaHa ? `${formatNumber(c.areaHa)} ${t('ha')}` : ''].filter(Boolean).join(' · ') || t('No variety set')}
+                  {[
+                    c.variety,
+                    c.areaHa ? `${formatNumber(c.areaHa)} ${t('ha')}` : '',
+                    cropPlace(db, c) ? `📍 ${cropPlace(db, c)!.name}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || t('No variety set')}
                 </span>
                 <span className="crop-stats">
                   <span>
