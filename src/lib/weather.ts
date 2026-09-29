@@ -191,8 +191,16 @@ export async function placeName(lat: number, lon: number, lang: Lang): Promise<s
     const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${lang}`
     const r = await fetch(url)
     if (!r.ok) return null
-    const j = (await r.json()) as { city?: string; locality?: string; principalSubdivision?: string }
-    const name = (j.city || j.locality || j.principalSubdivision || '').trim()
+    const j = (await r.json()) as {
+      city?: string
+      locality?: string
+      principalSubdivision?: string
+      localityInfo?: { administrative?: { name?: string; adminLevel?: number }[] }
+    }
+    // Prefer the town/district level (e.g. Kunshan, not the bigger Suzhou; a tuman, not the whole viloyat).
+    const admin = (j.localityInfo?.administrative ?? []).filter((a) => a.name && a.adminLevel && a.adminLevel >= 5 && a.adminLevel <= 6)
+    admin.sort((a, b) => (b.adminLevel ?? 0) - (a.adminLevel ?? 0))
+    const name = (admin[0]?.name || j.city || j.locality || j.principalSubdivision || '').trim()
     return name || null
   } catch {
     return null
