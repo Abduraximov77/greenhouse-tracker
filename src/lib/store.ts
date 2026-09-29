@@ -22,6 +22,8 @@ export interface SeasonCrop extends Meta {
   crop: string
   variety: string
   areaHa: number | null // growing area in hectares, used for per-hectare calculations
+  /** The day the seedlings were planted in the ground (shown as "Day N"; the AI assistant also uses it). */
+  plantedAt?: string | null
   /** Where this crop grows; if empty, the farm's main place (Settings) is used. */
   place?: Place | null
 }

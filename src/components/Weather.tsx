@@ -4,9 +4,10 @@ import { cropName } from '../lib/crops'
 import { alertText, evaluateAlerts, placeNowHour, RULES_BY_ID, type Alert } from '../lib/alertRules'
 import { useT, type T } from '../lib/i18n'
 import { href } from '../lib/router'
-import { formatNumber, todayISO } from '../lib/format'
+import { formatDate, formatNumber, todayISO } from '../lib/format'
 import {
   cropPlace,
+  dayOfCrop,
   farmPlaces,
   samePlace,
   DEFAULT_PLACE_NAMES,
@@ -676,6 +677,81 @@ export function CropPlace({ crop }: { crop: SeasonCrop }) {
           {place ? t('Change') : t('Set')}
         </button>
       </span>
+    </div>
+  )
+}
+
+/** "Planted 12 Aug 2026 · day 49", with a way to set or change the date. */
+export function PlantedDate({ crop }: { crop: SeasonCrop }) {
+  const t = useT()
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(crop.plantedAt ?? '')
+  const day = crop.plantedAt ? dayOfCrop(crop.plantedAt) : null
+
+  if (editing) {
+    return (
+      <form
+        className="planted planted-edit"
+        onSubmit={(e) => {
+          e.preventDefault()
+          updateRecord('crops', crop.id, { plantedAt: value || null })
+          setEditing(false)
+        }}
+      >
+        <label className="field-label" htmlFor={`planted-${crop.id}`}>
+          {t('Seedlings planted on')}
+        </label>
+        <input
+          id={`planted-${crop.id}`}
+          className="input"
+          type="date"
+          value={value}
+          max={todayISO()}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <div className="planted-btns">
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditing(false)}>
+            {t('Cancel')}
+          </button>
+          <button type="submit" className="btn btn-primary btn-small">
+            {t('Save')}
+          </button>
+        </div>
+      </form>
+    )
+  }
+
+  return (
+    <div className="planted">
+      {crop.plantedAt && day !== null ? (
+        <>
+          <span className="planted-day">{day > 0 ? t('Day {n}', { n: day }) : t('In {n} days', { n: -day })}</span>
+          <span className="planted-date">
+            {t('Planted {date}', { date: formatDate(crop.plantedAt) })}{' '}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                setValue(crop.plantedAt ?? '')
+                setEditing(true)
+              }}
+            >
+              {t('Change')}
+            </button>
+          </span>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => {
+            setValue('')
+            setEditing(true)
+          }}
+        >
+          + {t('Add planting date')}
+        </button>
+      )}
     </div>
   )
 }

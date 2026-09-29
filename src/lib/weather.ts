@@ -339,3 +339,12 @@ export function weatherComLink(p: { lat: number; lon: number }, page: 'today' | 
   const locale = lang === 'en' ? '' : '/ru-RU' // weather.com has no Uzbek; Russian is closest
   return `https://weather.com${locale}/weather/${page}/l/${p.lat.toFixed(4)},${p.lon.toFixed(4)}`
 }
+
+/** Days since planting: the planting day is day 1. Negative when the date is still ahead. */
+export function dayOfCrop(plantedAt: string, today = new Date()): number {
+  const [y, m, d] = plantedAt.split('-').map(Number)
+  const start = Date.UTC(y, m - 1, d)
+  const now = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  const diff = Math.round((now - start) / 86400000)
+  return diff >= 0 ? diff + 1 : diff
+}

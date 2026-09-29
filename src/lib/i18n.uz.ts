@@ -616,4 +616,5 @@ export const uz: Record<string, string> = {
   "Map": "Xarita",
   "No point chosen yet": "Hali nuqta tanlanmagan",
   "Use this point": "Shu nuqtani tanlash",
+  "Shows how many days the crop has been in the ground": "Ekin necha kundan beri yerda ekanini ko‘rsatadi",
 }

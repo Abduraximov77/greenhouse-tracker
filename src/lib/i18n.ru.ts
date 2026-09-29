@@ -616,4 +616,5 @@ export const ru: Record<string, string> = {
   "Map": "Карта",
   "No point chosen yet": "Точка ещё не выбрана",
   "Use this point": "Выбрать эту точку",
+  "Shows how many days the crop has been in the ground": "Показывает, сколько дней культура в земле",
 }

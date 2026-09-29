@@ -4,7 +4,7 @@ import { PlaceChoice } from '../components/Weather'
 import { cropPlace } from '../lib/weather'
 import { href, navigate } from '../lib/router'
 import { CROP_CATALOG, cropName } from '../lib/crops'
-import { formatNumber } from '../lib/format'
+import { formatNumber, todayISO } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
 import { Breadcrumbs, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
@@ -22,6 +22,7 @@ export function SeasonPage({ season }: { season: Season }) {
   const [variety, setVariety] = useState('')
   const [area, setArea] = useState('')
   const [place, setCropPlace] = useState<Place | null>(null)
+  const [planted, setPlanted] = useState('')
 
   // Search matches the crop name in any of the three languages.
   const results = useMemo(() => {
@@ -36,6 +37,7 @@ export function SeasonPage({ season }: { season: Season }) {
     setVariety('')
     setArea('')
     setCropPlace(null)
+    setPlanted('')
     setQuery('')
   }
 
@@ -53,6 +55,7 @@ export function SeasonPage({ season }: { season: Season }) {
       variety: variety.trim(),
       areaHa: num(area),
       place: own,
+      plantedAt: planted || null,
     })
     setPicked(null)
     navigate('season', season.id, 'crop', rec.id)
@@ -129,6 +132,16 @@ export function SeasonPage({ season }: { season: Season }) {
           </Field>
           <Field label={t('Growing area, hectares (optional)')} hint={t('Used to calculate fertilizer totals')}>
             <input id="crop-area" className="input" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
+          </Field>
+          <Field label={t('Seedlings planted on (optional)')} hint={t('Shows how many days the crop has been in the ground')}>
+            <input
+              id="crop-planted"
+              className="input"
+              type="date"
+              value={planted}
+              max={todayISO()}
+              onChange={(e) => setPlanted(e.target.value)}
+            />
           </Field>
           <div className="field field-wide">
             <span className="field-label">{t('Where is it?')}</span>
