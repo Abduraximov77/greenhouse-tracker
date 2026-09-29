@@ -1440,3 +1440,5 @@ select.topbar-select, .topbar select.input { background-image: url("data:image/s
 .mini-hint { font-size: 0.76rem; color: var(--muted); }
 a.btn { text-decoration: none; }
 :root:not([data-theme='night']) { --part-soft: #fbe3a4; --part: #7a4f00; }
+.stat-note { font-size: 0.82rem; font-weight: 600; }
+.stat-paid { color: var(--good); }

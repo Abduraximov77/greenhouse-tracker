@@ -73,11 +73,12 @@ export function PageHead({ title, sub, actions }: { title: ReactNode; sub?: Reac
   )
 }
 
-export function Stat({ label, value, tone }: { label: string; value: ReactNode; tone?: 'good' | 'warn' }) {
+export function Stat({ label, value, tone, note }: { label: string; value: ReactNode; tone?: 'good' | 'warn'; note?: ReactNode }) {
   return (
     <div className={`stat${tone ? ` stat-${tone}` : ''}`}>
       <span className="stat-label">{label}</span>
       <span className="stat-value">{value}</span>
+      {note && <span className="stat-note">{note}</span>}
     </div>
   )
 }

@@ -435,4 +435,5 @@ export const ru: Record<string, string> = {
   "Export sale": "Продажа экспорта",
   "Buyer": "Покупатель",
   "Edit in Export": "Изменить в экспорте",
+  "Not paid: {amount}": "Не оплачено: {amount}",
 }

@@ -34,6 +34,19 @@ export function cropTotals(db: DB, cropId: ID) {
     rates,
   )
 
+  // Still to pay, for each kind of cost.
+  const owedOf = (items: { amount: number; currency: string }[]) => sumIn(items, to, rates).total
+  const owedPart = (due: number | null, r: { payStatus: PayStatus; paidAmount: number | null; currency: string }) => ({
+    amount: payment(due ?? 0, r.payStatus, r.paidAmount).owed,
+    currency: r.currency,
+  })
+  const owedDelivery = owedOf(shipments.map((r) => owedPart(r.deliveryPrice, r)))
+  const owedWorkers = owedOf([
+    ...days.map((r) => owedPart(dayPay(r), r)),
+    ...expenses.filter((r) => r.forWorkers).map((r) => owedPart(r.amount, r)),
+  ])
+  const owedExpenses = owedOf(expenses.filter((r) => !r.forWorkers).map((r) => owedPart(r.amount, r)))
+
   // Income = money entered under Income + boxes sold from trucks (whether the buyer has paid yet or not).
   const sold = sumIn(sales.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
   const soldPaid = sumIn(sales.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })), to, rates)
@@ -74,6 +87,9 @@ export function cropTotals(db: DB, cropId: ID) {
     dealsMissing: people.some((p) => p.missing),
     paid: paidOut.total,
     owed: totalCost - paidOut.total,
+    owedDelivery,
+    owedWorkers,
+    owedExpenses,
     rateMissing: delivery.missing || pay.missing || spent.missing || workerExtra.missing,
     boxesByWorkers,
     boxesOther,

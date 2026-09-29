@@ -435,4 +435,5 @@ export const uz: Record<string, string> = {
   "Export sale": "Eksport sotuvi",
   "Buyer": "Xaridor",
   "Edit in Export": "Eksportda tahrirlash",
+  "Not paid: {amount}": "To‘lanmagan: {amount}",
 }

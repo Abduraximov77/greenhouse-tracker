@@ -197,10 +197,10 @@ function Overview({ crop }: { crop: SeasonCrop }) {
 
       <SectionHead title={t('Costs')} />
       <div className="stat-grid">
-        <Stat label={t('Workers')} value={money(tt.workerPay)} />
-        <Stat label={t('Expenses')} value={money(tt.expensesCost)} />
-        <Stat label={t('Delivery')} value={money(tt.deliveryCost)} />
-        <Stat label={t('Total')} value={money(tt.totalCost)} />
+        <Stat label={t('Workers')} value={money(tt.workerPay)} note={<Owed n={tt.owedWorkers} of={tt.workerPay} />} />
+        <Stat label={t('Expenses')} value={money(tt.expensesCost)} note={<Owed n={tt.owedExpenses} of={tt.expensesCost} />} />
+        <Stat label={t('Delivery')} value={money(tt.deliveryCost)} note={<Owed n={tt.owedDelivery} of={tt.deliveryCost} />} />
+        <Stat label={t('Total')} value={money(tt.totalCost)} note={<Owed n={tt.owed} of={tt.totalCost} />} />
       </div>
       <RateMissing show={tt.rateMissing} />
 
@@ -270,4 +270,12 @@ function DealsOverview({ people, open, done }: { people: ReturnType<typeof cropT
       </p>
     </>
   )
+}
+
+/** Small line under a cost: "Not paid: …" in orange, or "✓ Paid" when nothing is owed. */
+function Owed({ n, of }: { n: number; of: number }) {
+  const t = useT()
+  const { fmt } = useCurrency()
+  if (of <= 0.005) return null
+  return n > 0.005 ? <span className="text-owed">{t('Not paid: {amount}', { amount: fmt(n) })}</span> : <span className="stat-paid">✓ {t('Paid')}</span>
 }
