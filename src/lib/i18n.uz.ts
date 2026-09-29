@@ -456,7 +456,7 @@ export const uz: Record<string, string> = {
   "Loading the forecast…": "Prognoz yuklanmoqda…",
   "The forecast could not be loaded.": "Prognozni yuklab bo‘lmadi.",
   "Change": "O‘zgartirish",
-  "No weather warnings for the next 3 days.": "Keyingi 3 kunga ogohlantirish yo‘q.",
+  "No weather warnings for today and tomorrow.": "Bugun va ertaga uchun ogohlantirish yo‘q.",
   "Could not refresh; showing the last forecast.": "Yangilab bo‘lmadi; oxirgi prognoz ko‘rsatilmoqda.",
   "Weather warnings": "Ob-havo ogohlantirishlari",
   "My farm": "Mening fermam",

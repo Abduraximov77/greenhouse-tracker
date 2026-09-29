@@ -162,7 +162,8 @@ export function useForecast(place: Place | null | undefined) {
 }
 
 /** Things worth warning a greenhouse farmer about, for the next few days. */
-export function weatherWarnings(f: Forecast, days = 3): WeatherWarning[] {
+// Today and tomorrow only: a warning shows up one day before the weather comes.
+export function weatherWarnings(f: Forecast, days = 2): WeatherWarning[] {
   const out: WeatherWarning[] = []
   for (const d of f.days.slice(0, days)) {
     if (d.tMin <= 0) out.push({ kind: 'frost', date: d.date, value: d.tMin, level: 'danger' })

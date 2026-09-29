@@ -456,7 +456,7 @@ export const ru: Record<string, string> = {
   "Loading the forecast…": "Загрузка прогноза…",
   "The forecast could not be loaded.": "Не удалось загрузить прогноз.",
   "Change": "Изменить",
-  "No weather warnings for the next 3 days.": "На ближайшие 3 дня предупреждений нет.",
+  "No weather warnings for today and tomorrow.": "На сегодня и завтра предупреждений нет.",
   "Could not refresh; showing the last forecast.": "Не удалось обновить; показан последний прогноз.",
   "Weather warnings": "Предупреждения о погоде",
   "My farm": "Моё хозяйство",

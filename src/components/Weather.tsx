@@ -230,7 +230,7 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
         (warnings.length > 0 ? (
           <WarningList warnings={warnings} />
         ) : (
-          <p className="wx-ok">✓ {t('No weather warnings for the next 3 days.')}</p>
+          <p className="wx-ok">✓ {t('No weather warnings for today and tomorrow.')}</p>
         ))}
       {error && data && <p className="field-hint">{t('Could not refresh; showing the last forecast.')}</p>}
     </>
