@@ -14,6 +14,7 @@ import {
 import { formatNumber, round, todayISO } from '../../lib/format'
 import { href } from '../../lib/router'
 import { useT } from '../../lib/i18n'
+import { BoxesChart } from '../../components/BoxesChart'
 import { Computed, DayHeading, DeleteButton, Empty, Field, FormCard, SectionHead, Stamp, Stat, num, str } from '../../components/ui'
 
 type Form = { date: string; boxes: string; kgPerBox: string; note: string }
@@ -68,6 +69,8 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
   const boxesOf = (l: Line) => (l.kind === 'worker' ? l.boxes : l.rec.boxes)
 
   const totalBoxes = lines.reduce((a, l) => a + boxesOf(l.line), 0)
+  // Boxes per day (worker boxes + other entries) for the chart.
+  const perDay = new Map(days.map(([d, ls]) => [d, ls.reduce((a, l) => a + boxesOf(l.line), 0)]))
   const totalKgAll = entries.reduce((a, r) => a + (r.totalKg ?? 0), 0)
   const today = days.find(([d]) => d === todayISO())?.[1].reduce((a, l) => a + boxesOf(l.line), 0) ?? 0
 
@@ -192,6 +195,8 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
           })}
         </div>
       )}
+
+      {perDay.size > 0 && <BoxesChart perDay={perDay} />}
     </>
   )
 }

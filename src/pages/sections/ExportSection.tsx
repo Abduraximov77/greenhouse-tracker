@@ -31,6 +31,7 @@ import {
   str,
 } from '../../components/ui'
 import { cropTotals } from '../cropTotals'
+import { TruckSales } from './TruckSales'
 
 type Form = {
   date: string
@@ -153,6 +154,14 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         />
       </div>
       <RateMissing show={delivery.missing} />
+      {list.length > 0 && (
+        <div className="stat-grid sales-stats">
+          <Stat label={t('Boxes sold')} value={`${formatNumber(totals.boxesSold, 0)} / ${formatNumber(totals.boxesExported, 0)}`} />
+          <Stat label={t('Sales')} value={cur.fmt(totals.salesTotal)} tone={totals.salesTotal > 0 ? 'good' : undefined} />
+          <Stat label={t('Received from buyers')} value={cur.fmt(totals.salesReceived)} />
+          <Stat label={t('Buyers still owe')} value={cur.fmt(totals.buyersOwe)} tone={totals.buyersOwe > 0.005 ? 'warn' : undefined} />
+        </div>
+      )}
 
       <SectionHead
         title=""
@@ -290,6 +299,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
                       </button>
                       <DeleteButton onDelete={() => removeRecord('shipments', r.id)} />
                     </div>
+                    <TruckSales truck={r} />
                   </li>
                 ))}
               </ul>

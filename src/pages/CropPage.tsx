@@ -184,7 +184,16 @@ function Overview({ crop }: { crop: SeasonCrop }) {
         />
       </div>
       <RateMissing show={tt.incomeMissing} />
-      <p className="field-hint">{t('Profit = income − all costs (workers, expenses, delivery).')}</p>
+      {tt.salesTotal > 0 && (
+        <div className="stat-grid">
+          <Stat label={t('Truck sales')} value={money(tt.salesTotal)} />
+          <Stat label={t('Other income')} value={money(tt.otherIncome)} />
+          <Stat label={t('Buyers still owe')} value={money(tt.buyersOwe)} tone={tt.buyersOwe > 0.005 ? 'warn' : undefined} />
+        </div>
+      )}
+      <p className="field-hint">
+        {t('Income = truck sales + money entered under Income.')} {t('Profit = income − all costs (workers, expenses, delivery).')}
+      </p>
 
       <SectionHead title={t('Costs')} />
       <div className="stat-grid">

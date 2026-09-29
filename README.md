@@ -11,6 +11,8 @@ Built as a website first, designed so it can become a phone app later.
     The worker list is shared by all seasons and crops. Each worker is a man or a woman, and men and women are shown
     separately (daily list, pay summary with subtotals, worker list).
 - **Expenses "for workers"**: an expense can be marked "Ishchilar uchun" (suggested automatically for names like "Ayollar", "ishchi", "oylik"). It is then counted with the workers' pay (Workers section and overview), not with other expenses.
+- **Sales per truck**: under each truck, add sales later (date, boxes sold, price per box, buyer, whether the buyer paid). Shows boxes sold / left, sales, received and what buyers still owe. Truck sales count as income.
+- **Harvest chart**: line chart of boxes packed per day (last 30 days or whole season), days with nothing packed shown as 0.
 - **Income (Kirim)**: money that came in, by day, with what it's from and who paid. Overview shows income, all costs and profit (or loss).
 - **Give & take (Oldi-berdi)**: money or products given to or taken from other people. Each entry can be given back in full or partly; when all is back it is done. Balance per person (money and each product separately). Shown separately on the Overview and not counted in profit.
 - **Logo**: A | L mark — serif initials split by a gold ledger column line, underlined (header, loading screen, tab icon, phone icon).

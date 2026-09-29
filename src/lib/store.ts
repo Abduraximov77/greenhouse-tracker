@@ -106,6 +106,21 @@ export interface Attendance {
   updatedAt: string
 }
 
+/** A sale of boxes from a truck (added later, once the buyer has taken them). */
+export interface Sale extends Meta {
+  cropId: ID
+  shipmentId: ID
+  date: string
+  boxes: number
+  pricePerBox: number
+  amount: number // boxes × price per box
+  currency: string
+  buyer: string
+  payStatus: PayStatus // has the buyer paid us
+  paidAmount: number | null
+  note: string
+}
+
 /** Money that came in (kirim): a sale, a payment, anything received. */
 export interface Income extends Meta {
   cropId: ID
@@ -163,6 +178,7 @@ export interface DB {
   expenses: Expense[]
   incomes: Income[]
   deals: Deal[]
+  sales: Sale[]
   workers: Worker[]
   attendance: Record<string, Attendance> // key: `${cropId}|${workerId}|${date}`
   settings: Settings
@@ -176,6 +192,7 @@ type Collections = {
   expenses: Expense
   incomes: Income
   deals: Deal
+  sales: Sale
   workers: Worker
 }
 export type CollectionName = keyof Collections
@@ -203,6 +220,7 @@ function seed(): DB {
     expenses: [],
     incomes: [],
     deals: [],
+    sales: [],
     workers: [],
     attendance: {},
     settings: { currency: 'USD', lang: 'en', rates: { USD: 1 }, ratesUpdatedAt: null, ratesSource: null, theme: 'day' },
@@ -444,6 +462,7 @@ export function removeRecord(name: CollectionName, id: ID) {
   }
   if (name === 'crops') next = dropCropChildren(next, new Set([id]))
   if (name === 'workers') next = dropAttendance(next, (a) => a.workerId === id)
+  if (name === 'shipments') next = { ...next, sales: next.sales.filter((r) => r.shipmentId !== id) }
   commit(next)
 }
 
@@ -457,6 +476,7 @@ function dropCropChildren(d: DB, cropIds: Set<ID>): DB {
       expenses: keep(d.expenses),
       incomes: keep(d.incomes),
       deals: keep(d.deals),
+      sales: keep(d.sales),
     },
     (a) => cropIds.has(a.cropId),
   )

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { addRecord, byDateDesc, groupByDate, removeRecord, updateRecord, useDB, type Income, type SeasonCrop } from '../../lib/store'
 import { todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
+import { href } from '../../lib/router'
 import { useT } from '../../lib/i18n'
 import { DayHeading, DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stamp, Stat, num, str } from '../../components/ui'
 
@@ -64,6 +65,15 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Entries')} value={list.length} />
       </div>
       <RateMissing show={total.missing} />
+      {(() => {
+        const sold = cur.sum(db.sales.filter((r) => r.cropId === crop.id).map((r) => ({ amount: r.amount, currency: r.currency })))
+        return sold.total > 0 ? (
+          <p className="field-hint">
+            {t('Truck sales ({amount}) are recorded under Export and added to income automatically.', { amount: cur.fmt(sold.total) })}{' '}
+            <a href={href('season', crop.seasonId, 'crop', crop.id, 'export')}>{t('Open Export')}</a>
+          </p>
+        ) : null
+      })()}
 
       <SectionHead
         title=""
