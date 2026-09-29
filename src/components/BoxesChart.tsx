@@ -115,7 +115,14 @@ export function BoxesChart({ perDay }: { perDay: Map<string, number> }) {
               ['all', t('Whole season')],
             ] as const
           ).map(([k, label]) => (
-            <button key={k} type="button" role="radio" aria-checked={range === k} className={range === k ? 'is-on is-good' : ''} onClick={() => setRange(k)}>
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={range === k}
+              className={range === k ? 'is-on is-good' : ''}
+              onClick={() => setRange(k)}
+            >
               {label}
             </button>
           ))}

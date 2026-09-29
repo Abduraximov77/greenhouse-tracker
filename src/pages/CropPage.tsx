@@ -5,7 +5,7 @@ import { cropName } from '../lib/crops'
 import { formatNumber } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
-import { CropPlace, PlantedDate, WeatherWarningsBanner } from '../components/Weather'
+import { CropPlace, WeatherWarningsBanner } from '../components/Weather'
 import { Breadcrumbs, PageHead, RateMissing, SectionHead, Stat } from '../components/ui'
 import { cropTotals } from './cropTotals'
 import { HarvestSection } from './sections/HarvestSection'
@@ -117,7 +117,6 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
           </span>
         </a>
         <CropPlace crop={crop} />
-        <PlantedDate key={crop.plantedAt ?? ''} crop={crop} />
         <nav ref={navRef} className="crop-nav" aria-label={t('Crop sections')}>
           {SECTIONS.map((x) => (
             <a

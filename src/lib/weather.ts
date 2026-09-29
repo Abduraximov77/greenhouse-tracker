@@ -14,6 +14,7 @@ export interface DayWeather {
   rain: number // mm
   rainChance: number | null // %
   gusts: number // km/h
+  snow?: number // cm
 }
 
 export interface HourWeather {
@@ -34,33 +35,6 @@ export interface Forecast {
   now: { temp: number; code: number; wind: number; humidity: number | null; time?: string; isDay?: boolean }
   days: DayWeather[]
   hours: HourWeather[]
-}
-
-export type WarningKind = 'frost' | 'cold' | 'heat' | 'wind' | 'rain' | 'lightRain' | 'storm' | 'snow'
-
-export interface WeatherWarning {
-  kind: WarningKind
-  date: string
-  /** Main value for the message (°C, km/h or mm). */
-  value: number
-  level: 'danger' | 'warn' | 'info'
-  /** For rain: the hours it is expected, e.g. "15:00" to "19:00" (place's local time). */
-  from?: string
-  to?: string
-}
-
-/** Rain still to come on a day (today: only from the current hour on) and the hours it falls. */
-function rainAhead(f: Forecast, date: string) {
-  const nowHour = f.now.time ? f.now.time.slice(0, 13) : ''
-  const hours = (f.hours ?? []).filter((h) => h.time.startsWith(date) && (!nowHour || h.time.slice(0, 13) >= nowHour))
-  const wet = hours.filter((h) => h.rain >= 0.1)
-  if (!hours.length) return null
-  return {
-    mm: Math.round(wet.reduce((a, h) => a + h.rain, 0) * 10) / 10,
-    from: wet[0]?.time.slice(11, 16),
-    // the rain hour itself counts, so it ends an hour after the last wet hour starts
-    to: wet.length ? `${String((Number(wet[wet.length - 1].time.slice(11, 13)) + 1) % 24).padStart(2, '0')}:00` : undefined,
-  }
 }
 
 const CACHE_KEY = 'agroledger:weather3'
@@ -100,7 +74,7 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
     'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${p.lat}&longitude=${p.lon}` +
     '&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,is_day' +
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,snowfall_sum' +
     '&hourly=temperature_2m,weather_code,precipitation,precipitation_probability,wind_gusts_10m,relative_humidity_2m,is_day' +
     '&timezone=auto&forecast_days=7'
   const r = await fetch(url)
@@ -115,6 +89,7 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
     rain: d.precipitation_sum[i] ?? 0,
     rainChance: d.precipitation_probability_max?.[i] ?? null,
     gusts: d.wind_gusts_10m_max[i] ?? 0,
+    snow: d.snowfall_sum?.[i] ?? 0,
   }))
   const h = j.hourly
   const hours: HourWeather[] = ((h?.time ?? []) as string[]).map((time, i) => ({
@@ -176,31 +151,6 @@ export function useForecast(place: Place | null | undefined) {
   // Right after switching places, never show the previous place's forecast.
   if (state.key !== key) return { data: place ? readCache(place) : null, loading: !!place, error: false }
   return state
-}
-
-/** Things worth warning a greenhouse farmer about, for the next few days. */
-// Today and tomorrow only: a warning shows up one day before the weather comes.
-export function weatherWarnings(f: Forecast, days = 2): WeatherWarning[] {
-  const out: WeatherWarning[] = []
-  for (const d of f.days.slice(0, days)) {
-    if (d.tMin <= 0) out.push({ kind: 'frost', date: d.date, value: d.tMin, level: 'danger' })
-    else if (d.tMin <= 4) out.push({ kind: 'cold', date: d.date, value: d.tMin, level: 'warn' })
-    if (d.tMax >= 38) out.push({ kind: 'heat', date: d.date, value: d.tMax, level: 'danger' })
-    else if (d.tMax >= 35) out.push({ kind: 'heat', date: d.date, value: d.tMax, level: 'warn' })
-    if (d.gusts >= 60) out.push({ kind: 'wind', date: d.date, value: d.gusts, level: 'danger' })
-    else if (d.gusts >= 45) out.push({ kind: 'wind', date: d.date, value: d.gusts, level: 'warn' })
-    if ([95, 96, 99].includes(d.code)) out.push({ kind: 'storm', date: d.date, value: d.rain, level: d.code === 95 ? 'warn' : 'danger' })
-    else if ([71, 73, 75, 77, 85, 86].includes(d.code)) out.push({ kind: 'snow', date: d.date, value: d.rain, level: 'warn' })
-    else {
-      // Any rain is worth knowing in a greenhouse (vents, spraying, work outside); heavy rain is a warning.
-      const ahead = rainAhead(f, d.date)
-      const mm = ahead ? ahead.mm : d.rain
-      const when = ahead && ahead.from ? { from: ahead.from, to: ahead.to } : {}
-      if (mm >= 10) out.push({ kind: 'rain', date: d.date, value: mm, level: mm >= 25 ? 'danger' : 'warn', ...when })
-      else if (mm >= 0.3) out.push({ kind: 'lightRain', date: d.date, value: mm, level: 'info', ...when })
-    }
-  }
-  return out
 }
 
 /** WMO weather code → icon and English label (translated through i18n). */
@@ -356,15 +306,6 @@ export function locateDevice(): Promise<{ lat: number; lon: number; accuracy: nu
   })
 }
 
-/** Days since planting: the planting day is day 1. Negative when the date is still ahead. */
-export function dayOfCrop(plantedAt: string, today = new Date()): number {
-  const [y, m, d] = plantedAt.split('-').map(Number)
-  const start = Date.UTC(y, m - 1, d)
-  const now = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
-  const diff = Math.round((now - start) / 86400000)
-  return diff >= 0 ? diff + 1 : diff
-}
-
 /** Two places closer than about 1 km count as the same place. */
 export function samePlace(a: Place | null | undefined, b: Place | null | undefined) {
   if (!a || !b) return false
@@ -385,4 +326,13 @@ export function farmPlaces(db: DB): Place[] {
   add(db.settings.place)
   for (const c of db.crops) add(c.place)
   return out
+}
+
+/**
+ * The same spot on weather.com (The Weather Channel), to compare forecasts.
+ * Their data can't be shown inside the app without a paid contract, so we link to it.
+ */
+export function weatherComLink(p: { lat: number; lon: number }, page: 'today' | 'hourbyhour' | 'tenday', lang: Lang) {
+  const locale = lang === 'en' ? '' : '/ru-RU' // weather.com has no Uzbek; Russian is closest
+  return `https://weather.com${locale}/weather/${page}/l/${p.lat.toFixed(4)},${p.lon.toFixed(4)}`
 }

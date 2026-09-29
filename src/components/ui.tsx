@@ -17,17 +17,7 @@ export function str(n: number | null | undefined): string {
   return n === null || n === undefined || Number.isNaN(n) ? '' : String(n)
 }
 
-export function Field({
-  label,
-  hint,
-  children,
-  wide,
-}: {
-  label: string
-  hint?: ReactNode
-  children: ReactNode
-  wide?: boolean
-}) {
+export function Field({ label, hint, children, wide }: { label: string; hint?: ReactNode; children: ReactNode; wide?: boolean }) {
   return (
     <label className={`field${wide ? ' field-wide' : ''}`}>
       <span className="field-label">{label}</span>
@@ -54,7 +44,11 @@ export function Breadcrumbs({ items }: { items: { label: string; to?: string[] }
       {items.map((it, i) => (
         <span key={i} className="crumb">
           {it.to ? <a href={href(...it.to)}>{it.label}</a> : <span aria-current="page">{it.label}</span>}
-          {i < items.length - 1 && <span className="crumb-sep" aria-hidden="true">/</span>}
+          {i < items.length - 1 && (
+            <span className="crumb-sep" aria-hidden="true">
+              /
+            </span>
+          )}
         </span>
       ))}
     </nav>
@@ -215,12 +209,7 @@ export function MoneyInput({
   return (
     <div className={`money-input${className ? ` ${className}` : ''}`}>
       <input id={id} className="input" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} />
-      <select
-        className="money-cur"
-        aria-label={t('Currency')}
-        value={currency}
-        onChange={(e) => onCurrency(e.target.value)}
-      >
+      <select className="money-cur" aria-label={t('Currency')} value={currency} onChange={(e) => onCurrency(e.target.value)}>
         {options.map((c) => (
           <option key={c} value={c}>
             {c}
@@ -237,8 +226,7 @@ export function RateMissing({ show }: { show: boolean }) {
   if (!show) return null
   return (
     <p className="field-hint text-warn">
-      {t('Some amounts are in another currency and no exchange rate is set.')}{' '}
-      <a href="#/settings">{t('Set the exchange rate')}</a>
+      {t('Some amounts are in another currency and no exchange rate is set.')} <a href="#/settings">{t('Set the exchange rate')}</a>
     </p>
   )
 }

@@ -10,6 +10,7 @@ import { SeasonsPage } from './pages/SeasonsPage'
 import { SeasonPage } from './pages/SeasonPage'
 import { CropPage } from './pages/CropPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { AlertGuidePage } from './pages/AlertGuidePage'
 import { fetchRatesOnline, formatMoney } from './lib/money'
 
 // How long the loading screen shows at minimum, so it doesn't just flash.
@@ -123,7 +124,14 @@ function Header() {
         </label>
         <a className="rate-chip" href={href('settings')} title={t('Exchange rate')}>
           <svg className="control-icon-inline" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 8h13l-3-3M20 16H7l3 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M4 8h13l-3-3M20 16H7l3 3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           <span className="rate-text">{rateText}</span>
         </a>
@@ -166,6 +174,7 @@ function Routes() {
 
   if (!first) return <SeasonsPage />
   if (first === 'settings') return <SettingsPage />
+  if (first === 'alerts') return <AlertGuidePage />
 
   const season = first === 'season' ? db.seasons.find((s) => s.id === seasonId) : undefined
   if (!season) return <NotFound />

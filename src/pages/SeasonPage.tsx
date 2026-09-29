@@ -4,7 +4,7 @@ import { PlaceChoice } from '../components/Weather'
 import { cropPlace } from '../lib/weather'
 import { href, navigate } from '../lib/router'
 import { CROP_CATALOG, cropName } from '../lib/crops'
-import { formatNumber, todayISO } from '../lib/format'
+import { formatNumber } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
 import { Breadcrumbs, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
@@ -21,7 +21,6 @@ export function SeasonPage({ season }: { season: Season }) {
   const [picked, setPicked] = useState<string | null>(null)
   const [variety, setVariety] = useState('')
   const [area, setArea] = useState('')
-  const [planted, setPlanted] = useState('')
   const [place, setCropPlace] = useState<Place | null>(null)
 
   // Search matches the crop name in any of the three languages.
@@ -36,7 +35,6 @@ export function SeasonPage({ season }: { season: Season }) {
     setPicked(name)
     setVariety('')
     setArea('')
-    setPlanted('')
     setCropPlace(null)
     setQuery('')
   }
@@ -54,7 +52,6 @@ export function SeasonPage({ season }: { season: Season }) {
       crop: picked,
       variety: variety.trim(),
       areaHa: num(area),
-      plantedAt: planted || null,
       place: own,
     })
     setPicked(null)
@@ -138,16 +135,6 @@ export function SeasonPage({ season }: { season: Season }) {
             <PlaceChoice value={place} onChange={setCropPlace} idPrefix="crop-place" />
             <span className="field-hint">{t('The weather, warnings and advice for this crop use this place.')}</span>
           </div>
-          <Field label={t('Seedlings planted on (optional)')} hint={t('Days are counted from this date for advice and alerts')}>
-            <input
-              id="crop-planted"
-              className="input"
-              type="date"
-              value={planted}
-              max={todayISO()}
-              onChange={(e) => setPlanted(e.target.value)}
-            />
-          </Field>
         </FormCard>
       )}
 

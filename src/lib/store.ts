@@ -22,8 +22,6 @@ export interface SeasonCrop extends Meta {
   crop: string
   variety: string
   areaHa: number | null // growing area in hectares, used for per-hectare calculations
-  /** The day the seedlings were planted in the ground; the care plan counts days from it. */
-  plantedAt?: string | null
   /** Where this crop grows; if empty, the farm's main place (Settings) is used. */
   place?: Place | null
 }
@@ -181,7 +179,7 @@ export interface Place {
   name: string
   lat: number
   lon: number
-  source?: 'gps' | 'search'
+  source?: 'gps' | 'search' | 'map'
   /** For GPS: how exact the reading was, in metres (e.g. 12 = within about 12 m). */
   accuracy?: number | null
   /** True once someone typed the name by hand: it is then never renamed automatically. */

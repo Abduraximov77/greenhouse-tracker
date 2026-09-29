@@ -1,26 +1,25 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { setPlace, updateRecord, useDB, type Lang, type Place, type SeasonCrop } from '../lib/store'
 import { cropName } from '../lib/crops'
+import { alertText, evaluateAlerts, RULES_BY_ID, type Alert } from '../lib/alertRules'
 import { useT, type T } from '../lib/i18n'
 import { href } from '../lib/router'
-import { formatDate, formatNumber, todayISO } from '../lib/format'
+import { formatNumber, todayISO } from '../lib/format'
 import {
   cropPlace,
-  dayOfCrop,
   farmPlaces,
   samePlace,
   DEFAULT_PLACE_NAMES,
   locateDevice,
   mapLink,
+  weatherComLink,
   placeName,
   searchPlaces,
   useForecast,
   weatherLook,
-  weatherWarnings,
   type DayWeather,
   type Forecast,
   type PlaceResult,
-  type WeatherWarning,
 } from '../lib/weather'
 
 const SHORT_DAYS: Record<Lang, string[]> = {
@@ -40,42 +39,14 @@ function dayName(iso: string, lang: Lang, t: T) {
   return `${SHORT_DAYS[lang][dt.getDay()]} ${d}`
 }
 
+// The map is loaded only when someone opens it, so the app stays quick to start.
+const MapPicker = lazy(() => import('./MapPicker'))
+
 const KIND_LABEL = { capital: 'City (regional centre)', city: 'City', town: 'Town', village: 'Village' } as const
 
 const deg = (n: number) => `${Math.round(n)}°`
 
-/** " (15:00–19:00)" when the rain hours are known. */
-function rainHours(w: WeatherWarning, t: T) {
-  return w.from && w.to ? ' ' + t('({from}–{to})', { from: w.from, to: w.to }) : ''
-}
-
-/** What to do about each kind of weather in a greenhouse. */
-function warningText(w: WeatherWarning, t: T) {
-  const v = Math.round(w.value)
-  switch (w.kind) {
-    case 'frost':
-      return t('Frost, down to {v}°C. Close the greenhouse and keep it heated at night.', { v })
-    case 'cold':
-      return t('Cold night, {v}°C. Close vents and doors in the evening.', { v })
-    case 'heat':
-      return t('Heat, up to {v}°C. Open vents early, shade the plants, water in the morning.', { v })
-    case 'wind':
-      return t('Strong wind, gusts up to {v} km/h. Close vents and tie down the film.', { v })
-    case 'rain':
-      return t('Heavy rain, {v} mm. Check the film and drains, close vents.', { v }) + rainHours(w, t)
-    case 'lightRain':
-      return (
-        t('Rain expected, about {v} mm. Close vents before it starts; do not spray in the rain.', { v: formatNumber(w.value, 1) }) +
-        rainHours(w, t)
-      )
-    case 'storm':
-      return t('Thunderstorm, hail is possible. Secure the film and close vents.')
-    case 'snow':
-      return t('Snow expected. Clear snow from the roof so the film does not tear.')
-  }
-}
-
-function WarningList({ warnings }: { warnings: WeatherWarning[] }) {
+function WarningList({ warnings }: { warnings: Alert[] }) {
   const t = useT()
   const lang = useDB().settings.lang
   return (
@@ -83,7 +54,9 @@ function WarningList({ warnings }: { warnings: WeatherWarning[] }) {
       {warnings.map((w, i) => (
         <li key={i} className={`wx-warning wx-${w.level}`}>
           <span className="wx-warning-day">{i > 0 && warnings[i - 1].date === w.date ? '' : dayName(w.date, lang, t)}</span>
-          <span>{warningText(w, t)}</span>
+          <span>
+            <span aria-hidden="true">{RULES_BY_ID[w.rule].icon}</span> {alertText(w, t, (n) => formatNumber(n, 1))}
+          </span>
         </li>
       ))}
     </ul>
@@ -156,7 +129,7 @@ export function WeatherCard() {
 function PlaceTab({ place, active, onClick }: { place: Place; active: boolean; onClick: () => void }) {
   const t = useT()
   const { data } = useForecast(place)
-  const warn = data ? weatherWarnings(data) : []
+  const warn = data ? evaluateAlerts(data) : []
   const danger = warn.some((w) => w.level === 'danger')
   const onlyInfo = warn.every((w) => w.level === 'info')
   return (
@@ -175,7 +148,7 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
   const t = useT()
   const lang = useDB().settings.lang
   const { data, loading, error } = useForecast(place)
-  const warnings = data ? weatherWarnings(data) : []
+  const warnings = data ? evaluateAlerts(data) : []
   const [open, setOpen] = useState<string | null>(null)
   return (
     <>
@@ -195,9 +168,17 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
             <p className="field-hint">{loading ? t('Loading the forecast…') : t('The forecast could not be loaded.')}</p>
           )}
         </div>
-        <a className="wx-place-link" href={href('settings', 'location')}>
-          {t('Places')}
-        </a>
+        <span className="wx-links">
+          <a className="wx-place-link" href={weatherComLink(place, 'today', lang)} target="_blank" rel="noreferrer">
+            weather.com ↗
+          </a>
+          <a className="wx-place-link" href={href('alerts')}>
+            {t('Alert guide')}
+          </a>
+          <a className="wx-place-link" href={href('settings', 'location')}>
+            {t('Places')}
+          </a>
+        </span>
       </div>
 
       {data && (
@@ -264,6 +245,9 @@ function HourlyPanel({ id, data, date, onClose }: { id: string; data: Forecast; 
         <b>
           {dayName(date, lang, t)} · {t('hour by hour')}
         </b>
+        <a className="wx-com" href={weatherComLink(data, 'hourbyhour', lang)} target="_blank" rel="noreferrer">
+          {t('Compare on weather.com')} ↗
+        </a>
         <button type="button" className="link-btn" onClick={onClose}>
           {t('Close')}
         </button>
@@ -348,7 +332,7 @@ export function WeatherWarningsBanner({ crop }: { crop: SeasonCrop }) {
   const place = cropPlace(db, crop)
   const { data } = useForecast(place)
   if (!place || !data) return null
-  const warnings = weatherWarnings(data)
+  const warnings = evaluateAlerts(data)
   if (!warnings.length) return null
   return (
     <div className="card wx-card wx-banner" role="status">
@@ -378,7 +362,18 @@ export function PlaceEditor({
   const [results, setResults] = useState<PlaceResult[] | null>(null)
   const [busy, setBusy] = useState<null | 'gps' | 'search'>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [mapOpen, setMapOpen] = useState(false)
   useNameLookup(place, onChange)
+
+  async function pickOnMap(p: { lat: number; lon: number }) {
+    setMapOpen(false)
+    setBusy('gps')
+    const name = (await placeName(p.lat, p.lon, db.settings.lang)) ?? (place?.name || t('My farm'))
+    setBusy(null)
+    onChange({ name: place?.named ? place.name : name, named: place?.named, lat: p.lat, lon: p.lon, source: 'map' })
+    setResults(null)
+    setMsg(t('Exact point saved from the map.'))
+  }
 
   async function useGps() {
     setBusy('gps')
@@ -437,7 +432,9 @@ export function PlaceEditor({
                 ? place.accuracy
                   ? t('from the phone, within about {m} m', { m: formatNumber(place.accuracy, 0) })
                   : t('from the phone')
-                : t('from search (centre of the place)')}{' '}
+                : place.source === 'map'
+                  ? t('pinned on the map (exact)')
+                  : t('from search (centre of the place)')}{' '}
               ·{' '}
               <a href={mapLink(place)} target="_blank" rel="noreferrer">
                 {t('On the map')} ↗
@@ -455,6 +452,9 @@ export function PlaceEditor({
       <div className="loc-actions">
         <button type="button" className="btn btn-primary" onClick={useGps} disabled={busy !== null}>
           📍 {busy === 'gps' ? t('Finding…') : place ? t('Update from this phone') : t('Use this phone’s location')}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => setMapOpen(true)} disabled={busy !== null || mapOpen}>
+          🗺️ {t('Pin on the map')}
         </button>
         <div className="loc-search">
           <input
@@ -477,6 +477,20 @@ export function PlaceEditor({
         </div>
       </div>
 
+      {mapOpen && (
+        <Suspense fallback={<p className="field-hint">{t('Loading the map…')}</p>}>
+          <MapPicker start={place} onPick={(p) => void pickOnMap(p)} onCancel={() => setMapOpen(false)} />
+        </Suspense>
+      )}
+      {place?.source === 'search' && !mapOpen && (
+        <p className="field-hint loc-refine">
+          {t('This is the centre of the town or village. For the exact spot of the greenhouse,')}{' '}
+          <button type="button" className="link-btn" onClick={() => setMapOpen(true)}>
+            {t('pin it on the map')}
+          </button>
+          .
+        </p>
+      )}
       {msg && (
         <p className="field-hint" role="status">
           {msg}
@@ -662,81 +676,6 @@ export function CropPlace({ crop }: { crop: SeasonCrop }) {
           {place ? t('Change') : t('Set')}
         </button>
       </span>
-    </div>
-  )
-}
-
-/** "Planted 12 Aug 2026 · day 49", with a way to set or change the date. */
-export function PlantedDate({ crop }: { crop: SeasonCrop }) {
-  const t = useT()
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(crop.plantedAt ?? '')
-  const day = crop.plantedAt ? dayOfCrop(crop.plantedAt) : null
-
-  if (editing) {
-    return (
-      <form
-        className="planted planted-edit"
-        onSubmit={(e) => {
-          e.preventDefault()
-          updateRecord('crops', crop.id, { plantedAt: value || null })
-          setEditing(false)
-        }}
-      >
-        <label className="field-label" htmlFor={`planted-${crop.id}`}>
-          {t('Seedlings planted on')}
-        </label>
-        <input
-          id={`planted-${crop.id}`}
-          className="input"
-          type="date"
-          value={value}
-          max={todayISO()}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <div className="planted-btns">
-          <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditing(false)}>
-            {t('Cancel')}
-          </button>
-          <button type="submit" className="btn btn-primary btn-small">
-            {t('Save')}
-          </button>
-        </div>
-      </form>
-    )
-  }
-
-  return (
-    <div className="planted">
-      {crop.plantedAt && day !== null ? (
-        <>
-          <span className="planted-day">{day > 0 ? t('Day {n}', { n: day }) : t('In {n} days', { n: -day })}</span>
-          <span className="planted-date">
-            {t('Planted {date}', { date: formatDate(crop.plantedAt) })}{' '}
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => {
-                setValue(crop.plantedAt ?? '')
-                setEditing(true)
-              }}
-            >
-              {t('Change')}
-            </button>
-          </span>
-        </>
-      ) : (
-        <button
-          type="button"
-          className="link-btn"
-          onClick={() => {
-            setValue('')
-            setEditing(true)
-          }}
-        >
-          + {t('Add planting date')}
-        </button>
-      )}
     </div>
   )
 }
