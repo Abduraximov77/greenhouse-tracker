@@ -3,7 +3,6 @@ import {
   addRecord,
   byDateDesc,
   groupByDate,
-  payment,
   removeRecord,
   updateRecord,
   useDB,
@@ -16,7 +15,6 @@ import { useCurrency } from '../../lib/money'
 import { href } from '../../lib/router'
 import { useT } from '../../lib/i18n'
 import { cropName } from '../../lib/crops'
-import { PayBadge } from '../../components/PaymentControl'
 import {
   DayHeading,
   DeleteButton,
@@ -90,7 +88,6 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
   const total = money(rows)
   const today = money(rows.filter((r) => r.date === todayISO()))
   const month = money(rows.filter((r) => r.date.startsWith(todayISO().slice(0, 7))))
-  const buyersOwe = cur.sum(sales.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).owed, currency: r.currency }))).total
   const truckOf = (id: string) => db.shipments.find((x) => x.id === id)
   const exportHref = href('season', crop.seasonId, 'crop', crop.id, 'export')
 
@@ -100,16 +97,13 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Came in today')} value={cur.fmt(today.total)} />
         <Stat label={t('This month')} value={cur.fmt(month.total)} />
         <Stat label={t('This season')} value={cur.fmt(total.total)} tone={total.total > 0 ? 'good' : undefined} />
-        {sales.length > 0 ? (
-          <Stat label={t('Buyers still owe')} value={cur.fmt(buyersOwe)} tone={buyersOwe > 0.005 ? 'warn' : undefined} />
-        ) : (
-          <Stat label={t('Entries')} value={rows.length} />
-        )}
+        <Stat label={t('Entries')} value={rows.length} />
       </div>
       <RateMissing show={total.missing} />
       {sales.length > 0 && (
         <p className="field-hint">
-          {t('{crop} sales are entered under Export and appear here automatically.', { crop: cropName(crop.crop, db.settings.lang) })} <a href={exportHref}>{t('Open Export')}</a>
+          {t('{crop} sales are entered under Export and appear here automatically.', { crop: cropName(crop.crop, db.settings.lang) })}{' '}
+          <a href={exportHref}>{t('Open Export')}</a>
         </p>
       )}
 
@@ -199,7 +193,6 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
                             {t('{n} boxes', { n: formatNumber(rec.boxes, 0) })}
                             {rec.kg ? ` · ${formatNumber(rec.kg, 0)} ${t('kg')}` : ''} ·{' '}
                             <span className="text-income">+ {cur.both(rec.amount, rec.currency)}</span>{' '}
-                            <PayBadge due={rec.amount} currency={rec.currency} status={rec.payStatus} paidAmount={rec.paidAmount} />
                           </span>
                           {rec.buyer && (
                             <span className="record-sub">

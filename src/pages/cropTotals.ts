@@ -49,7 +49,6 @@ export function cropTotals(db: DB, cropId: ID) {
 
   // Income = money entered under Income + boxes sold from trucks (whether the buyer has paid yet or not).
   const sold = sumIn(sales.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  const soldPaid = sumIn(sales.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })), to, rates)
   const otherIncome = sumIn(incomes.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
   const income = { total: otherIncome.total + sold.total, missing: otherIncome.missing || sold.missing }
   const totalCost = delivery.total + pay.total + workerExtra.total + spent.total
@@ -70,8 +69,7 @@ export function cropTotals(db: DB, cropId: ID) {
     income: income.total,
     otherIncome: otherIncome.total,
     salesTotal: sold.total,
-    salesReceived: soldPaid.total,
-    buyersOwe: sold.total - soldPaid.total,
+
     boxesSold: sales.reduce((a, r) => a + r.boxes, 0),
     kgSold: sales.reduce((a, r) => a + (r.kg ?? 0), 0),
     profit: income.total - totalCost,

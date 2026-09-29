@@ -189,7 +189,6 @@ function Overview({ crop }: { crop: SeasonCrop }) {
         <div className="stat-grid">
           <Stat label={t('{crop} sales', { crop: crop_ })} value={money(tt.salesTotal)} />
           <Stat label={t('Other income')} value={money(tt.otherIncome)} />
-          <Stat label={t('Buyers still owe')} value={money(tt.buyersOwe)} tone={tt.buyersOwe > 0.005 ? 'warn' : undefined} />
         </div>
       )}
       <p className="field-hint">

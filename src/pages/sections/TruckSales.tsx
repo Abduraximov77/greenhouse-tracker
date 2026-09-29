@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { addRecord, byDateDesc, payment, removeRecord, updateRecord, useDB, type PayStatus, type Sale, type Shipment } from '../../lib/store'
+import { addRecord, byDateDesc, removeRecord, updateRecord, useDB, type PayStatus, type Sale, type Shipment } from '../../lib/store'
 import { formatDate, formatNumber, todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
 import { useT } from '../../lib/i18n'
-import { PayBadge, PaymentControl } from '../../components/PaymentControl'
 import { DeleteButton, MoneyInput, num, str } from '../../components/ui'
 
 type Form = {
@@ -40,8 +39,6 @@ export function TruckSales({ truck }: { truck: Shipment }) {
   const leftKg = truckKg !== null ? Math.max(0, truckKg - soldKg) : null
   // Boxes don't all weigh the same: the weight is always typed in (from the scale). The box average is only a guide.
   const total = cur.sum(sales.map((r) => ({ amount: r.amount, currency: r.currency })))
-  const received = cur.sum(sales.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })))
-  const owed = total.total - received.total
 
   function open(rec?: Sale) {
     setError(null)
@@ -103,8 +100,9 @@ export function TruckSales({ truck }: { truck: Shipment }) {
       amount: amount ?? 0,
       currency: f.currency,
       buyer: f.buyer.trim(),
-      payStatus: f.payStatus,
-      paidAmount: f.payStatus === 'partial' ? f.paidAmount : null,
+      // Sales count as money received; there is no separate "paid" step.
+      payStatus: 'paid' as const,
+      paidAmount: null,
       note: f.note.trim(),
     }
     if (editing === 'new') addRecord('sales', data)
@@ -137,15 +135,6 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               <span>
                 {t('Sales')}: <b>{cur.fmt(total.total)}</b>
               </span>
-              <span className={owed > 0.005 ? 'text-owed' : 'text-income'}>
-                {owed > 0.005 ? (
-                  <>
-                    {t('Buyer still owes')}: <b>{cur.fmt(owed)}</b>
-                  </>
-                ) : (
-                  <b>✓ {t('Buyer has paid')}</b>
-                )}
-              </span>
             </>
           )}
           {left <= 0 && <span className="pay-badge paid">✓ {t('All sold')}</span>}
@@ -167,7 +156,13 @@ export function TruckSales({ truck }: { truck: Shipment }) {
         >
           <label className="mini-field">
             <span>{t('Date')}</span>
-            <input id={`sale-date-${truck.id}`} className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+            <input
+              id={`sale-date-${truck.id}`}
+              className="input"
+              type="date"
+              value={f.date}
+              onChange={(e) => setF({ ...f, date: e.target.value })}
+            />
           </label>
           <label className="mini-field">
             <span>{t('Boxes sold')}</span>
@@ -229,17 +224,6 @@ export function TruckSales({ truck }: { truck: Shipment }) {
             <span>{t('Note (optional)')}</span>
             <input id={`sale-note-${truck.id}`} className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
           </label>
-          <div className="sale-pay">
-            <span className="field-label">{t('Has the buyer paid?')}</span>
-            <PaymentControl
-              id={`sale-pay-${truck.id}`}
-              due={amount ?? 0}
-              currency={f.currency}
-              status={f.payStatus}
-              paidAmount={f.paidAmount}
-              onChange={(payStatus, paidAmount) => setF({ ...f, payStatus, paidAmount })}
-            />
-          </div>
           {error && <p className="form-error sale-error">{error}</p>}
           <div className="sale-actions">
             <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditing(null)}>
@@ -270,10 +254,8 @@ export function TruckSales({ truck }: { truck: Shipment }) {
                   ) : (
                     <> × {cur.fmt(r.pricePerBox ?? 0, r.currency)}</>
                   )}{' '}
-                  ={' '}
-                  <b>{cur.both(r.amount, r.currency)}</b>
-                  {r.buyer && ` · ${r.buyer}`}{' '}
-                  <PayBadge due={r.amount} currency={r.currency} status={r.payStatus} paidAmount={r.paidAmount} />
+                  = <b>{cur.both(r.amount, r.currency)}</b>
+                  {r.buyer && ` · ${r.buyer}`}
                 </span>
                 {r.note && <small>{r.note}</small>}
               </div>
