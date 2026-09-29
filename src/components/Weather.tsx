@@ -18,6 +18,7 @@ import {
   weatherLook,
   weatherWarnings,
   type DayWeather,
+  type Forecast,
   type PlaceResult,
   type WeatherWarning,
 } from '../lib/weather'
@@ -83,7 +84,9 @@ function WarningList({ warnings }: { warnings: WeatherWarning[] }) {
 function useNameLookup(place: Place | null | undefined, save: (p: Place) => void) {
   const lang = useDB().settings.lang
   useEffect(() => {
-    if (!place || place.source !== 'gps' || !DEFAULT_PLACE_NAMES.includes(place.name)) return
+    // GPS places get a two-level name ("Suzhou, Kunshan"); older ones had one level or a default name.
+    if (!place || place.source !== 'gps' || place.named) return
+    if (!DEFAULT_PLACE_NAMES.includes(place.name) && place.name.includes(',')) return
     let alive = true
     void placeName(place.lat, place.lon, lang).then((name) => {
       if (alive && name) save({ ...place, name })
@@ -162,6 +165,7 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
   const lang = useDB().settings.lang
   const { data, loading, error } = useForecast(place)
   const warnings = data ? weatherWarnings(data) : []
+  const [open, setOpen] = useState<string | null>(null)
   return (
     <>
       <div className="wx-head">
@@ -172,7 +176,7 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
           </p>
           {data ? (
             <p className="wx-now">
-              <span aria-hidden="true">{weatherLook(data.now.code).icon}</span> <b>{deg(data.now.temp)}</b>{' '}
+              <span aria-hidden="true">{weatherLook(data.now.code, data.now.isDay ?? true).icon}</span> <b>{deg(data.now.temp)}</b>{' '}
               {t(weatherLook(data.now.code).label)} · {t('wind {v} km/h', { v: Math.round(data.now.wind) })}
               {data.now.humidity !== null && ` · ${t('humidity {v}%', { v: data.now.humidity })}`}
             </p>
@@ -186,24 +190,40 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
       </div>
 
       {data && (
-        <div className="wx-days" role="list">
-          {data.days.map((d: DayWeather) => {
-            const look = weatherLook(d.code)
-            return (
-              <div key={d.date} className="wx-day" role="listitem" title={t(look.label)}>
-                <span className="wx-day-name">{dayName(d.date, lang, t)}</span>
-                <span className="wx-day-icon" aria-hidden="true">
-                  {look.icon}
-                </span>
-                <span className="wx-day-temp">
-                  <b>{deg(d.tMax)}</b> <span>{deg(d.tMin)}</span>
-                </span>
-                <span className="wx-day-rain">{d.rain >= 0.5 ? `${formatNumber(d.rain, 0)} mm` : ' '}</span>
-                <span className="sr-only">{t(look.label)}</span>
-              </div>
-            )
-          })}
-        </div>
+        <>
+          <div className="wx-days">
+            {data.days.map((d: DayWeather) => {
+              const look = weatherLook(d.code)
+              const on = open === d.date
+              return (
+                <button
+                  key={d.date}
+                  type="button"
+                  className={`wx-day${on ? ' is-open' : ''}`}
+                  aria-expanded={on}
+                  aria-controls={`wx-hours-${place.lat}`}
+                  title={t(look.label)}
+                  onClick={() => setOpen(on ? null : d.date)}
+                >
+                  <span className="wx-day-name">{dayName(d.date, lang, t)}</span>
+                  <span className="wx-day-icon" aria-hidden="true">
+                    {look.icon}
+                  </span>
+                  <span className="wx-day-temp">
+                    <b>{deg(d.tMax)}</b> <span>{deg(d.tMin)}</span>
+                  </span>
+                  <span className="wx-day-rain">{d.rain >= 0.5 ? `${formatNumber(d.rain, 0)} mm` : '\u00a0'}</span>
+                  <span className="sr-only">{t(look.label)}</span>
+                </button>
+              )
+            })}
+          </div>
+          {open ? (
+            <HourlyPanel id={`wx-hours-${place.lat}`} data={data} date={open} onClose={() => setOpen(null)} />
+          ) : (
+            <p className="wx-tip">{t('Tap a day to see it hour by hour.')}</p>
+          )}
+        </>
       )}
 
       {data &&
@@ -214,6 +234,99 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
         ))}
       {error && data && <p className="field-hint">{t('Could not refresh; showing the last forecast.')}</p>}
     </>
+  )
+}
+
+/** One day hour by hour: time, sky, temperature, rain and wind. Today starts from the current hour. */
+function HourlyPanel({ id, data, date, onClose }: { id: string; data: Forecast; date: string; onClose: () => void }) {
+  const t = useT()
+  const lang = useDB().settings.lang
+  const nowHour = data.now.time ? data.now.time.slice(0, 13) : ''
+  let hours = data.hours.filter((h) => h.time.startsWith(date))
+  if (nowHour && date === nowHour.slice(0, 10)) hours = hours.filter((h) => h.time.slice(0, 13) >= nowHour)
+  const temps = hours.map((h) => h.temp)
+  const lo = Math.min(...temps)
+  const hi = Math.max(...temps)
+  return (
+    <div className="wx-hours" id={id}>
+      <div className="wx-hours-head">
+        <b>
+          {dayName(date, lang, t)} · {t('hour by hour')}
+        </b>
+        <button type="button" className="link-btn" onClick={onClose}>
+          {t('Close')}
+        </button>
+      </div>
+      {hours.length === 0 ? (
+        <p className="field-hint">{t('No hourly forecast for this day.')}</p>
+      ) : (
+        <div className="wx-hours-scroll">
+          <table className="wx-hours-table">
+            <caption className="sr-only">{t('Hourly forecast')}</caption>
+            <tbody>
+              <tr>
+                <th scope="row" className="sr-only">
+                  {t('Time')}
+                </th>
+                {hours.map((h) => (
+                  <td key={h.time} className={h.time.slice(0, 13) === nowHour ? 'is-now' : ''}>
+                    {h.time.slice(0, 13) === nowHour ? t('Now') : h.time.slice(11, 16)}
+                  </td>
+                ))}
+              </tr>
+              <tr className="wx-h-icon">
+                <th scope="row" className="sr-only">
+                  {t('Sky')}
+                </th>
+                {hours.map((h) => (
+                  <td key={h.time} title={t(weatherLook(h.code, h.isDay).label)}>
+                    <span aria-hidden="true">{weatherLook(h.code, h.isDay).icon}</span>
+                    <span className="sr-only">{t(weatherLook(h.code, h.isDay).label)}</span>
+                  </td>
+                ))}
+              </tr>
+              <tr className="wx-h-temp">
+                <th scope="row" className="sr-only">
+                  °C
+                </th>
+                {hours.map((h) => {
+                  // small bar: higher temperature sits higher
+                  const pos = hi > lo ? (h.temp - lo) / (hi - lo) : 0.5
+                  return (
+                    <td key={h.time}>
+                      <span className="wx-h-bar" style={{ marginBottom: `${Math.round(pos * 18)}px` }}>
+                        {deg(h.temp)}
+                      </span>
+                    </td>
+                  )
+                })}
+              </tr>
+              <tr className="wx-h-rain">
+                <th scope="row" className="sr-only">
+                  {t('Rain')}
+                </th>
+                {hours.map((h) => (
+                  <td key={h.time}>
+                    {h.rain >= 0.1 ? `${formatNumber(h.rain, 1)} mm` : h.rainChance && h.rainChance >= 20 ? `${h.rainChance}%` : '·'}
+                  </td>
+                ))}
+              </tr>
+              <tr className="wx-h-wind">
+                <th scope="row" className="sr-only">
+                  {t('Wind gusts')}
+                </th>
+                {hours.map((h) => (
+                  <td key={h.time} className={h.gusts >= 45 ? 'is-strong' : ''}>
+                    {Math.round(h.gusts)}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="wx-legend">{t('Rain: mm in that hour, or chance in %. Wind: gusts, km/h.')}</p>
+    </div>
   )
 }
 
@@ -305,7 +418,7 @@ export function PlaceEditor({
               id={`${idPrefix}-name`}
               className="input"
               value={place.name}
-              onChange={(e) => onChange({ ...place, name: e.target.value })}
+              onChange={(e) => onChange({ ...place, name: e.target.value, named: true })}
             />
             <span className="field-hint">
               {formatNumber(place.lat, 5)}, {formatNumber(place.lon, 5)} ·{' '}

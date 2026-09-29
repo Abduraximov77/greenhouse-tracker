@@ -16,12 +16,24 @@ export interface DayWeather {
   gusts: number // km/h
 }
 
+export interface HourWeather {
+  time: string // "2026-09-29T14:00" (local time of the place)
+  temp: number
+  code: number
+  rain: number // mm in that hour
+  rainChance: number | null // %
+  gusts: number // km/h
+  humidity: number | null
+  isDay: boolean
+}
+
 export interface Forecast {
   fetchedAt: number
   lat: number
   lon: number
-  now: { temp: number; code: number; wind: number; humidity: number | null }
+  now: { temp: number; code: number; wind: number; humidity: number | null; time?: string; isDay?: boolean }
   days: DayWeather[]
+  hours: HourWeather[]
 }
 
 export type WarningKind = 'frost' | 'cold' | 'heat' | 'wind' | 'rain' | 'storm' | 'snow'
@@ -34,7 +46,7 @@ export interface WeatherWarning {
   level: 'danger' | 'warn'
 }
 
-const CACHE_KEY = 'agroledger:weather2'
+const CACHE_KEY = 'agroledger:weather3'
 const CACHE_MS = 60 * 60 * 1000 // refresh at most once an hour
 
 const placeKey = (p: { lat: number; lon: number }) => `${p.lat},${p.lon}`
@@ -70,8 +82,9 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
   const url =
     'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${p.lat}&longitude=${p.lon}` +
-    '&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m' +
+    '&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,is_day' +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max' +
+    '&hourly=temperature_2m,weather_code,precipitation,precipitation_probability,wind_gusts_10m,relative_humidity_2m,is_day' +
     '&timezone=auto&forecast_days=7'
   const r = await fetch(url)
   if (!r.ok) throw new Error('weather ' + r.status)
@@ -86,6 +99,17 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
     rainChance: d.precipitation_probability_max?.[i] ?? null,
     gusts: d.wind_gusts_10m_max[i] ?? 0,
   }))
+  const h = j.hourly
+  const hours: HourWeather[] = ((h?.time ?? []) as string[]).map((time, i) => ({
+    time,
+    temp: h.temperature_2m[i],
+    code: h.weather_code[i] ?? 0,
+    rain: h.precipitation?.[i] ?? 0,
+    rainChance: h.precipitation_probability?.[i] ?? null,
+    gusts: h.wind_gusts_10m?.[i] ?? 0,
+    humidity: h.relative_humidity_2m?.[i] ?? null,
+    isDay: (h.is_day?.[i] ?? 1) === 1,
+  }))
   const f: Forecast = {
     fetchedAt: Date.now(),
     lat: p.lat,
@@ -95,8 +119,11 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
       code: j.current.weather_code,
       wind: j.current.wind_speed_10m,
       humidity: j.current.relative_humidity_2m ?? null,
+      time: j.current.time,
+      isDay: (j.current.is_day ?? 1) === 1,
     },
     days,
+    hours,
   }
   writeCache(f)
   return f
@@ -152,9 +179,9 @@ export function weatherWarnings(f: Forecast, days = 3): WeatherWarning[] {
 }
 
 /** WMO weather code → icon and English label (translated through i18n). */
-export function weatherLook(code: number): { icon: string; label: string } {
-  if (code === 0) return { icon: '☀️', label: 'Clear' }
-  if (code <= 2) return { icon: '🌤️', label: 'Partly cloudy' }
+export function weatherLook(code: number, isDay = true): { icon: string; label: string } {
+  if (code === 0) return { icon: isDay ? '☀️' : '🌙', label: 'Clear' }
+  if (code <= 2) return { icon: isDay ? '🌤️' : '☁️', label: 'Partly cloudy' }
   if (code === 3) return { icon: '☁️', label: 'Cloudy' }
   if (code === 45 || code === 48) return { icon: '🌫️', label: 'Fog' }
   if (code >= 51 && code <= 57) return { icon: '🌦️', label: 'Drizzle' }
@@ -209,7 +236,8 @@ export async function searchPlaces(q: string, lang: Lang): Promise<PlaceResult[]
   const out: PlaceResult[] = []
   for (const x of rows) {
     const p: PlaceResult = {
-      name: x.name,
+      // "Baliqchi, Chinobod": the district (or region) in front, so places with the same name differ
+      name: joinArea(x.admin2 || x.admin1, x.name),
       lat: Math.round(x.latitude * 10000) / 10000,
       lon: Math.round(x.longitude * 10000) / 10000,
       region: [x.admin2, x.admin1].filter(Boolean).join(', '),
@@ -233,6 +261,23 @@ export function mapLink(p: { lat: number; lon: number }) {
  * Town name for a GPS point (e.g. "Kunshan"), from BigDataCloud's free client-side lookup (no key).
  * Returns null if it can't be found; the caller keeps a default name then.
  */
+/** "Baliqchi tumani" → "Baliqchi", "Andijon viloyati" → "Andijon", "Suzhou Shi" → "Suzhou". */
+export function shortArea(name: string | undefined | null): string {
+  if (!name) return ''
+  return name
+    .replace(/\s+(tumani|viloyati|shahri|shahar|district|region|province|city|shi|qu|xian|sheng|район|область|город|туман|вилояти)$/i, '')
+    .replace(/^(город|г\.)\s+/i, '')
+    .trim()
+}
+
+/** "Suzhou, Kunshan": the wider area first, then the place, without repeating a name. */
+export function joinArea(parent: string | undefined | null, name: string): string {
+  const a = shortArea(parent)
+  const n = name.trim()
+  if (!a || a.toLowerCase() === n.toLowerCase() || n.toLowerCase().startsWith(a.toLowerCase())) return n
+  return `${a}, ${n}`
+}
+
 export async function placeName(lat: number, lon: number, lang: Lang): Promise<string | null> {
   try {
     const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${lang}`
@@ -244,10 +289,20 @@ export async function placeName(lat: number, lon: number, lang: Lang): Promise<s
       principalSubdivision?: string
       localityInfo?: { administrative?: { name?: string; adminLevel?: number }[] }
     }
-    // Prefer the town/district level (e.g. Kunshan, not the bigger Suzhou; a tuman, not the whole viloyat).
-    const admin = (j.localityInfo?.administrative ?? []).filter((a) => a.name && a.adminLevel && a.adminLevel >= 5 && a.adminLevel <= 6)
-    admin.sort((a, b) => (b.adminLevel ?? 0) - (a.adminLevel ?? 0))
-    const name = (admin[0]?.name || j.city || j.locality || j.principalSubdivision || '').trim()
+    // Two levels, wider first: "Suzhou, Kunshan" (city, county-level city), "Baliqchi, Chinobod" (tuman, village).
+    const admin = (j.localityInfo?.administrative ?? [])
+      .filter((a) => a.name && a.adminLevel && a.adminLevel >= 4)
+      .sort((a, b) => (a.adminLevel ?? 0) - (b.adminLevel ?? 0))
+    const mid = admin.filter((a) => (a.adminLevel ?? 0) >= 5 && (a.adminLevel ?? 0) <= 6)
+    const region = admin.find((a) => a.adminLevel === 4)?.name
+    let name: string
+    if (mid.length >= 2) name = joinArea(mid[0].name, shortArea(mid[mid.length - 1].name))
+    else if (mid.length === 1) {
+      const local = (j.city || j.locality || '').trim()
+      const area = shortArea(mid[0].name)
+      name = local && shortArea(local).toLowerCase() !== area.toLowerCase() ? joinArea(area, local) : joinArea(region, area)
+    } else name = joinArea(region || j.principalSubdivision, (j.city || j.locality || '').trim())
+    name = name.trim()
     return name || null
   } catch {
     return null

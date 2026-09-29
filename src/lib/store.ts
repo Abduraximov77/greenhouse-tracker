@@ -184,6 +184,8 @@ export interface Place {
   source?: 'gps' | 'search'
   /** For GPS: how exact the reading was, in metres (e.g. 12 = within about 12 m). */
   accuracy?: number | null
+  /** True once someone typed the name by hand: it is then never renamed automatically. */
+  named?: boolean
 }
 
 export type Theme = 'day' | 'night' | 'auto'
