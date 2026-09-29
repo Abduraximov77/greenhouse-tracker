@@ -511,4 +511,6 @@ export const uz: Record<string, string> = {
   "Town": "Shaharcha / tuman markazi",
   "Village": "Qishloq",
   "On the map": "Xaritada",
+  "from the phone, within about {m} m": "telefondan, taxminan {m} m aniqlikda",
+  "from search (centre of the place)": "qidiruvdan (joy markazi)",
 }

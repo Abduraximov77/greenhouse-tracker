@@ -511,4 +511,6 @@ export const ru: Record<string, string> = {
   "Town": "Посёлок / райцентр",
   "Village": "Село",
   "On the map": "На карте",
+  "from the phone, within about {m} m": "с телефона, точность около {m} м",
+  "from search (centre of the place)": "из поиска (центр места)",
 }

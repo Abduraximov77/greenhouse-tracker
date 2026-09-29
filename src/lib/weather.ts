@@ -258,13 +258,20 @@ export async function placeName(lat: number, lon: number, lang: Lang): Promise<s
 export const DEFAULT_PLACE_NAMES = ['My farm', 'Моё хозяйство', 'Mening fermam']
 
 /** Ask the phone for its location (the browser shows its own permission question). */
-export function locateDevice(): Promise<{ lat: number; lon: number }> {
+export function locateDevice(): Promise<{ lat: number; lon: number; accuracy: number | null }> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error('unsupported'))
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: Math.round(p.coords.latitude * 10000) / 10000, lon: Math.round(p.coords.longitude * 10000) / 10000 }),
+      (p) =>
+        resolve({
+          // 5 decimals ≈ 1 m, finer than any phone reading
+          lat: Math.round(p.coords.latitude * 100000) / 100000,
+          lon: Math.round(p.coords.longitude * 100000) / 100000,
+          accuracy: Number.isFinite(p.coords.accuracy) ? Math.round(p.coords.accuracy) : null,
+        }),
       (e) => reject(e),
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 },
+      // Precise mode: uses the phone's GPS (outdoors usually within 5–20 m); a fresh reading, not a saved one.
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
     )
   })
 }

@@ -182,6 +182,8 @@ export interface Place {
   lat: number
   lon: number
   source?: 'gps' | 'search'
+  /** For GPS: how exact the reading was, in metres (e.g. 12 = within about 12 m). */
+  accuracy?: number | null
 }
 
 export type Theme = 'day' | 'night' | 'auto'

@@ -260,9 +260,9 @@ export function PlaceEditor({
     setBusy('gps')
     setMsg(null)
     try {
-      const { lat, lon } = await locateDevice()
+      const { lat, lon, accuracy } = await locateDevice()
       const name = (await placeName(lat, lon, db.settings.lang)) ?? (place?.name || t('My farm'))
-      onChange({ name, lat, lon, source: 'gps' })
+      onChange({ name, lat, lon, source: 'gps', accuracy })
       setResults(null)
       setMsg(t('Location saved from your phone.'))
     } catch (e) {
@@ -308,7 +308,12 @@ export function PlaceEditor({
               onChange={(e) => onChange({ ...place, name: e.target.value })}
             />
             <span className="field-hint">
-              {formatNumber(place.lat, 4)}, {formatNumber(place.lon, 4)} · {place.source === 'gps' ? t('from the phone') : t('from search')}{' '}
+              {formatNumber(place.lat, 5)}, {formatNumber(place.lon, 5)} ·{' '}
+              {place.source === 'gps'
+                ? place.accuracy
+                  ? t('from the phone, within about {m} m', { m: formatNumber(place.accuracy, 0) })
+                  : t('from the phone')
+                : t('from search (centre of the place)')}{' '}
               ·{' '}
               <a href={mapLink(place)} target="_blank" rel="noreferrer">
                 {t('On the map')} ↗
