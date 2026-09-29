@@ -30,6 +30,8 @@ export interface HourWeather {
 
 export interface Forecast {
   fetchedAt: number
+  /** The place's time zone offset from UTC, in seconds (e.g. 18000 for Uzbekistan). */
+  utcOffset?: number
   lat: number
   lon: number
   now: { temp: number; code: number; wind: number; humidity: number | null; time?: string; isDay?: boolean }
@@ -104,6 +106,7 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
   }))
   const f: Forecast = {
     fetchedAt: Date.now(),
+    utcOffset: typeof j.utc_offset_seconds === 'number' ? j.utc_offset_seconds : undefined,
     lat: p.lat,
     lon: p.lon,
     now: {

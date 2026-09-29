@@ -573,7 +573,7 @@ export const uz: Record<string, string> = {
   "Rain: about {mm} mm ({from}–{to}).": "Yomg‘ir: taxminan {mm} mm ({from}–{to}).",
   "Rain {n} days in a row.": "Ketma-ket {n} kun yomg‘ir.",
   "Fog ({from}–{to}).": "Tuman ({from}–{to}).",
-  "Damp and mild: humidity over 90% for {n} hours at {tmin}–{tmax}°C.": "Nam va iliq: {tmin}–{tmax}°C da {n} soat davomida namlik 90% dan yuqori.",
+  "Damp and mild: humidity over 90% for {n} hours at {range}°C.": "Nam va iliq: {range}°C da {n} soat davomida namlik 90% dan yuqori.",
   "Warm day, cold night: {max}°C by day, {min}°C at night.": "Kunduzi iliq, kechasi sovuq: kunduzi {max}°C, kechasi {min}°C.",
   "Close the greenhouse in the evening and keep it heated at night; cover young plants.": "Kechqurun issiqxonani yoping, kechasi isitib turing; yosh o‘simliklarni yoping.",
   "Keep the greenhouse closed and heated; remove ice from the roof carefully so the film does not tear.": "Issiqxonani yopiq va isitilgan holda saqlang; plyonka yirtilmasligi uchun tomdagi muzni ehtiyotlab olib tashlang.",

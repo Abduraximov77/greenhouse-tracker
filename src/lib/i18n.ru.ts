@@ -573,7 +573,7 @@ export const ru: Record<string, string> = {
   "Rain: about {mm} mm ({from}–{to}).": "Дождь: около {mm} мм ({from}–{to}).",
   "Rain {n} days in a row.": "Дождь {n} дней подряд.",
   "Fog ({from}–{to}).": "Туман ({from}–{to}).",
-  "Damp and mild: humidity over 90% for {n} hours at {tmin}–{tmax}°C.": "Сыро и тепло: влажность выше 90% в течение {n} ч при {tmin}–{tmax}°C.",
+  "Damp and mild: humidity over 90% for {n} hours at {range}°C.": "Сыро и тепло: влажность выше 90% в течение {n} ч при {range}°C.",
   "Warm day, cold night: {max}°C by day, {min}°C at night.": "Тёплый день, холодная ночь: днём {max}°C, ночью {min}°C.",
   "Close the greenhouse in the evening and keep it heated at night; cover young plants.": "Вечером закройте теплицу и отапливайте ночью; укройте молодые растения.",
   "Keep the greenhouse closed and heated; remove ice from the roof carefully so the film does not tear.": "Держите теплицу закрытой и отапливаемой; осторожно снимайте лёд с крыши, чтобы не порвать плёнку.",

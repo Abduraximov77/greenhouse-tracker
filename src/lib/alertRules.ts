@@ -198,7 +198,7 @@ export const ALERT_RULES: AlertRule[] = [
     name: 'Fungal disease risk',
     when: 'Humidity 90% or more for 6 hours or more, at 10–25 °C.',
     levels: ['warn'],
-    message: 'Damp and mild: humidity over 90% for {n} hours at {tmin}–{tmax}°C.',
+    message: 'Damp and mild: humidity over 90% for {n} hours at {range}°C.',
     action: 'Risk of grey mould and blight: ventilate in the morning, water only at the roots, remove sick leaves.',
   },
   {
@@ -236,16 +236,27 @@ const r0 = (n: number) => Math.round(n)
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 /**
+ * The current hour at the place, "2026-09-30T14", using the clock now (not the time the forecast was fetched,
+ * which can be up to an hour old). Falls back to the forecast's own time.
+ */
+export function placeNowHour(f: Forecast, now = Date.now()): string {
+  if (typeof f.utcOffset === 'number') return new Date(now + f.utcOffset * 1000).toISOString().slice(0, 13)
+  return f.now.time ? f.now.time.slice(0, 13) : ''
+}
+
+/**
  * Alerts for today and tomorrow (so each one comes a day before).
  * Today only counts the hours still ahead.
  */
 export function evaluateAlerts(f: Forecast, days = 2): Alert[] {
   const out: Alert[] = []
-  const nowHour = f.now.time ? f.now.time.slice(0, 13) : ''
+  const nowHour = placeNowHour(f)
+  // days from today at the place (a forecast fetched late last night still starts yesterday)
+  const fDays = nowHour ? f.days.filter((d) => d.date >= nowHour.slice(0, 10)) : f.days
   const add = (rule: RuleId, date: string, level: AlertLevel, vars: Record<string, string | number> = {}) =>
     out.push({ rule, date, level, vars })
 
-  f.days.slice(0, days).forEach((d, i) => {
+  fDays.slice(0, days).forEach((d, i) => {
     const all = (f.hours ?? []).filter((h) => h.time.startsWith(d.date))
     const hours = all.filter((h) => !nowHour || h.time.slice(0, 13) >= nowHour)
     const useHours = all.length > 0
@@ -264,7 +275,7 @@ export function evaluateAlerts(f: Forecast, days = 2): Alert[] {
     if (codes.some((c) => FREEZING.includes(c))) add('freezingRain', d.date, 'danger')
     if (tMin <= 0) add('frost', d.date, 'danger', { t: r0(tMin) })
     else if (tMin <= 4) add('cold', d.date, 'warn', { t: r0(tMin) })
-    if (i === 1 && f.days[0] && f.days[0].tMax - d.tMax >= 8) add('sharpDrop', d.date, 'warn', { d: r0(f.days[0].tMax - d.tMax) })
+    if (i === 1 && fDays[0] && fDays[0].tMax - d.tMax >= 8) add('sharpDrop', d.date, 'warn', { d: r0(fDays[0].tMax - d.tMax) })
 
     // --- heat and dry air ---
     if (tMax >= 35) add('heat', d.date, tMax >= 38 ? 'danger' : 'warn', { t: r0(tMax) })
@@ -296,27 +307,29 @@ export function evaluateAlerts(f: Forecast, days = 2): Alert[] {
     const damp = hours.filter((h) => h.humidity !== null && h.humidity >= 90 && h.temp >= 10 && h.temp <= 25)
     if (damp.length >= 6) {
       const ts = damp.map((h) => h.temp)
-      add('diseaseRisk', d.date, 'warn', { n: damp.length, tmin: r0(Math.min(...ts)), tmax: r0(Math.max(...ts)) })
+      const lo = r0(Math.min(...ts))
+      const hi = r0(Math.max(...ts))
+      add('diseaseRisk', d.date, 'warn', { n: damp.length, range: lo === hi ? String(lo) : `${lo}–${hi}` })
     }
     if (d.tMax - d.tMin >= 18 && d.tMin > 0) add('bigSwing', d.date, 'info', { max: r0(d.tMax), min: r0(d.tMin) })
   })
 
   // Several rainy days in a row, starting today or tomorrow: said once, on the first day.
   let streak = 0
-  for (const d of f.days) {
+  for (const d of fDays) {
     if (d.rain >= 1) streak++
     else break
   }
   let start = 0
-  if (streak < 3 && f.days[0] && f.days[0].rain < 1) {
+  if (streak < 3 && fDays[0] && fDays[0].rain < 1) {
     start = 1
     streak = 0
-    for (const d of f.days.slice(1)) {
+    for (const d of fDays.slice(1)) {
       if (d.rain >= 1) streak++
       else break
     }
   }
-  if (streak >= 3 && f.days[start]) add('longRain', f.days[start].date, 'warn', { n: streak })
+  if (streak >= 3 && fDays[start]) add('longRain', fDays[start].date, 'warn', { n: streak })
 
   const order = { danger: 0, warn: 1, info: 2 }
   return out.sort((a, b) => a.date.localeCompare(b.date) || order[a.level] - order[b.level])

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { setPlace, updateRecord, useDB, type Lang, type Place, type SeasonCrop } from '../lib/store'
 import { cropName } from '../lib/crops'
-import { alertText, evaluateAlerts, RULES_BY_ID, type Alert } from '../lib/alertRules'
+import { alertText, evaluateAlerts, placeNowHour, RULES_BY_ID, type Alert } from '../lib/alertRules'
 import { useT, type T } from '../lib/i18n'
 import { href } from '../lib/router'
 import { formatNumber, todayISO } from '../lib/format'
@@ -53,7 +53,7 @@ function WarningList({ warnings }: { warnings: Alert[] }) {
     <ul className="wx-warnings">
       {warnings.map((w, i) => (
         <li key={i} className={`wx-warning wx-${w.level}`}>
-          <span className="wx-warning-day">{i > 0 && warnings[i - 1].date === w.date ? '' : dayName(w.date, lang, t)}</span>
+          <span className="wx-warning-day">{dayName(w.date, lang, t)}</span>
           <span>
             <span aria-hidden="true">{RULES_BY_ID[w.rule].icon}</span> {alertText(w, t, (n) => formatNumber(n, 1))}
           </span>
@@ -233,7 +233,7 @@ function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
 function HourlyPanel({ id, data, date, onClose }: { id: string; data: Forecast; date: string; onClose: () => void }) {
   const t = useT()
   const lang = useDB().settings.lang
-  const nowHour = data.now.time ? data.now.time.slice(0, 13) : ''
+  const nowHour = placeNowHour(data)
   let hours = data.hours.filter((h) => h.time.startsWith(date))
   if (nowHour && date === nowHour.slice(0, 10)) hours = hours.filter((h) => h.time.slice(0, 13) >= nowHour)
   const temps = hours.map((h) => h.temp)
