@@ -15,6 +15,7 @@ import { formatNumber, todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
 import { href } from '../../lib/router'
 import { useT } from '../../lib/i18n'
+import { cropName } from '../../lib/crops'
 import { PayBadge } from '../../components/PaymentControl'
 import {
   DayHeading,
@@ -108,7 +109,7 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
       <RateMissing show={total.missing} />
       {sales.length > 0 && (
         <p className="field-hint">
-          {t('Truck sales are entered under Export and appear here automatically.')} <a href={exportHref}>{t('Open Export')}</a>
+          {t('{crop} sales are entered under Export and appear here automatically.', { crop: cropName(crop.crop, db.settings.lang) })} <a href={exportHref}>{t('Open Export')}</a>
         </p>
       )}
 
@@ -193,7 +194,7 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
                       <li key={rec.id} className="card record record-income record-sale">
                         <div className="record-main">
                           <span className="record-title">
-                            <span className="kind-badge">{t('Export sale')}</span>{' '}
+                            <span className="kind-badge">{t('{crop} sales', { crop: cropName(crop.crop, db.settings.lang) })}</span>{' '}
                             {truck && <span className="plate">{truck.truckNumber}</span>}{' '}
                             {t('{n} boxes', { n: formatNumber(rec.boxes, 0) })}
                             {rec.kg ? ` · ${formatNumber(rec.kg, 0)} ${t('kg')}` : ''} ·{' '}

@@ -436,4 +436,7 @@ export const uz: Record<string, string> = {
   "Buyer": "Xaridor",
   "Edit in Export": "Eksportda tahrirlash",
   "Not paid: {amount}": "To‘lanmagan: {amount}",
+  "{crop} sales": "{crop} sotuvi",
+  "Income = {crop} sales + money entered under Income.": "Kirim = {crop} sotuvi + “Kirim” bo‘limida yozilgan pullar.",
+  "{crop} sales are entered under Export and appear here automatically.": "{crop} sotuvi “Eksport”da kiritiladi va bu yerda avtomatik ko‘rinadi.",
 }

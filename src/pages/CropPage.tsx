@@ -159,6 +159,7 @@ function Overview({ crop }: { crop: SeasonCrop }) {
   const t = useT()
   const { fmt: money } = useCurrency()
   const tt = cropTotals(db, crop.id)
+  const crop_ = cropName(crop.crop, db.settings.lang)
   return (
     <>
       <SectionHead title={t('Harvest & export')} />
@@ -186,13 +187,13 @@ function Overview({ crop }: { crop: SeasonCrop }) {
       <RateMissing show={tt.incomeMissing} />
       {tt.salesTotal > 0 && (
         <div className="stat-grid">
-          <Stat label={t('Truck sales')} value={money(tt.salesTotal)} />
+          <Stat label={t('{crop} sales', { crop: crop_ })} value={money(tt.salesTotal)} />
           <Stat label={t('Other income')} value={money(tt.otherIncome)} />
           <Stat label={t('Buyers still owe')} value={money(tt.buyersOwe)} tone={tt.buyersOwe > 0.005 ? 'warn' : undefined} />
         </div>
       )}
       <p className="field-hint">
-        {t('Income = truck sales + money entered under Income.')} {t('Profit = income − all costs (workers, expenses, delivery).')}
+        {t('Income = {crop} sales + money entered under Income.', { crop: crop_.toLowerCase() })} {t('Profit = income − all costs (workers, expenses, delivery).')}
       </p>
 
       <SectionHead title={t('Costs')} />

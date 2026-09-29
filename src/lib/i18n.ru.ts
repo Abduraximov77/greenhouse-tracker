@@ -436,4 +436,7 @@ export const ru: Record<string, string> = {
   "Buyer": "Покупатель",
   "Edit in Export": "Изменить в экспорте",
   "Not paid: {amount}": "Не оплачено: {amount}",
+  "{crop} sales": "Продажа: {crop}",
+  "Income = {crop} sales + money entered under Income.": "Приход = продажа ({crop}) + деньги, записанные в «Приходе».",
+  "{crop} sales are entered under Export and appear here automatically.": "Продажа ({crop}) вводится в «Экспорте» и сама появляется здесь.",
 }
