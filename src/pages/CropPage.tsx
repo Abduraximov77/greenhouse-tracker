@@ -5,6 +5,7 @@ import { cropName } from '../lib/crops'
 import { formatNumber } from '../lib/format'
 import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
+import { PlantedDate, WeatherWarningsBanner } from '../components/Weather'
 import { Breadcrumbs, PageHead, RateMissing, SectionHead, Stat } from '../components/ui'
 import { cropTotals } from './cropTotals'
 import { HarvestSection } from './sections/HarvestSection'
@@ -115,6 +116,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
               t('No variety set')}
           </span>
         </a>
+        <PlantedDate key={crop.plantedAt ?? ''} crop={crop} />
         <nav ref={navRef} className="crop-nav" aria-label={t('Crop sections')}>
           {SECTIONS.map((x) => (
             <a
@@ -162,6 +164,7 @@ function Overview({ crop }: { crop: SeasonCrop }) {
   const crop_ = cropName(crop.crop, db.settings.lang)
   return (
     <>
+      <WeatherWarningsBanner />
       <SectionHead title={t('Harvest & export')} />
       <div className="stat-grid">
         <Stat label={t('Boxes harvested')} value={formatNumber(tt.boxesHarvested, 0)} />
@@ -186,9 +189,7 @@ function Overview({ crop }: { crop: SeasonCrop }) {
         />
       </div>
       <RateMissing show={tt.incomeMissing} />
-      <p className="field-hint">
-        {t('Profit = income − all costs (workers, expenses, delivery).')}
-      </p>
+      <p className="field-hint">{t('Profit = income − all costs (workers, expenses, delivery).')}</p>
 
       <SectionHead title={t('Costs')} />
       <div className="stat-grid">
@@ -215,7 +216,6 @@ function Overview({ crop }: { crop: SeasonCrop }) {
       </div>
       <RateMissing show={tt.dealsMissing} />
       <DealsOverview people={tt.dealPeopleList} open={tt.dealsOpen} done={tt.dealsDone} />
-
     </>
   )
 }
@@ -272,5 +272,9 @@ function Owed({ n, of }: { n: number; of: number }) {
   const t = useT()
   const { fmt } = useCurrency()
   if (of <= 0.005) return null
-  return n > 0.005 ? <span className="text-owed">{t('Not paid: {amount}', { amount: fmt(n) })}</span> : <span className="stat-paid">✓ {t('Paid')}</span>
+  return n > 0.005 ? (
+    <span className="text-owed">{t('Not paid: {amount}', { amount: fmt(n) })}</span>
+  ) : (
+    <span className="stat-paid">✓ {t('Paid')}</span>
+  )
 }

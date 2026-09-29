@@ -170,6 +170,16 @@ export interface Settings {
   ratesDate?: string | null
   /** Screen look: day (light), night (dark) or follow the phone/computer. */
   theme: Theme
+  /** Where the farm is: used for the weather forecast and warnings. */
+  place?: Place | null
+}
+
+/** A place on the map: from the phone's GPS or picked by name. */
+export interface Place {
+  name: string
+  lat: number
+  lon: number
+  source?: 'gps' | 'search'
 }
 
 export type Theme = 'day' | 'night' | 'auto'
@@ -627,6 +637,10 @@ export function setCurrency(currency: string) {
 
 export function setTheme(theme: Theme) {
   commit({ ...db, settings: { ...db.settings, theme } })
+}
+
+export function setPlace(place: Place | null) {
+  commit({ ...db, settings: { ...db.settings, place } })
 }
 
 export function setLang(lang: Lang) {

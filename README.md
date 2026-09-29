@@ -4,7 +4,7 @@ A website for tracking everything that happens in our family greenhouse.
 Built as a website first, designed so it can become a phone app later.
 
 ## What's here so far
-- **Seasons**: 2026–2027, 2027–2028, and add more
+- **Seasons**: 2026, 2027, and add more
 - **Crops**: search and add crops to a season (or add your own)
 - For each crop (tabs):
   - **Workers**: each day worked/day off, daily salary + boxes prepared × pay per box, paid / partly / not paid, pay summary with amounts still owed.
@@ -21,6 +21,9 @@ Built as a website first, designed so it can become a phone app later.
 - **Currencies**: USD, UZS and RUB always available in entries, exchange rates and the converter.
 - **Exchange rates**: official rates of the Central Bank of Uzbekistan (cbu.uz). The bank's feed can't be read from a browser, so `scripts/fetch-cbu-rates.mjs` fetches it while the site is built and publishes it as `rates.json`; the deploy workflow also runs on a schedule (5 times a day) to keep it current. If it is missing, the app falls back to open.er-api.com. Rates typed in by hand in Settings are kept until "Get Central Bank rate" is pressed.
 - **Day / night screen** (Settings): light, dark, or automatic (follows the device).
+- **Farm location** (Settings): from the phone's GPS (the browser asks permission) or by searching a town/district name. Only the place is saved.
+- **Weather** (first page): now, the next 7 days (max/min °C, rain mm) and greenhouse warnings for the next 3 days — frost (≤0 °C), cold night (≤4 °C), heat (≥35 °C), strong wind (gusts ≥45 km/h), heavy rain (≥10 mm), thunderstorm/hail, snow — each with what to do. The warnings also show at the top of each crop's Overview. Data from Open-Meteo (no key; free plan is for non-commercial use), cached for an hour.
+- **Planting date**: set when adding a crop or later in the crop's side panel; shows "Day N" since planting (used later for the AI daily advice).
   - **Expenses**: everything bought or paid for (you type what it was: seedlings, fertilizer, fuel…),
     with quantity, amount and paid / partly / not paid
   - **Harvest**: boxes per day, including the boxes entered for workers, plus any other boxes

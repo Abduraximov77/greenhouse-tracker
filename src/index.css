@@ -1442,3 +1442,86 @@ a.btn { text-decoration: none; }
 :root:not([data-theme='night']) { --part-soft: #fbe3a4; --part: #7a4f00; }
 .stat-note { font-size: 0.82rem; font-weight: 600; }
 .stat-paid { color: var(--good); }
+
+/* ---------- Weather, location, planting date ---------- */
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.wx-card { padding: 14px 16px; margin-bottom: 18px; }
+.wx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.wx-title { margin: 0; font-weight: 600; }
+.wx-now { margin: 4px 0 0; color: var(--muted); }
+.wx-now b { color: var(--text); font-size: 1.35rem; }
+.wx-place-link { font-size: 0.9rem; white-space: nowrap; }
+.wx-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(66px, 1fr));
+  position: relative;
+  gap: 6px;
+  margin-top: 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.wx-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.wx-day:first-child { border-color: var(--brand); background: var(--brand-soft); }
+.wx-day-name { color: var(--muted); white-space: nowrap; }
+.wx-day-icon { font-size: 1.4rem; line-height: 1.2; }
+.wx-day-temp { white-space: nowrap; }
+.wx-day-temp b { font-size: 1rem; }
+.wx-day-temp span { color: var(--muted); }
+.wx-day-rain { color: #1d6fa5; font-size: 0.8rem; }
+:root[data-theme='night'] .wx-day-rain { color: #7cc0ee; }
+.wx-warnings { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.wx-warning {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border-left: 4px solid var(--warn);
+  background: var(--warn-soft);
+}
+.wx-warning.wx-danger { border-left-color: var(--danger); }
+.wx-warning-day { font-weight: 600; white-space: nowrap; min-width: 4.5em; }
+@media (max-width: 560px) {
+  .wx-warning { flex-direction: column; gap: 2px; }
+  .wx-warning-day:empty { display: none; }
+}
+.wx-ok { margin: 10px 0 0; color: var(--good); font-size: 0.92rem; }
+.wx-banner { border-color: var(--warn); }
+.wx-empty { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.wx-empty > div { flex: 1 1 240px; }
+.wx-empty .field-hint { margin: 2px 0 0; }
+.wx-empty-icon { font-size: 2rem; }
+
+.loc-saved { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.loc-saved > div { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.loc-saved > span { font-size: 1.4rem; line-height: 2.2; }
+.loc-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.loc-search { display: flex; gap: 8px; flex: 1 1 280px; }
+.loc-search .input { flex: 1; min-width: 0; }
+.loc-results { margin-top: 8px; }
+
+.planted { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 10px; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+.planted-day { font-weight: 600; color: var(--brand); font-size: 0.95rem; }
+.planted-date { color: var(--muted); }
+.planted-edit { gap: 6px; }
+.planted-btns { display: flex; gap: 6px; justify-content: flex-end; }

@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { removeRecord, seasonLabel, setCurrency, setLang, setRates, setTheme, useDB, type Lang, type Theme } from '../lib/store'
 import { cropName } from '../lib/crops'
 import { ConfirmDelete } from '../components/ConfirmDelete'
 import { CURRENCIES, formatDateTime, formatNumber } from '../lib/format'
 import { convert, fetchRatesOnline, formatMoney } from '../lib/money'
 import { LANGS, useT } from '../lib/i18n'
+import { LocationSettings } from '../components/Weather'
+import { usePath } from '../lib/router'
 import { Breadcrumbs, Field, PageHead, SectionHead, num, str } from '../components/ui'
 
 /** Every currency used anywhere in the saved records. */
@@ -21,6 +23,11 @@ export function SettingsPage() {
   const t = useT()
   const s = db.settings
   const others = useUsedCurrencies().filter((c) => c !== 'USD')
+  const path = usePath()
+  // Opened from "Set location": scroll to that block.
+  useEffect(() => {
+    if (path[1] === 'location') document.getElementById('location')?.scrollIntoView({ block: 'start' })
+  }, [path[1]])
 
   // Only the rates being typed in right now; every other box shows the saved rate.
   const [draft, setDraft] = useState<Record<string, string>>({})
@@ -62,9 +69,7 @@ export function SettingsPage() {
       <SectionHead title={t('Account')} />
       <div className="card settings-card account-soon">
         <p className="empty-title">{t('Accounts are coming soon')}</p>
-        <p className="field-hint">
-          {t('Signing in and sharing the same records with your family will be set up here.')}
-        </p>
+        <p className="field-hint">{t('Signing in and sharing the same records with your family will be set up here.')}</p>
       </div>
 
       <SectionHead title={t('General')} />
@@ -113,10 +118,15 @@ export function SettingsPage() {
                 </button>
               ))}
             </div>
-            <span className="field-hint">{t('Night makes the screen dark, easier on the eyes in the evening. Automatic follows your phone or computer.')}</span>
+            <span className="field-hint">
+              {t('Night makes the screen dark, easier on the eyes in the evening. Automatic follows your phone or computer.')}
+            </span>
           </div>
         </div>
       </div>
+
+      <SectionHead title={t('Farm location')} />
+      <LocationSettings />
 
       <SectionHead title={t('Exchange rate')} />
       <div className="card settings-card">
@@ -227,7 +237,10 @@ export function SettingsPage() {
                   <ConfirmDelete
                     label={t('Delete season')}
                     question={t('Delete the {season} season?', { season: seasonLabel(season) })}
-                    details={t('Its {n} crops and all their records (expenses, worker days, harvest, export) will be deleted. Workers stay.', { n: crops.length })}
+                    details={t(
+                      'Its {n} crops and all their records (expenses, worker days, harvest, export) will be deleted. Workers stay.',
+                      { n: crops.length },
+                    )}
                     onDelete={() => removeRecord('seasons', season.id)}
                   />
                 </div>

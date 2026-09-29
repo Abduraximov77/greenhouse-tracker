@@ -4,6 +4,7 @@ import { href } from '../lib/router'
 import { cropName } from '../lib/crops'
 import { useT } from '../lib/i18n'
 import { FormCard, Field, PageHead } from '../components/ui'
+import { WeatherCard } from '../components/Weather'
 
 export function SeasonsPage() {
   const db = useDB()
@@ -44,12 +45,17 @@ export function SeasonsPage() {
         }
       />
 
+      <WeatherCard />
+
       {adding && (
-        <FormCard title={t('New season')} submitLabel={t('Create season')} onCancel={() => setAdding(false)} onSubmit={submit} error={error}>
-          <Field
-            label={t('Season year')}
-            hint={t('Creates the {season} season', { season: year || '…' })}
-          >
+        <FormCard
+          title={t('New season')}
+          submitLabel={t('Create season')}
+          onCancel={() => setAdding(false)}
+          onSubmit={submit}
+          error={error}
+        >
+          <Field label={t('Season year')} hint={t('Creates the {season} season', { season: year || '…' })}>
             <input
               id="season-year"
               className="input"
@@ -64,15 +70,17 @@ export function SeasonsPage() {
       <div className="season-grid">
         {seasons.map((s) => {
           const crops = db.crops.filter((c) => c.seasonId === s.id)
-          const workerIds = new Set(Object.values(db.attendance).filter((a) => a.seasonId === s.id).map((a) => a.workerId))
+          const workerIds = new Set(
+            Object.values(db.attendance)
+              .filter((a) => a.seasonId === s.id)
+              .map((a) => a.workerId),
+          )
           const status = s.startYear < thisYear ? 'Past' : s.startYear === thisYear ? 'Current' : 'Upcoming'
           return (
             <a key={s.id} className="card season-card" href={href('season', s.id)}>
               <span className={`badge badge-${status.toLowerCase()}`}>{t(status)}</span>
               <span className="season-year">{seasonLabel(s)}</span>
-              <span className="season-meta">
-                {crops.length ? crops.map((c) => cropName(c.crop, lang)).join(', ') : t('No crops yet')}
-              </span>
+              <span className="season-meta">{crops.length ? crops.map((c) => cropName(c.crop, lang)).join(', ') : t('No crops yet')}</span>
               <span className="season-foot">
                 <span>
                   {t('Crops: {n}', { n: crops.length })} · {t('Workers: {n}', { n: workerIds.size })}
