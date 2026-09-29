@@ -22,7 +22,10 @@ export interface SeasonCrop extends Meta {
   crop: string
   variety: string
   areaHa: number | null // growing area in hectares, used for per-hectare calculations
+  /** The day the seedlings were planted in the ground; the care plan counts days from it. */
+  plantedAt?: string | null
 }
+
 
 export interface Harvest extends Meta {
   cropId: ID
