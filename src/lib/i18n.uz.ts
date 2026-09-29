@@ -428,4 +428,7 @@ export const uz: Record<string, string> = {
   "Price per kg": "Bir kg narxi",
   "Only {n} kg are left on this truck.": "Bu mashinada faqat {n} kg qolgan.",
   "Weight sold": "Sotilgan og‘irlik",
+  "from the scale": "tarozidan",
+  "Left on the truck: {kg} kg": "Mashinada qoldi: {kg} kg",
+  "Type the real weight": "Haqiqiy og‘irlikni yozing",
 }

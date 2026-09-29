@@ -38,16 +38,13 @@ export function TruckSales({ truck }: { truck: Shipment }) {
   const kgPerBox = truckKg && truck.boxes ? truckKg / truck.boxes : null
   const soldKg = sales.reduce((a, r) => a + (r.kg ?? 0), 0)
   const leftKg = truckKg !== null ? Math.max(0, truckKg - soldKg) : null
-  const kgFor = (b: number) => (kgPerBox ? String(Math.round(b * kgPerBox)) : '')
-  // Once the kg is typed by hand, changing the boxes no longer changes it.
-  const [kgTouched, setKgTouched] = useState(false)
+  // Boxes don't all weigh the same: the weight is always typed in (from the scale). The box average is only a guide.
   const total = cur.sum(sales.map((r) => ({ amount: r.amount, currency: r.currency })))
   const received = cur.sum(sales.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })))
   const owed = total.total - received.total
 
   function open(rec?: Sale) {
     setError(null)
-    setKgTouched(!!rec)
     const last = allSales[0]
     setF(
       rec
@@ -65,8 +62,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
         : {
             date: todayISO(),
             boxes: left > 0 ? String(left) : '',
-            // The rest of the load: exact remaining kg if all remaining boxes are sold.
-            kg: leftKg !== null ? String(Math.round(leftKg)) : '',
+            kg: '',
             price: str(last?.pricePerKg ?? null),
             currency: last?.currency ?? 'USD',
             buyer: sales[0]?.buyer ?? '',
@@ -182,8 +178,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               value={f.boxes}
               placeholder={String(canSell)}
               onChange={(e) => {
-                const b = num(e.target.value)
-                setF({ ...f, boxes: e.target.value, kg: !kgTouched && b !== null && kgPerBox ? kgFor(b) : f.kg })
+                setF({ ...f, boxes: e.target.value })
               }}
             />
           </label>
@@ -194,12 +189,12 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               className="input"
               inputMode="decimal"
               value={f.kg}
-              onChange={(e) => {
-                setKgTouched(true)
-                setF({ ...f, kg: e.target.value })
-              }}
+              placeholder={boxes && kgPerBox ? `≈ ${Math.round(boxes * kgPerBox)}` : t('from the scale')}
+              onChange={(e) => setF({ ...f, kg: e.target.value })}
             />
-            {kgPerBox && <small className="mini-hint">{t('≈ {kg} kg per box', { kg: formatNumber(kgPerBox, 2) })}</small>}
+            <small className="mini-hint">
+              {leftKg !== null ? t('Left on the truck: {kg} kg', { kg: formatNumber(leftKg, 0) }) : t('Type the real weight')}
+            </small>
           </label>
           <label className="mini-field sale-price">
             <span>{t('Price per kg')}</span>

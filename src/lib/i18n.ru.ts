@@ -428,4 +428,7 @@ export const ru: Record<string, string> = {
   "Price per kg": "Цена за кг",
   "Only {n} kg are left on this truck.": "В этой машине осталось только {n} кг.",
   "Weight sold": "Продано по весу",
+  "from the scale": "по весам",
+  "Left on the truck: {kg} kg": "Осталось в машине: {kg} кг",
+  "Type the real weight": "Введите фактический вес",
 }
