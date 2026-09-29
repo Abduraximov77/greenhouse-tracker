@@ -36,14 +36,31 @@ export interface Forecast {
   hours: HourWeather[]
 }
 
-export type WarningKind = 'frost' | 'cold' | 'heat' | 'wind' | 'rain' | 'storm' | 'snow'
+export type WarningKind = 'frost' | 'cold' | 'heat' | 'wind' | 'rain' | 'lightRain' | 'storm' | 'snow'
 
 export interface WeatherWarning {
   kind: WarningKind
   date: string
   /** Main value for the message (°C, km/h or mm). */
   value: number
-  level: 'danger' | 'warn'
+  level: 'danger' | 'warn' | 'info'
+  /** For rain: the hours it is expected, e.g. "15:00" to "19:00" (place's local time). */
+  from?: string
+  to?: string
+}
+
+/** Rain still to come on a day (today: only from the current hour on) and the hours it falls. */
+function rainAhead(f: Forecast, date: string) {
+  const nowHour = f.now.time ? f.now.time.slice(0, 13) : ''
+  const hours = (f.hours ?? []).filter((h) => h.time.startsWith(date) && (!nowHour || h.time.slice(0, 13) >= nowHour))
+  const wet = hours.filter((h) => h.rain >= 0.1)
+  if (!hours.length) return null
+  return {
+    mm: Math.round(wet.reduce((a, h) => a + h.rain, 0) * 10) / 10,
+    from: wet[0]?.time.slice(11, 16),
+    // the rain hour itself counts, so it ends an hour after the last wet hour starts
+    to: wet.length ? `${String((Number(wet[wet.length - 1].time.slice(11, 13)) + 1) % 24).padStart(2, '0')}:00` : undefined,
+  }
 }
 
 const CACHE_KEY = 'agroledger:weather3'
@@ -174,7 +191,14 @@ export function weatherWarnings(f: Forecast, days = 2): WeatherWarning[] {
     else if (d.gusts >= 45) out.push({ kind: 'wind', date: d.date, value: d.gusts, level: 'warn' })
     if ([95, 96, 99].includes(d.code)) out.push({ kind: 'storm', date: d.date, value: d.rain, level: d.code === 95 ? 'warn' : 'danger' })
     else if ([71, 73, 75, 77, 85, 86].includes(d.code)) out.push({ kind: 'snow', date: d.date, value: d.rain, level: 'warn' })
-    else if (d.rain >= 10) out.push({ kind: 'rain', date: d.date, value: d.rain, level: d.rain >= 25 ? 'danger' : 'warn' })
+    else {
+      // Any rain is worth knowing in a greenhouse (vents, spraying, work outside); heavy rain is a warning.
+      const ahead = rainAhead(f, d.date)
+      const mm = ahead ? ahead.mm : d.rain
+      const when = ahead && ahead.from ? { from: ahead.from, to: ahead.to } : {}
+      if (mm >= 10) out.push({ kind: 'rain', date: d.date, value: mm, level: mm >= 25 ? 'danger' : 'warn', ...when })
+      else if (mm >= 0.3) out.push({ kind: 'lightRain', date: d.date, value: mm, level: 'info', ...when })
+    }
   }
   return out
 }

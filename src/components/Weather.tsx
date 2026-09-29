@@ -44,6 +44,11 @@ const KIND_LABEL = { capital: 'City (regional centre)', city: 'City', town: 'Tow
 
 const deg = (n: number) => `${Math.round(n)}°`
 
+/** " (15:00–19:00)" when the rain hours are known. */
+function rainHours(w: WeatherWarning, t: T) {
+  return w.from && w.to ? ' ' + t('({from}–{to})', { from: w.from, to: w.to }) : ''
+}
+
 /** What to do about each kind of weather in a greenhouse. */
 function warningText(w: WeatherWarning, t: T) {
   const v = Math.round(w.value)
@@ -57,7 +62,12 @@ function warningText(w: WeatherWarning, t: T) {
     case 'wind':
       return t('Strong wind, gusts up to {v} km/h. Close vents and tie down the film.', { v })
     case 'rain':
-      return t('Heavy rain, {v} mm. Check the film and drains, close vents.', { v })
+      return t('Heavy rain, {v} mm. Check the film and drains, close vents.', { v }) + rainHours(w, t)
+    case 'lightRain':
+      return (
+        t('Rain expected, about {v} mm. Close vents before it starts; do not spray in the rain.', { v: formatNumber(w.value, 1) }) +
+        rainHours(w, t)
+      )
     case 'storm':
       return t('Thunderstorm, hail is possible. Secure the film and close vents.')
     case 'snow':
@@ -148,12 +158,13 @@ function PlaceTab({ place, active, onClick }: { place: Place; active: boolean; o
   const { data } = useForecast(place)
   const warn = data ? weatherWarnings(data) : []
   const danger = warn.some((w) => w.level === 'danger')
+  const onlyInfo = warn.every((w) => w.level === 'info')
   return (
     <button type="button" role="tab" aria-selected={active} className={`wx-tab${active ? ' is-on' : ''}`} onClick={onClick}>
       📍 {place.name}
       {warn.length > 0 && (
-        <span className={`wx-tab-dot${danger ? ' wx-tab-danger' : ''}`} title={t('Weather warnings')}>
-          ⚠ {warn.length}
+        <span className={`wx-tab-dot${danger ? ' wx-tab-danger' : onlyInfo ? ' wx-tab-info' : ''}`} title={t('Weather warnings')}>
+          {onlyInfo ? '🌧' : '⚠'} {warn.length}
         </span>
       )}
     </button>

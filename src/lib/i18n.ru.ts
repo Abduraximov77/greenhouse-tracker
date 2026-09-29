@@ -523,4 +523,6 @@ export const ru: Record<string, string> = {
   "Sky": "Небо",
   "Wind gusts": "Порывы ветра",
   "Rain: mm in that hour, or chance in %. Wind: gusts, km/h.": "Дождь: мм за час или вероятность в %. Ветер: порывы, км/ч.",
+  "Rain expected, about {v} mm. Close vents before it starts; do not spray in the rain.": "Ожидается дождь, около {v} мм. Закройте форточки до начала; не опрыскивайте под дождём.",
+  "({from}–{to})": "({from}–{to})",
 }

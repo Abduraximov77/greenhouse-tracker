@@ -523,4 +523,6 @@ export const uz: Record<string, string> = {
   "Sky": "Osmon",
   "Wind gusts": "Shamol kuchi",
   "Rain: mm in that hour, or chance in %. Wind: gusts, km/h.": "Yomg‘ir: shu soatdagi mm yoki ehtimoli %. Shamol: kuchli zarbasi, km/soat.",
+  "Rain expected, about {v} mm. Close vents before it starts; do not spray in the rain.": "Yomg‘ir kutilmoqda, taxminan {v} mm. Boshlanishidan oldin fortochkalarni yoping; yomg‘irda dori sepmang.",
+  "({from}–{to})": "({from}–{to})",
 }
