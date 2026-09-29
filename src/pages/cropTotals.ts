@@ -47,10 +47,10 @@ export function cropTotals(db: DB, cropId: ID) {
   ])
   const owedExpenses = owedOf(expenses.filter((r) => !r.forWorkers).map((r) => owedPart(r.amount, r)))
 
-  // Income = money entered under Income + boxes sold from trucks (whether the buyer has paid yet or not).
+  // Income is only the money entered under Income. Sales from trucks are shown on their own and not added to it.
   const sold = sumIn(sales.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
   const otherIncome = sumIn(incomes.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  const income = { total: otherIncome.total + sold.total, missing: otherIncome.missing || sold.missing }
+  const income = otherIncome
   const totalCost = delivery.total + pay.total + workerExtra.total + spent.total
   const people = dealBalances(deals, to, rates)
 

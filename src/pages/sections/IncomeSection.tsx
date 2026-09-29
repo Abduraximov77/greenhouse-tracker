@@ -1,39 +1,11 @@
 import { useState } from 'react'
-import {
-  addRecord,
-  byDateDesc,
-  groupByDate,
-  removeRecord,
-  updateRecord,
-  useDB,
-  type Income,
-  type Sale,
-  type SeasonCrop,
-} from '../../lib/store'
-import { formatNumber, todayISO } from '../../lib/format'
+import { addRecord, byDateDesc, groupByDate, removeRecord, updateRecord, useDB, type Income, type SeasonCrop } from '../../lib/store'
+import { todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
-import { href } from '../../lib/router'
 import { useT } from '../../lib/i18n'
-import { cropName } from '../../lib/crops'
-import {
-  DayHeading,
-  DeleteButton,
-  Empty,
-  Field,
-  FormCard,
-  MoneyInput,
-  RateMissing,
-  SectionHead,
-  Stamp,
-  Stat,
-  num,
-  str,
-} from '../../components/ui'
+import { DayHeading, DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stamp, Stat, num, str } from '../../components/ui'
 
 type Form = { date: string; source: string; from: string; amount: string; currency: string; note: string }
-
-/** A line on the Income page: money entered here, or a sale from a truck (entered under Export). */
-type Row = { kind: 'income'; date: string; rec: Income } | { kind: 'sale'; date: string; rec: Sale }
 
 /** Kirim: money that came in, with what it was for and who paid. */
 export function IncomeSection({ crop }: { crop: SeasonCrop }) {
@@ -78,18 +50,10 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
     setEditing(null)
   }
 
-  // Truck sales are income too: they are shown here and counted in every total.
-  const sales = db.sales.filter((r) => r.cropId === crop.id)
-  const rows: Row[] = [
-    ...list.map((rec) => ({ kind: 'income' as const, date: rec.date, rec })),
-    ...sales.map((rec) => ({ kind: 'sale' as const, date: rec.date, rec })),
-  ].sort((a, b) => b.date.localeCompare(a.date) || b.rec.createdAt.localeCompare(a.rec.createdAt))
-  const money = (rs: Row[]) => cur.sum(rs.map((r) => ({ amount: r.rec.amount, currency: r.rec.currency })))
-  const total = money(rows)
-  const today = money(rows.filter((r) => r.date === todayISO()))
-  const month = money(rows.filter((r) => r.date.startsWith(todayISO().slice(0, 7))))
-  const truckOf = (id: string) => db.shipments.find((x) => x.id === id)
-  const exportHref = href('season', crop.seasonId, 'crop', crop.id, 'export')
+  const money = (rows: Income[]) => cur.sum(rows.map((r) => ({ amount: r.amount, currency: r.currency })))
+  const total = money(list)
+  const today = money(list.filter((r) => r.date === todayISO()))
+  const month = money(list.filter((r) => r.date.startsWith(todayISO().slice(0, 7))))
 
   return (
     <>
@@ -97,15 +61,9 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Came in today')} value={cur.fmt(today.total)} />
         <Stat label={t('This month')} value={cur.fmt(month.total)} />
         <Stat label={t('This season')} value={cur.fmt(total.total)} tone={total.total > 0 ? 'good' : undefined} />
-        <Stat label={t('Entries')} value={rows.length} />
+        <Stat label={t('Entries')} value={list.length} />
       </div>
       <RateMissing show={total.missing} />
-      {sales.length > 0 && (
-        <p className="field-hint">
-          {t('{crop} sales are entered under Export and appear here automatically.', { crop: cropName(crop.crop, db.settings.lang) })}{' '}
-          <a href={exportHref}>{t('Open Export')}</a>
-        </p>
-      )}
 
       <SectionHead
         title=""
@@ -154,13 +112,7 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
             />
           </Field>
           <Field label={t('From whom (optional)')}>
-            <input
-              id="in-from"
-              className="input"
-              list="income-payers"
-              value={f.from}
-              onChange={(e) => setF({ ...f, from: e.target.value })}
-            />
+            <input id="in-from" className="input" list="income-payers" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} />
             <datalist id="income-payers">
               {payers.map((n) => (
                 <option key={n} value={n} />
@@ -173,62 +125,32 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
         </FormCard>
       )}
 
-      {rows.length === 0 ? (
+      {list.length === 0 ? (
         !editing && <Empty title={t('No income recorded yet')}>{t('Add money that came in: sales, payments, anything received.')}</Empty>
       ) : (
         <div className="day-groups">
-          {groupByDate(rows, (r) => r.date).map(([date, dayRows]) => (
+          {groupByDate(list, (r) => r.date).map(([date, rows]) => (
             <section key={date} className="day-group">
-              <DayHeading date={date} right={<span className="text-income">+ {cur.fmt(money(dayRows).total)}</span>} />
+              <DayHeading date={date} right={<span className="text-income">+ {cur.fmt(money(rows).total)}</span>} />
               <ul className="records">
-                {dayRows.map(({ kind, rec }) => {
-                  if (kind === 'sale') {
-                    const truck = truckOf(rec.shipmentId)
-                    return (
-                      <li key={rec.id} className="card record record-income record-sale">
-                        <div className="record-main">
-                          <span className="record-title">
-                            <span className="kind-badge">{t('{crop} sales', { crop: cropName(crop.crop, db.settings.lang) })}</span>{' '}
-                            {truck && <span className="plate">{truck.truckNumber}</span>}{' '}
-                            {t('{n} boxes', { n: formatNumber(rec.boxes, 0) })}
-                            {rec.kg ? ` · ${formatNumber(rec.kg, 0)} ${t('kg')}` : ''} ·{' '}
-                            <span className="text-income">+ {cur.both(rec.amount, rec.currency)}</span>{' '}
-                          </span>
-                          {rec.buyer && (
-                            <span className="record-sub">
-                              {t('Buyer')}: {rec.buyer}
-                            </span>
-                          )}
-                          {rec.note && <span className="record-sub">{rec.note}</span>}
-                        </div>
-                        <div className="record-actions">
-                          <a className="btn btn-ghost btn-small" href={exportHref}>
-                            {t('Edit in Export')}
-                          </a>
-                        </div>
-                      </li>
-                    )
-                  }
-                  const r = rec
-                  return (
-                    <li key={r.id} className="card record record-income">
-                      <div className="record-main">
-                        <span className="record-title">
-                          {r.source} · <span className="text-income">+ {cur.both(r.amount, r.currency)}</span>
-                        </span>
-                        {r.from && <span className="record-sub">{t('From: {name}', { name: r.from })}</span>}
-                        {r.note && <span className="record-sub">{r.note}</span>}
-                        <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} />
-                      </div>
-                      <div className="record-actions">
-                        <button className="btn btn-ghost btn-small" onClick={() => open(r)}>
-                          {t('Edit')}
-                        </button>
-                        <DeleteButton onDelete={() => removeRecord('incomes', r.id)} />
-                      </div>
-                    </li>
-                  )
-                })}
+                {rows.map((r) => (
+                  <li key={r.id} className="card record record-income">
+                    <div className="record-main">
+                      <span className="record-title">
+                        {r.source} · <span className="text-income">+ {cur.both(r.amount, r.currency)}</span>
+                      </span>
+                      {r.from && <span className="record-sub">{t('From: {name}', { name: r.from })}</span>}
+                      {r.note && <span className="record-sub">{r.note}</span>}
+                      <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} />
+                    </div>
+                    <div className="record-actions">
+                      <button className="btn btn-ghost btn-small" onClick={() => open(r)}>
+                        {t('Edit')}
+                      </button>
+                      <DeleteButton onDelete={() => removeRecord('incomes', r.id)} />
+                    </div>
+                  </li>
+                ))}
               </ul>
             </section>
           ))}

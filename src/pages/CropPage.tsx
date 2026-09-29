@@ -100,7 +100,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
     ]).size,
     export: db.shipments.filter((r) => r.cropId === crop.id).length,
     expenses: db.expenses.filter((r) => r.cropId === crop.id).length,
-    income: db.incomes.filter((r) => r.cropId === crop.id).length + db.sales.filter((r) => r.cropId === crop.id).length,
+    income: db.incomes.filter((r) => r.cropId === crop.id).length,
     deals: db.deals.filter((r) => r.cropId === crop.id).length,
   }
 
@@ -172,6 +172,7 @@ function Overview({ crop }: { crop: SeasonCrop }) {
           tone={tt.boxesInStock < 0 ? 'warn' : tt.boxesInStock > 0 ? 'good' : undefined}
         />
         <Stat label={t('Trucks sent')} value={formatNumber(tt.trucks, 0)} />
+        {tt.salesTotal > 0 && <Stat label={t('{crop} sales', { crop: crop_ })} value={money(tt.salesTotal)} />}
       </div>
 
       <SectionHead title={t('Income and profit')} />
@@ -185,14 +186,8 @@ function Overview({ crop }: { crop: SeasonCrop }) {
         />
       </div>
       <RateMissing show={tt.incomeMissing} />
-      {tt.salesTotal > 0 && (
-        <div className="stat-grid">
-          <Stat label={t('{crop} sales', { crop: crop_ })} value={money(tt.salesTotal)} />
-          <Stat label={t('Other income')} value={money(tt.otherIncome)} />
-        </div>
-      )}
       <p className="field-hint">
-        {t('Income = {crop} sales + money entered under Income.', { crop: crop_.toLowerCase() })} {t('Profit = income − all costs (workers, expenses, delivery).')}
+        {t('Profit = income − all costs (workers, expenses, delivery).')}
       </p>
 
       <SectionHead title={t('Costs')} />
