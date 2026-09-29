@@ -39,6 +39,7 @@ type Form = {
   driverName: string
   driverPhone: string
   boxes: string
+  totalKg: string
   deliveryPrice: string
   currency: string
   payStatus: PayStatus
@@ -70,6 +71,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         driverName: '',
         driverPhone: '',
         boxes: '',
+        totalKg: '',
         deliveryPrice: '',
         currency: allShipments[0]?.currency ?? cur.display,
         payStatus: 'paid',
@@ -85,6 +87,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         driverName: rec.driverName,
         driverPhone: rec.driverPhone,
         boxes: str(rec.boxes),
+        totalKg: str(rec.totalKg ?? null),
         deliveryPrice: str(rec.deliveryPrice),
         currency: rec.currency,
         payStatus: rec.payStatus,
@@ -107,6 +110,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
 
   const boxes = f ? num(f.boxes) : null
   const price = f ? num(f.deliveryPrice) : null
+  const kg = f ? num(f.totalKg) : null
   // Boxes available for this truck (when editing, this truck's own boxes count as available).
   const editingBoxes = editing && editing !== 'new' ? (list.find((r) => r.id === editing)?.boxes ?? 0) : 0
   const available = totals.boxesInStock + editingBoxes
@@ -118,6 +122,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
     if (!f.driverName.trim() && !f.driverPhone.trim()) return setError(t("Enter the driver's name or phone number."))
     if (boxes === null || boxes <= 0 || !Number.isInteger(boxes)) return setError(t('Enter the number of boxes (a whole number).'))
     if (price === null || price < 0) return setError(t('Enter the delivery price (0 if free).'))
+    if (kg !== null && kg <= 0) return setError(t('Enter the total weight in kg, or leave it empty.'))
     const data = {
       cropId: crop.id,
       date: f.date,
@@ -125,6 +130,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
       driverName: f.driverName.trim(),
       driverPhone: f.driverPhone.trim(),
       boxes,
+      totalKg: kg,
       deliveryPrice: price,
       currency: f.currency,
       payStatus: f.payStatus,
@@ -137,6 +143,10 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
     setEditing(null)
   }
 
+  const exportedKg = list.reduce((a, r) => a + (r.totalKg ?? 0), 0)
+  // "2,5 t" (tons), or kg for small loads.
+  const formatTons = (v: number) => (v >= 1000 ? `${formatNumber(v / 1000, 2)} ${t('t')}` : `${formatNumber(v, 0)} ${t('kg')}`)
+
   const delivery = cur.sum(list.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })))
   const deliveryPaid = cur.sum(list.map((r) => ({ amount: payment(r.deliveryPrice, r.payStatus, r.paidAmount).paid, currency: r.currency })))
 
@@ -146,6 +156,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         <Stat label={t('Boxes in stock')} value={formatNumber(totals.boxesInStock, 0)} tone={totals.boxesInStock < 0 ? 'warn' : undefined} />
         <Stat label={t('Boxes exported')} value={formatNumber(totals.boxesExported, 0)} />
         <Stat label={t('Trucks sent')} value={formatNumber(totals.trucks, 0)} />
+        {exportedKg > 0 && <Stat label={t('Weight sent')} value={formatTons(exportedKg)} />}
         <Stat label={t('Delivery cost')} value={cur.fmt(delivery.total)} />
         <Stat
           label={t('Delivery still to pay')}
@@ -220,6 +231,16 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
           >
             <input id="ex-boxes" className="input" inputMode="numeric" value={f.boxes} onChange={(e) => setF({ ...f, boxes: e.target.value })} />
           </Field>
+          <Field
+            label={t('Total weight, kg (optional)')}
+            hint={
+              kg && kg > 0
+                ? `${formatTons(kg)}${boxes ? ` · ${t('{kg} kg per box', { kg: formatNumber(kg / boxes, 2) })}` : ''}`
+                : t('The whole load, e.g. 2500')
+            }
+          >
+            <input id="ex-kg" className="input" inputMode="decimal" value={f.totalKg} onChange={(e) => setF({ ...f, totalKg: e.target.value })} />
+          </Field>
           <Field label={t('Delivery price')}>
             <MoneyInput
               id="ex-price"
@@ -281,7 +302,8 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
                   <li key={r.id} className="card record">
                     <div className="record-main">
                       <span className="record-title">
-                        <span className="plate">{r.truckNumber}</span> {t('{n} boxes', { n: formatNumber(r.boxes, 0) })} ·{' '}
+                        <span className="plate">{r.truckNumber}</span> {t('{n} boxes', { n: formatNumber(r.boxes, 0) })}
+                        {r.totalKg ? ` · ${formatNumber(r.totalKg, 0)} ${t('kg')} (${formatTons(r.totalKg)})` : ''} ·{' '}
                         {cur.both(r.deliveryPrice, r.currency)}{' '}
                         <PayBadge due={r.deliveryPrice} currency={r.currency} status={r.payStatus} paidAmount={r.paidAmount} />
                       </span>

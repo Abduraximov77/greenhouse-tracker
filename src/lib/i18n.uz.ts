@@ -415,4 +415,10 @@ export const uz: Record<string, string> = {
   "{total} boxes in {days} working days · average {avg} a day": "{days} ish kunida {total} quti · kuniga o‘rtacha {avg}",
   "Last 30 days": "Oxirgi 30 kun",
   "Latest day": "Oxirgi kun",
+  "Total weight, kg (optional)": "Umumiy og‘irlik, kg (ixtiyoriy)",
+  "The whole load, e.g. 2500": "Butun yuk, masalan 2500",
+  "{kg} kg per box": "bir qutida {kg} kg",
+  "Enter the total weight in kg, or leave it empty.": "Umumiy og‘irlikni kg da kiriting yoki bo‘sh qoldiring.",
+  "t": "t",
+  "Weight sent": "Jo‘natilgan og‘irlik",
 }

@@ -415,4 +415,10 @@ export const ru: Record<string, string> = {
   "{total} boxes in {days} working days · average {avg} a day": "{total} ящиков за {days} рабочих дней · в среднем {avg} в день",
   "Last 30 days": "Последние 30 дней",
   "Latest day": "Последний день",
+  "Total weight, kg (optional)": "Общий вес, кг (необязательно)",
+  "The whole load, e.g. 2500": "Весь груз, напр. 2500",
+  "{kg} kg per box": "{kg} кг на ящик",
+  "Enter the total weight in kg, or leave it empty.": "Укажите общий вес в кг или оставьте пустым.",
+  "t": "т",
+  "Weight sent": "Отправлено по весу",
 }

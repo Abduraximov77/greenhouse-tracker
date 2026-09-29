@@ -40,6 +40,8 @@ export interface Shipment extends Meta {
   driverName: string
   driverPhone: string
   boxes: number
+  /** Total weight of the load in kg (optional), e.g. 2500 for 444 boxes. */
+  totalKg?: number | null
   deliveryPrice: number
   currency: string
   payStatus: PayStatus
