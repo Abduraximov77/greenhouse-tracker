@@ -147,7 +147,7 @@ export function AssistantSettings() {
             {t('In a terminal, in the folder where you saved it, run:')}
             <pre>node agroledger-helper.mjs</pre>
           </li>
-          <li>{t('It prints a link. Open it on each of your devices (phone, laptop). Keep the link private.')}</li>
+          <li>{t('It prints a link. Open it once on each of your devices (phone, laptop); after restarts they find the helper by themselves. Keep the link private.')}</li>
           <li>{t('Leave the helper window open. Answers come only while your computer is on and online.')}</li>
         </ol>
         <p className="field-hint">

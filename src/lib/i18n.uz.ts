@@ -665,7 +665,7 @@ export const uz: Record<string, string> = {
   "To use it from your phone too, install cloudflared (free):": "Telefondan ham foydalanish uchun cloudflared’ni o‘rnating (bepul):",
   "Download the helper:": "Yordamchi dasturni yuklab oling:",
   "In a terminal, in the folder where you saved it, run:": "Terminalda, fayl saqlangan papkada ishga tushiring:",
-  "It prints a link. Open it on each of your devices (phone, laptop). Keep the link private.": "U havola chiqaradi. Uni har bir qurilmangizda oching (telefon, noutbuk). Havolani hech kimga bermang.",
+  "It prints a link. Open it once on each of your devices (phone, laptop); after restarts they find the helper by themselves. Keep the link private.": "U havola chiqaradi. Uni har bir qurilmangizda bir marta oching (telefon, noutbuk); qayta ishga tushganda ular yordamchini o‘zi topadi. Havolani hech kimga bermang.",
   "Leave the helper window open. Answers come only while your computer is on and online.": "Yordamchi oynasini yopmang. Javoblar faqat kompyuter yoqiq va internetga ulangan paytda keladi.",
   "Each question is one separate Claude Code run with your account. Photos are sent to your computer and deleted after the answer.": "Har bir savol — hisobingiz bilan alohida Claude Code ishga tushishi. Rasmlar kompyuteringizga yuboriladi va javobdan keyin o‘chiriladi.",
 }

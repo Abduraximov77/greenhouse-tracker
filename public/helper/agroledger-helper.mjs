@@ -287,6 +287,29 @@ function linkFor(base) {
   return `${APP_URL}/#/connect/${code}`
 }
 
+// ---------- address announcement: linked devices find the new address after a restart ----------
+// The address is encrypted with a key made from the secret key, and posted to a private-named topic on
+// ntfy.sh (a free message relay). Only devices that have the secret key can find the topic and read it.
+const NTFY = 'https://ntfy.sh'
+const topic = 'agl-' + crypto.createHash('sha256').update('agroledger-topic:' + KEY).digest('hex').slice(0, 40)
+function sealAddress(u) {
+  const aesKey = crypto.createHash('sha256').update('agroledger-url:' + KEY).digest()
+  const iv = crypto.randomBytes(12)
+  const c = crypto.createCipheriv('aes-256-gcm', aesKey, iv)
+  const body = Buffer.concat([c.update(JSON.stringify({ u, t: Date.now() }), 'utf8'), c.final(), c.getAuthTag()])
+  return Buffer.concat([iv, body]).toString('base64url')
+}
+async function announce(u) {
+  try {
+    const r = await fetch(`${NTFY}/${topic}`, { method: 'POST', body: sealAddress(u), headers: { 'X-Cache': 'yes' } })
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    return true
+  } catch (e) {
+    log('could not share the new address automatically (' + e.message + '); open the new link on your devices instead')
+    return false
+  }
+}
+
 function startTunnel() {
   const probe = spawnSync('cloudflared', ['--version'], { encoding: 'utf8', shell: IS_WIN })
   if (probe.status !== 0) {
@@ -303,10 +326,15 @@ function startTunnel() {
     const m = String(d).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)
     if (m && !shown) {
       shown = true
-      console.log('\n  ✅ Ready for all your devices. Open this link on EACH of your devices (phone, laptop):\n')
-      console.log('  ' + linkFor(m[0]) + '\n')
-      console.log('  Keep it private: anyone with this link can ask through your Claude account.')
-      console.log('  The address changes each time the helper restarts; then open the new link again.\n')
+      const addr = m[0]
+      console.log('\n  ✅ Ready for all your devices.')
+      console.log('  New device? Open this link on it once (phone, laptop):\n')
+      console.log('  ' + linkFor(addr) + '\n')
+      console.log('  Devices you already linked find this new address by themselves — nothing to do on them.')
+      console.log('  Keep the link private: anyone with it can ask through your Claude account.\n')
+      announce(addr)
+      // messages on the relay last about 12 hours, so share the address again every 6 hours
+      setInterval(() => announce(addr), 6 * 60 * 60 * 1000).unref()
     }
   }
   t.stdout.on('data', watch)

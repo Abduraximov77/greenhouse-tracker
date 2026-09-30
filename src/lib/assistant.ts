@@ -88,8 +88,58 @@ export interface HelperHealth {
   waiting: number
 }
 
-export function helperHealth(link: HelperLink) {
-  return call<HelperHealth>(link, '/health')
+/**
+ * After the helper restarts it gets a new address. It posts that address, encrypted with a key made
+ * from the secret key, to a private-named topic on ntfy.sh; linked devices read it from there.
+ */
+async function sha256(text: string) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))
+}
+const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
+function fromB64url(s: string) {
+  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4))
+  return Uint8Array.from(b, (c) => c.charCodeAt(0))
+}
+
+export async function findNewAddress(link: HelperLink): Promise<string | null> {
+  try {
+    const topic = 'agl-' + hex(await sha256('agroledger-topic:' + link.k)).slice(0, 40)
+    const r = await fetch(`https://ntfy.sh/${topic}/json?poll=1&since=24h`)
+    if (!r.ok) return null
+    const lines = (await r.text()).trim().split('\n').filter(Boolean)
+    const key = await crypto.subtle.importKey('raw', await sha256('agroledger-url:' + link.k), 'AES-GCM', false, ['decrypt'])
+    let best: { u: string; t: number } | null = null
+    for (const line of lines) {
+      try {
+        const m = JSON.parse(line) as { event?: string; message?: string }
+        if (m.event !== 'message' || !m.message) continue
+        const raw = fromB64url(m.message)
+        const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(0, 12) }, key, raw.slice(12))
+        const v = JSON.parse(new TextDecoder().decode(plain)) as { u: string; t: number }
+        if (/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(v.u) && (!best || v.t > best.t)) best = v
+      } catch {
+        // not ours or damaged: skip
+      }
+    }
+    return best?.u ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Check the helper; if the saved address no longer answers, look up its new address and save it. */
+export async function helperHealth(link: HelperLink): Promise<HelperHealth> {
+  try {
+    return await call<HelperHealth>(link, '/health')
+  } catch (e) {
+    if (/key/.test((e as Error).message)) throw e
+    const u = await findNewAddress(link)
+    if (!u || u === link.u) throw e
+    const moved = { ...link, u }
+    const h = await call<HelperHealth>(moved, '/health')
+    setHelperLink(moved)
+    return h
+  }
 }
 
 export interface AskInput {
@@ -110,7 +160,16 @@ export interface JobState {
 
 /** Send one question, then check back every few seconds until the answer is ready. */
 export async function askHelper(link: HelperLink, input: AskInput, onState: (s: JobState) => void, signal?: AbortSignal) {
-  const { id } = await call<{ id: string }>(link, '/ask', { method: 'POST', body: JSON.stringify(input) })
+  let { id } = { id: '' }
+  try {
+    ;({ id } = await call<{ id: string }>(link, '/ask', { method: 'POST', body: JSON.stringify(input) }))
+  } catch (e) {
+    // the helper may have restarted with a new address: find it and try once more
+    if (/key/.test((e as Error).message)) throw e
+    await helperHealth(link)
+    link = current ?? link
+    ;({ id } = await call<{ id: string }>(link, '/ask', { method: 'POST', body: JSON.stringify(input) }))
+  }
   const started = Date.now()
   for (;;) {
     if (signal?.aborted) throw new Error('cancelled')

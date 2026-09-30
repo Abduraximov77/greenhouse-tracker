@@ -665,7 +665,7 @@ export const ru: Record<string, string> = {
   "To use it from your phone too, install cloudflared (free):": "Чтобы пользоваться и с телефона, установите cloudflared (бесплатно):",
   "Download the helper:": "Скачайте помощник:",
   "In a terminal, in the folder where you saved it, run:": "В терминале, в папке с файлом, выполните:",
-  "It prints a link. Open it on each of your devices (phone, laptop). Keep the link private.": "Он покажет ссылку. Откройте её на каждом своём устройстве (телефон, ноутбук). Никому её не давайте.",
+  "It prints a link. Open it once on each of your devices (phone, laptop); after restarts they find the helper by themselves. Keep the link private.": "Он покажет ссылку. Откройте её один раз на каждом устройстве (телефон, ноутбук); после перезапуска они сами найдут помощника. Никому её не давайте.",
   "Leave the helper window open. Answers come only while your computer is on and online.": "Не закрывайте окно помощника. Ответы приходят, только пока компьютер включён и в сети.",
   "Each question is one separate Claude Code run with your account. Photos are sent to your computer and deleted after the answer.": "Каждый вопрос — отдельный запуск Claude Code с вашим аккаунтом. Фото отправляются на ваш компьютер и удаляются после ответа.",
 }
