@@ -226,6 +226,12 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
                 {a.photos > 0 && <span className="assist-meta"> · 📷 {a.photos}</span>}
               </p>
               <Markdown text={a.answer} />
+              <p className="assist-caution">
+                ⚠{' '}
+                {t(
+                  'AI answer. Before spraying, buying or other important decisions, check with an agronomist and follow the product label.',
+                )}
+              </p>
               <div className="assist-foot">
                 <span className="assist-meta">{formatDateTime(a.createdAt)}</span>
                 <span className="assist-foot-actions">
