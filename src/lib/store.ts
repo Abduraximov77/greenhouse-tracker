@@ -193,6 +193,19 @@ export type Theme = 'day' | 'night' | 'auto'
 /** Where the exchange rates came from: Central Bank of Uzbekistan, another online source, or typed in. */
 export type RatesSource = 'cbu' | 'online' | 'manual'
 
+/** A question to the AI assistant and its answer (asked through the helper on the owner's computer). */
+export interface Answer extends Meta {
+  cropId: ID
+  question: string
+  answer: string
+  /** How many photos were sent (the photos themselves are not kept). */
+  photos: number
+  /** Claude Code's cost estimate for this one question, in USD (with a subscription it is not billed). */
+  costUsd: number | null
+  /** The answer this question followed up on. */
+  followUpOf?: ID | null
+}
+
 export interface DB {
   version: 7
   seasons: Season[]
@@ -203,6 +216,7 @@ export interface DB {
   incomes: Income[]
   deals: Deal[]
   sales: Sale[]
+  answers: Answer[]
   workers: Worker[]
   attendance: Record<string, Attendance> // key: `${cropId}|${workerId}|${date}`
   settings: Settings
@@ -217,6 +231,7 @@ type Collections = {
   incomes: Income
   deals: Deal
   sales: Sale
+  answers: Answer
   workers: Worker
 }
 export type CollectionName = keyof Collections
@@ -245,6 +260,7 @@ function seed(): DB {
     incomes: [],
     deals: [],
     sales: [],
+    answers: [],
     workers: [],
     attendance: {},
     settings: { currency: 'USD', lang: 'en', rates: { USD: 1 }, ratesUpdatedAt: null, ratesSource: null, theme: 'day' },
@@ -501,6 +517,7 @@ function dropCropChildren(d: DB, cropIds: Set<ID>): DB {
       incomes: keep(d.incomes),
       deals: keep(d.deals),
       sales: keep(d.sales),
+      answers: keep(d.answers ?? []),
     },
     (a) => cropIds.has(a.cropId),
   )

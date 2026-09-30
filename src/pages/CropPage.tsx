@@ -14,8 +14,9 @@ import { ExportSection } from './sections/ExportSection'
 import { ExpensesSection } from './sections/ExpensesSection'
 import { IncomeSection } from './sections/IncomeSection'
 import { DealsSection } from './sections/DealsSection'
+import { AssistantSection } from './sections/AssistantSection'
 
-type SectionId = 'overview' | 'workers' | 'expenses' | 'income' | 'deals' | 'harvest' | 'export'
+type SectionId = 'overview' | 'workers' | 'expenses' | 'income' | 'deals' | 'harvest' | 'export' | 'assistant'
 
 const SECTIONS: { id: SectionId; label: string; sub: string }[] = [
   { id: 'overview', label: 'Overview', sub: 'Summary of this crop' },
@@ -25,6 +26,7 @@ const SECTIONS: { id: SectionId; label: string; sub: string }[] = [
   { id: 'deals', label: 'Give & take', sub: 'Money or products given to and taken from other people' },
   { id: 'harvest', label: 'Harvest', sub: 'Packed boxes ready for export' },
   { id: 'export', label: 'Export', sub: 'Trucks leaving with boxes' },
+  { id: 'assistant', label: 'Assistant', sub: 'Ask about this crop, with photos' },
 ]
 
 /** Line icons for the crop sections. */
@@ -62,6 +64,12 @@ function SectionIcon({ id }: { id: SectionId }) {
       )}
       {id === 'deals' && <path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5" {...p} />}
       {id === 'harvest' && <path d="M3 9l9-5 9 5v9l-9 4-9-4zM3 9l9 4 9-4M12 13v9" {...p} />}
+      {id === 'assistant' && (
+        <>
+          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z" {...p} />
+          <path d="M9 9.5h.01M12 9.5h.01M15 9.5h.01" {...p} strokeWidth={2.6} />
+        </>
+      )}
       {id === 'export' && (
         <>
           <path d="M2 6h11v10H2zM13 9h4.5l3.5 3.5V16h-8z" {...p} />
@@ -103,6 +111,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
     expenses: db.expenses.filter((r) => r.cropId === crop.id).length,
     income: db.incomes.filter((r) => r.cropId === crop.id).length,
     deals: db.deals.filter((r) => r.cropId === crop.id).length,
+    assistant: db.answers.filter((r) => r.cropId === crop.id).length,
   }
 
   return (
@@ -152,6 +161,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
         {active === 'deals' && <DealsSection crop={crop} />}
         {active === 'harvest' && <HarvestSection season={season} crop={crop} />}
         {active === 'export' && <ExportSection crop={crop} />}
+        {active === 'assistant' && <AssistantSection crop={crop} />}
       </div>
     </div>
   )

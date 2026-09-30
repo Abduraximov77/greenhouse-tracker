@@ -11,6 +11,7 @@ import { SeasonPage } from './pages/SeasonPage'
 import { CropPage } from './pages/CropPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AlertGuidePage } from './pages/AlertGuidePage'
+import { ConnectPage, LinkedPage } from './pages/AssistantSetup'
 import { fetchRatesOnline, formatMoney } from './lib/money'
 
 // How long the loading screen shows at minimum, so it doesn't just flash.
@@ -175,6 +176,8 @@ function Routes() {
   if (!first) return <SeasonsPage />
   if (first === 'settings') return <SettingsPage />
   if (first === 'alerts') return <AlertGuidePage />
+  if (first === 'connect') return <ConnectPage code={seasonId ?? ''} />
+  if (first === 'linked') return <LinkedPage />
 
   const season = first === 'season' ? db.seasons.find((s) => s.id === seasonId) : undefined
   if (!season) return <NotFound />

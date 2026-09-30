@@ -53,7 +53,7 @@ function readAll(): Record<string, Forecast> {
   }
 }
 
-function readCache(p: Place): Forecast | null {
+export function readCachedForecast(p: Place): Forecast | null {
   return readAll()[placeKey(p)] ?? null
 }
 
@@ -128,14 +128,14 @@ export async function fetchForecast(p: Place): Promise<Forecast> {
 export function useForecast(place: Place | null | undefined) {
   const key = place ? placeKey(place) : ''
   type S = { key: string; data: Forecast | null; loading: boolean; error: boolean }
-  const [state, setState] = useState<S>(() => ({ key, data: place ? readCache(place) : null, loading: false, error: false }))
+  const [state, setState] = useState<S>(() => ({ key, data: place ? readCachedForecast(place) : null, loading: false, error: false }))
 
   useEffect(() => {
     if (!place) {
       setState({ key, data: null, loading: false, error: false })
       return
     }
-    const cached = readCache(place)
+    const cached = readCachedForecast(place)
     if (cached && Date.now() - cached.fetchedAt < CACHE_MS) {
       setState({ key, data: cached, loading: false, error: false })
       return
@@ -152,7 +152,7 @@ export function useForecast(place: Place | null | undefined) {
   }, [key])
 
   // Right after switching places, never show the previous place's forecast.
-  if (state.key !== key) return { data: place ? readCache(place) : null, loading: !!place, error: false }
+  if (state.key !== key) return { data: place ? readCachedForecast(place) : null, loading: !!place, error: false }
   return state
 }
 
