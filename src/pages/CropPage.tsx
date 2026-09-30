@@ -14,11 +14,13 @@ import { ExportSection } from './sections/ExportSection'
 import { ExpensesSection } from './sections/ExpensesSection'
 import { IncomeSection } from './sections/IncomeSection'
 import { DealsSection } from './sections/DealsSection'
+import { AiSection, AiTodayCard } from '../components/Ai'
 
-type SectionId = 'overview' | 'workers' | 'expenses' | 'income' | 'deals' | 'harvest' | 'export'
+type SectionId = 'overview' | 'ai' | 'workers' | 'expenses' | 'income' | 'deals' | 'harvest' | 'export'
 
 const SECTIONS: { id: SectionId; label: string; sub: string }[] = [
   { id: 'overview', label: 'Overview', sub: 'Summary of this crop' },
+  { id: 'ai', label: 'AI assistant', sub: 'Today’s jobs, questions and weather, answered by Claude' },
   { id: 'workers', label: 'Workers', sub: 'Days worked, boxes prepared and pay' },
   { id: 'expenses', label: 'Expenses', sub: 'What was bought or paid for, by day' },
   { id: 'income', label: 'Income', sub: 'Money that came in, by day' },
@@ -39,6 +41,9 @@ function SectionIcon({ id }: { id: SectionId }) {
           <rect x="3" y="13.5" width="7.5" height="7.5" rx="2" {...p} />
           <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" {...p} />
         </>
+      )}
+      {id === 'ai' && (
+        <path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8zM18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" {...p} />
       )}
       {id === 'workers' && (
         <>
@@ -146,6 +151,7 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
         <PageHead title={t(section.label)} sub={t(section.sub)} />
 
         {active === 'overview' && <Overview crop={crop} />}
+        {active === 'ai' && <AiSection crop={crop} />}
         {active === 'workers' && <WorkersSection crop={crop} />}
         {active === 'expenses' && <ExpensesSection crop={crop} />}
         {active === 'income' && <IncomeSection crop={crop} />}
@@ -166,6 +172,7 @@ function Overview({ crop }: { crop: SeasonCrop }) {
   return (
     <>
       <WeatherWarningsBanner crop={crop} />
+      <AiTodayCard crop={crop} seasonId={crop.seasonId} />
       <SectionHead title={t('Harvest & export')} />
       <div className="stat-grid">
         <Stat label={t('Boxes harvested')} value={formatNumber(tt.boxesHarvested, 0)} />

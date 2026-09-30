@@ -145,7 +145,7 @@ function PlaceTab({ place, active, onClick }: { place: Place; active: boolean; o
   )
 }
 
-function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
+export function PlaceWeather({ place, crops }: { place: Place; crops: string[] }) {
   const t = useT()
   const lang = useDB().settings.lang
   const { data, loading, error } = useForecast(place)

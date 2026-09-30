@@ -6,6 +6,7 @@ import { CURRENCIES, formatDateTime, formatNumber } from '../lib/format'
 import { convert, fetchRatesOnline, formatMoney } from '../lib/money'
 import { LANGS, useT } from '../lib/i18n'
 import { LocationSettings } from '../components/Weather'
+import { AiSettingsCard } from '../components/Ai'
 import { usePath } from '../lib/router'
 import { Breadcrumbs, Field, PageHead, SectionHead, num, str } from '../components/ui'
 
@@ -26,7 +27,7 @@ export function SettingsPage() {
   const path = usePath()
   // Opened from "Set location": scroll to that block.
   useEffect(() => {
-    if (path[1] === 'location') document.getElementById('location')?.scrollIntoView({ block: 'start' })
+    if (path[1] === 'location' || path[1] === 'ai') document.getElementById(path[1])?.scrollIntoView({ block: 'start' })
   }, [path[1]])
 
   // Only the rates being typed in right now; every other box shows the saved rate.
@@ -127,6 +128,9 @@ export function SettingsPage() {
 
       <SectionHead title={t('Farm location')} />
       <LocationSettings />
+
+      <SectionHead title={t('AI assistant')} />
+      <AiSettingsCard />
 
       <SectionHead title={t('Exchange rate')} />
       <div className="card settings-card">

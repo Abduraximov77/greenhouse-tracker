@@ -174,7 +174,23 @@ export interface Settings {
   theme: Theme
   /** Where the farm is: used for the weather forecast and warnings. */
   place?: Place | null
+  /** The AI assistant (Claude through the helper on this computer). */
+  ai?: AiSettings
 }
+
+/** How the app reaches Claude: the AI helper running on this computer (`node ai-helper.mjs`). */
+export interface AiSettings {
+  /** Helper address, e.g. http://127.0.0.1:8787 */
+  url: string
+  /** Pairing code the helper prints when it starts. */
+  code: string
+  /** Let Claude search the internet when it helps (pests, product labels). */
+  webSearch: boolean
+  /** Make today's plan by itself when a crop is opened (once a day). */
+  autoPlan: boolean
+}
+
+export const DEFAULT_AI: AiSettings = { url: 'http://127.0.0.1:8787', code: '', webSearch: false, autoPlan: true }
 
 /** A place on the map: from the phone's GPS or picked by name. */
 export interface Place {
@@ -647,6 +663,10 @@ export function setTheme(theme: Theme) {
 
 export function setPlace(place: Place | null) {
   commit({ ...db, settings: { ...db.settings, place } })
+}
+
+export function setAi(patch: Partial<AiSettings>) {
+  commit({ ...db, settings: { ...db.settings, ai: { ...DEFAULT_AI, ...db.settings.ai, ...patch } } })
 }
 
 export function setLang(lang: Lang) {

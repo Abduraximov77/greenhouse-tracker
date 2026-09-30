@@ -25,6 +25,11 @@ Built as a website first, designed so it can become a phone app later.
 - **Places per crop**: when adding a crop (or later in its side panel) choose where it is — the farm's main place, another saved place, or a new one (GPS or search). E.g. Tomato 5 ha in Kunshan, Cucumber 10 ha in Chirchiq. The first place set becomes the main place (Settings → Farm location, which also lists the other places and their crops).
 - **Weather** (first page): one tab per place (with a ⚠ count), each showing its crops, the weather now and the next 7 days (max/min °C, rain mm). Links to the same spot on weather.com (today, and hour by hour) to compare. Data from Open-Meteo (no key; free plan is for non-commercial use), cached for an hour.
 - **Weather alerts — rules, no AI** (`src/lib/alertRules.ts`, guide page `#/alerts`): 18 rules for film greenhouses — frost, freezing rain, cold night, sharp cooling, heat, hot inside the greenhouse, hot dry wind (garmsel), very dry air, strong wind, thunderstorm, hail, snow, heavy rain, rain, several rainy days, fog, fungal disease risk (humidity ≥90% for ≥6 h at 10–25 °C), big day–night difference. Each alert says what is coming, the hours, and what to do. Checked for today (hours still ahead) and tomorrow, so it comes a day before. The same rules will run on the server for Telegram, so app and Telegram match. Limits are the app's general settings, not official norms.
+- **AI assistant (AI yordamchi)** — answered by Claude through the Claude Code CLI on your own computer (see *Run the AI helper* below):
+  - **Today's jobs** at the top of each crop's Overview: 3–6 jobs with a tick box, made by itself once a day when the crop is opened (can be turned off).
+  - **AI yordamchi** section in the crop menu: the full plan (growth stage, why, feeding doses per 1 ha and for the crop's area, water in m³, sources, a safety note), **Ask** (chat in any language with a photo of a leaf or fruit; an answer can be added to today's jobs) and **Weather** for that crop's place.
+  - Claude gets every record of that crop (area, planting date and day, place, forecast and rule alerts, expenses, harvest per day, worker days as counts, trucks, sales, income, give & take). Worker names, drivers and phone numbers are not sent.
+  - Settings → AI assistant: pairing code, helper address, auto plan on/off, internet search on/off. Plans and chats are kept in the browser (`agroledger:ai1`), separate from the records.
 - **Planting date (Ekilgan sana)**: optional, when adding a crop or later in its side panel; shows "Day N" since planting. The AI assistant will use it as context.
 - **Hour by hour**: tap a day in the weather card to see it by the hour (time, sky, °C, rain mm or chance %, wind gusts; today starts from now). Night hours show a moon.
 - **Place names**: two levels so same-named places differ — "Suzhou, Kunshan", "Baliqchi, Chinobod" (from GPS and from search). A name typed by hand is kept.
@@ -50,6 +55,19 @@ npm install
 npm run dev
 ```
 Then open the address it prints (usually http://localhost:5173).
+
+## Run the AI helper
+The AI helper connects the website to Claude on your computer. It uses your own Claude Code login (no API key) and shows every question and answer in its window.
+
+1. Install [Claude Code](https://claude.com/claude-code) and sign in once by running `claude`.
+2. Download `ai-helper.mjs` (Settings → AI assistant → *Download the AI helper*, or `public/ai-helper.mjs` in this repo) and start it:
+   ```bash
+   node ai-helper.mjs
+   ```
+3. Type the pairing code it prints into Settings → AI assistant and press **Connect**. Keep the window open while you use the AI.
+
+It listens only on this computer (`127.0.0.1:8787`) and only answers the AgroLedger site (and `localhost` for `npm run dev`) with the right pairing code. Claude runs in `~/.agroledger/work` with no tools except reading an attached photo (and web search if turned on). The last question and answer are saved in `~/.agroledger` (`last-prompt.txt`, `last-answer.json`) so you can check them.
+Options: `AGRO_AI_MODEL=sonnet`, `AGRO_AI_PORT=8788`, `AGRO_AI_LOG=0`. Works in Chrome, Edge and Firefox (Safari blocks an https site from talking to a helper on your computer).
 
 ## Tech
 React + TypeScript + Vite.
