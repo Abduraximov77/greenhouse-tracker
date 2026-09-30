@@ -318,7 +318,7 @@ function startTunnel() {
     console.log('    macOS:   brew install cloudflared')
     console.log('    Windows: winget install --id Cloudflare.cloudflared')
     console.log('    Linux:   see https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/\n')
-    return
+    return false
   }
   const t = spawn('cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${PORT}`], { shell: IS_WIN })
   let shown = false
@@ -342,14 +342,17 @@ function startTunnel() {
   t.on('close', () => log('tunnel stopped'))
   process.on('exit', () => t.kill())
   process.on('SIGINT', () => process.exit(0))
+  return true
 }
 
 server.listen(PORT, '127.0.0.1', () => {
   const v = claudeVersion()
   console.log('\n  AgroLedger helper')
   console.log(v ? `  Claude Code: ${v} · model: ${MODEL}` : '  ⚠ Claude Code (claude) was not found. Install it and sign in first: https://code.claude.com')
-  console.log(`  Link for this computer only:\n  ${linkFor(`http://127.0.0.1:${PORT}`)}`)
-  if (USE_TUNNEL) startTunnel()
+  // Safari blocks a secure website from talking to http://127.0.0.1, so the local link is shown only
+  // when there is no tunnel (it works in Chrome and Firefox on this computer).
+  if (USE_TUNNEL && startTunnel()) console.log('  Starting the secure address… (about 10–20 seconds)')
+  else console.log(`  Link for this computer only (use Chrome or Firefox; Safari blocks it):\n  ${linkFor(`http://127.0.0.1:${PORT}`)}`)
   console.log('  Leave this window open. Press Ctrl+C to stop.\n')
 })
 
