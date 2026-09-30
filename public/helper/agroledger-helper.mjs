@@ -7,6 +7,8 @@
  * Optional: `cloudflared`, so your phone and other devices can reach this computer.
  *
  * Start:   node agroledger-helper.mjs
+ *          It keeps itself up to date: every hour it checks the AgroLedger site for a newer version,
+ *          downloads it and restarts the question-answering part, keeping the same secure address.
  * Options: --port 4555     port on this computer
  *          --no-tunnel     only this computer (no phone access)
  *          --new-key       make a new secret key (old links stop working)
@@ -35,6 +37,13 @@ const ALLOWED_ORIGINS = new Set([APP_URL, 'http://localhost:5173', 'http://local
 const JOB_TIMEOUT_MS = 6 * 60 * 1000
 const MAX_BODY = 20 * 1024 * 1024 // photos included
 const IS_WIN = process.platform === 'win32'
+// The helper runs as two processes: a small "supervisor" (tunnel, keep-awake, updates) and a "worker"
+// (answers questions). Updating only restarts the worker, so the secure address stays the same.
+const IS_WORKER = args.includes('--worker')
+const SELF = fileURLToPath(import.meta.url)
+const VERSION = crypto.createHash('sha256').update(fs.readFileSync(SELF)).digest('hex').slice(0, 8)
+const UPDATE_EVERY_MS = 60 * 60 * 1000
+const UPDATE_URL = process.env.AGL_UPDATE_URL || `${APP_URL}/helper/agroledger-helper.mjs`
 
 // Sources the assistant may open pages from (it may still search widely, but only reads these).
 const TRUSTED_DOMAINS = [
@@ -357,20 +366,94 @@ function startTunnel() {
   t.stderr.on('data', watch)
   t.on('close', () => log('tunnel stopped'))
   process.on('exit', () => t.kill())
-  process.on('SIGINT', () => process.exit(0))
   return true
 }
 
-server.listen(PORT, '127.0.0.1', () => {
+if (IS_WORKER) {
+  // ---------- worker: answers questions ----------
+  process.on('SIGTERM', () => process.exit(0))
+  process.on('SIGINT', () => process.exit(0))
+  server.listen(PORT, '127.0.0.1')
+} else {
+  supervise()
+}
+
+function supervise() {
   const v = claudeVersion()
-  console.log('\n  AgroLedger helper')
+  console.log('\n  AgroLedger helper · version ' + VERSION)
   console.log(v ? `  Claude Code: ${v} · model: ${MODEL}` : '  ⚠ Claude Code (claude) was not found. Install it and sign in first: https://code.claude.com')
+
+  // keep the Mac awake while the helper runs (no need to type caffeinate)
+  if (process.platform === 'darwin') {
+    const c = spawn('caffeinate', ['-i', '-w', String(process.pid)], { stdio: 'ignore' })
+    c.on('error', () => {})
+  }
+
+  let worker = null
+  let stopping = false
+  let restarting = false
+  function startWorker() {
+    worker = spawn(process.execPath, [SELF, ...args.filter((a) => a !== '--new-key'), '--worker'], { stdio: 'inherit' })
+    worker.on('exit', (code) => {
+      worker = null
+      if (stopping) return
+      if (!restarting) log(`answering part stopped (code ${code}); starting it again`)
+      restarting = false
+      setTimeout(startWorker, 1500)
+    })
+  }
+  startWorker()
+
   // Safari blocks a secure website from talking to http://127.0.0.1, so the local link is shown only
   // when there is no tunnel (it works in Chrome and Firefox on this computer).
   if (USE_TUNNEL && startTunnel()) console.log('  Starting the secure address… (about 10–20 seconds)')
   else console.log(`  Link for this computer only (use Chrome or Firefox; Safari blocks it):\n  ${linkFor(`http://127.0.0.1:${PORT}`)}`)
   console.log('  Leave this window open. Press Ctrl+C to stop.\n')
-})
+
+  const stop = () => {
+    stopping = true
+    worker?.kill('SIGTERM')
+    process.exit(0)
+  }
+  process.on('SIGINT', stop)
+  process.on('SIGTERM', stop)
+
+  // ---------- updates ----------
+  async function workerBusy() {
+    try {
+      const r = await fetch(`http://127.0.0.1:${PORT}/health`, { headers: { Authorization: `Bearer ${KEY}` } })
+      const h = await r.json()
+      return h.busy || h.waiting > 0
+    } catch {
+      return false
+    }
+  }
+  async function checkUpdate() {
+    try {
+      const r = await fetch(`${UPDATE_URL}?t=${Date.now()}`, { cache: 'no-store' })
+      if (!r.ok) return
+      const text = await r.text()
+      if (!text.includes('AgroLedger helper') || text === fs.readFileSync(SELF, 'utf8')) return
+      const tmp = SELF.replace(/\.mjs$/, '') + '.new.mjs' // .mjs so the syntax check reads it as a module
+      fs.writeFileSync(tmp, text)
+      if (spawnSync(process.execPath, ['--check', tmp]).status !== 0) {
+        fs.rmSync(tmp, { force: true })
+        return
+      }
+      // wait until no question is being answered
+      for (let i = 0; i < 60 && (await workerBusy()); i++) await new Promise((res) => setTimeout(res, 10000))
+      fs.renameSync(tmp, SELF)
+      const nv = crypto.createHash('sha256').update(text).digest('hex').slice(0, 8)
+      log(`updated to version ${nv}; restarting the answering part (same address, nothing to do on your devices)`)
+      restarting = true
+      worker?.kill('SIGTERM')
+    } catch {
+      // offline: try again later
+    }
+  }
+  setTimeout(checkUpdate, Number(process.env.AGL_UPDATE_FIRST_MS) || 15000)
+  setInterval(checkUpdate, UPDATE_EVERY_MS)
+}
 
 // ---------- built-in instructions for Claude (used when system-prompt.md is not next to this file) ----------
 const DEFAULT_PROMPT = `You are the crop assistant inside AgroLedger, a record-keeping app of one family's greenhouse farm.
