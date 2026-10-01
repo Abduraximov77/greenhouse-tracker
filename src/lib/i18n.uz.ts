@@ -850,4 +850,9 @@ export const uz: Record<string, string> = {
   'Create or join': 'Yaratish yoki qo‘shilish',
   'Sign in': 'Kirish',
   Later: 'Keyinroq',
+  'Welcome to AgroLedger': 'AgroLedger’ga xush kelibsiz',
+  'Your family’s farm records, on every phone. Two short steps to start:':
+    'Oilangiz fermasining yozuvlari — har bir telefonda. Boshlash uchun ikki qisqa qadam:',
+  'Sign in with Telegram': 'Telegram orqali kiring',
+  'Create a farm or join your family’s farm': 'Ferma yarating yoki oilangiz fermasiga qo‘shiling',
 }

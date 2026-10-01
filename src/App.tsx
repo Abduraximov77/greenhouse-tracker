@@ -13,7 +13,8 @@ import { SettingsPage } from './pages/SettingsPage'
 import { AlertGuidePage } from './pages/AlertGuidePage'
 import { ConnectPage, LinkedPage } from './pages/AssistantSetup'
 import { fetchRatesOnline, formatMoney } from './lib/money'
-import { useCloud } from './lib/cloud'
+import { cloudAvailable, useCloud } from './lib/cloud'
+import { WelcomeGate } from './pages/AccountSettings'
 
 // How long the loading screen shows at minimum, so it doesn't just flash.
 const MIN_SPLASH_MS = 2100
@@ -23,6 +24,7 @@ export default function App() {
   const [phase, setPhase] = useState<'loading' | 'leaving' | 'done'>('loading')
   const { lang, theme } = useDB().settings
   useTheme(theme)
+  const gated = useGated()
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('leaving'), MIN_SPLASH_MS)
@@ -50,14 +52,32 @@ export default function App() {
     <>
       {phase !== 'done' && <LoadingScreen leaving={phase === 'leaving'} />}
       <div className="app" aria-hidden={phase !== 'done'}>
-        <Header />
+        <Header gated={gated} />
         <main className="content">
-          <BackButton />
-          <Routes />
+          {gated ? (
+            <WelcomeGate />
+          ) : (
+            <>
+              <BackButton />
+              <Routes />
+            </>
+          )}
         </main>
       </div>
     </>
   )
+}
+
+/**
+ * Until this device is signed in and let into a farm, only the welcome screen opens
+ * (the assistant's link pages still work, they are separate).
+ */
+function useGated() {
+  const c = useCloud()
+  const first = usePath()[0]
+  if (!cloudAvailable() || first === 'connect' || first === 'linked') return false
+  const s = c.session
+  return !s?.farms.some((f) => f.id === s.farmId && f.status === 'active')
 }
 
 /** Puts data-theme="day" or "night" on the page; "auto" follows the device and changes with it. */
@@ -76,7 +96,7 @@ function useTheme(theme: Theme) {
   }, [theme])
 }
 
-function Header() {
+function Header({ gated }: { gated: boolean }) {
   const db = useDB()
   const t = useT()
   const { rates, currency } = db.settings
@@ -109,47 +129,51 @@ function Header() {
             ))}
           </select>
         </label>
-        <label className="control">
-          <span className="sr-only">{t('Currency')}</span>
-          <select
-            id="currency-select"
-            className="input input-compact"
-            value={db.settings.currency}
-            onChange={(e) => setCurrency(e.target.value)}
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <a className="rate-chip" href={href('settings')} title={t('Exchange rate')}>
-          <svg className="control-icon-inline" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 8h13l-3-3M20 16H7l3 3"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="rate-text">{rateText}</span>
-        </a>
-        <SyncBadge />
-        <a className="icon-link" href={href('settings')} aria-label={t('Settings')} title={t('Settings')}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <path
-              d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </a>
+        {!gated && (
+          <>
+            <label className="control">
+              <span className="sr-only">{t('Currency')}</span>
+              <select
+                id="currency-select"
+                className="input input-compact"
+                value={db.settings.currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <a className="rate-chip" href={href('settings')} title={t('Exchange rate')}>
+              <svg className="control-icon-inline" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M4 8h13l-3-3M20 16H7l3 3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="rate-text">{rateText}</span>
+            </a>
+            <SyncBadge />
+            <a className="icon-link" href={href('settings')} aria-label={t('Settings')} title={t('Settings')}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                <path
+                  d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
+          </>
+        )}
       </div>
     </header>
   )

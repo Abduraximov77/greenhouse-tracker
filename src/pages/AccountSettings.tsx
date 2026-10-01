@@ -117,6 +117,57 @@ export function AccountSettings() {
   )
 }
 
+/**
+ * The first screen until this device is in a farm: 1) sign in with Telegram, 2) create or join a farm
+ * (then wait for an owner). Nothing else in the app opens before that.
+ */
+export function WelcomeGate() {
+  const t = useT()
+  const cloud = useCloud()
+  const s = cloud.session
+  const pending = s?.farms.find((f) => f.status === 'pending')
+  const step = !s ? 1 : 2
+  return (
+    <div className="welcome">
+      <div className="welcome-head">
+        <h1 className="welcome-title">{t('Welcome to AgroLedger')}</h1>
+        <p className="field-hint">{t('Your family’s farm records, on every phone. Two short steps to start:')}</p>
+        <ol className="welcome-steps">
+          <li className={step === 1 ? 'is-now' : 'is-done'}>
+            <span>{step > 1 ? '✓' : '1'}</span>
+            {t('Sign in with Telegram')}
+          </li>
+          <li className={step === 2 ? 'is-now' : ''}>
+            <span>2</span>
+            {t('Create a farm or join your family’s farm')}
+          </li>
+        </ol>
+      </div>
+      {!s ? (
+        <SignIn />
+      ) : (
+        <>
+          <div className="card settings-card account-me">
+            {s.user.photo ? (
+              <img className="avatar" src={s.user.photo} alt="" />
+            ) : (
+              <span className="avatar">{s.user.name.slice(0, 1)}</span>
+            )}
+            <div className="account-me-text">
+              <b>{s.user.name}</b>
+              <span className="field-hint">{t('Signed in with Telegram')}</span>
+            </div>
+            <button type="button" className="btn btn-ghost btn-small" onClick={() => void signOut()}>
+              {t('Sign out')}
+            </button>
+          </div>
+          {pending ? <PendingCard name={pending.name} farmId={pending.id} /> : <CreateOrJoin />}
+        </>
+      )}
+    </div>
+  )
+}
+
 function confirmSignOut(t: (k: string) => string) {
   return window.confirm(t('Sign out on this device? Your records stay in the farm; sign in again with Telegram to see them.'))
 }

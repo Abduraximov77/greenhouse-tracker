@@ -842,4 +842,9 @@ export const ru: Record<string, string> = {
   'Create or join': 'Создать или войти',
   'Sign in': 'Войти',
   Later: 'Позже',
+  'Welcome to AgroLedger': 'Добро пожаловать в AgroLedger',
+  'Your family’s farm records, on every phone. Two short steps to start:':
+    'Записи семейной фермы — на каждом телефоне. Два коротких шага, чтобы начать:',
+  'Sign in with Telegram': 'Войдите через Telegram',
+  'Create a farm or join your family’s farm': 'Создайте ферму или присоединитесь к ферме семьи',
 }
