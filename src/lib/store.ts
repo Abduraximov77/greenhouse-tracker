@@ -204,6 +204,8 @@ export interface Answer extends Meta {
   photos: number
   /** Claude Code's cost estimate for this one question, in USD (with a subscription it is not billed). */
   costUsd: number | null
+  /** Source check by the helper: trusted pages opened and read, unchecked links removed. */
+  sources?: { read: number; removed: number }
   /** The answer this question followed up on. */
   followUpOf?: ID | null
 }

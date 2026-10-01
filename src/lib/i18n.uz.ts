@@ -868,4 +868,9 @@ export const uz: Record<string, string> = {
   'Use another Telegram account': 'Boshqa Telegram hisobi bilan kirish',
   'Some changes are not sent yet. Connect to the internet and try again.':
     'Ba’zi o‘zgarishlar hali yuborilmagan. Internetga ulanib, qayta urining.',
+  'Only questions about farming and your farm are answered.': 'Faqat dehqonchilik va fermangiz haqidagi savollarga javob beriladi.',
+  'Checked: based on {n} trusted pages that were opened and read.': 'Tekshirildi: ochib o‘qilgan {n} ta ishonchli sahifaga asoslangan.',
+  'No trusted page was opened for this answer. Treat it as unconfirmed.':
+    'Bu javob uchun birorta ishonchli sahifa ochilmadi. Uni tasdiqlanmagan deb hisoblang.',
+  '{n} unchecked links were removed.': 'Tekshirilmagan {n} ta havola olib tashlandi.',
 }

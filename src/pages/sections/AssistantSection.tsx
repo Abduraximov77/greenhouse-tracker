@@ -105,6 +105,7 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
           answer: res.answer,
           photos: sent.photos,
           costUsd: res.costUsd ?? null,
+          ...(res.sources ? { sources: { read: res.sources.read.length, removed: res.sources.removed } } : {}),
           followUpOf: sent.followUpOf,
         })
         pending.delete(crop.id)
@@ -210,7 +211,8 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
         {showContext && <pre className="assist-context">{cropContext(db, crop)}</pre>}
         {error && <p className="form-error">{error}</p>}
         <p className="field-hint">
-          {t('Each question is answered on its own, with this crop’s data. Answers use trusted sources and name them.')}
+          {t('Each question is answered on its own, with this crop’s data. Answers use trusted sources and name them.')}{' '}
+          {t('Only questions about farming and your farm are answered.')}
         </p>
       </form>
 
@@ -227,6 +229,14 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
                 {a.photos > 0 && <span className="assist-meta"> · 📷 {a.photos}</span>}
               </p>
               <Markdown text={a.answer} />
+              {a.sources && (
+                <p className={`assist-check ${a.sources.read ? 'is-ok' : 'is-unsure'}`}>
+                  {a.sources.read
+                    ? '✓ ' + t('Checked: based on {n} trusted pages that were opened and read.', { n: a.sources.read })
+                    : 'ℹ ' + t('No trusted page was opened for this answer. Treat it as unconfirmed.')}
+                  {a.sources.removed > 0 && ' ' + t('{n} unchecked links were removed.', { n: a.sources.removed })}
+                </p>
+              )}
               <p className="assist-caution">
                 ⚠{' '}
                 {t(

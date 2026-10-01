@@ -860,4 +860,10 @@ export const ru: Record<string, string> = {
   'Use another Telegram account': 'Войти с другим аккаунтом Telegram',
   'Some changes are not sent yet. Connect to the internet and try again.':
     'Некоторые изменения ещё не отправлены. Подключитесь к интернету и попробуйте снова.',
+  'Only questions about farming and your farm are answered.': 'Отвечает только на вопросы о сельском хозяйстве и вашей ферме.',
+  'Checked: based on {n} trusted pages that were opened and read.':
+    'Проверено: основано на {n} надёжных страницах, которые были открыты и прочитаны.',
+  'No trusted page was opened for this answer. Treat it as unconfirmed.':
+    'Для этого ответа не удалось открыть ни одной надёжной страницы. Считайте его неподтверждённым.',
+  '{n} unchecked links were removed.': 'Удалено непроверенных ссылок: {n}.',
 }

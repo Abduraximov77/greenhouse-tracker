@@ -162,6 +162,8 @@ export interface JobState {
   answer?: string
   error?: string
   costUsd?: number | null
+  /** checked by the helper: trusted pages really opened, links removed because they were not */
+  sources?: { read: string[]; listed: number; removed: number; refused: number }
   position?: number
 }
 
