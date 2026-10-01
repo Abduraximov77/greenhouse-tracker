@@ -5,6 +5,7 @@ import { cropName } from '../lib/crops'
 import { useT } from '../lib/i18n'
 import { FormCard, Field, PageHead } from '../components/ui'
 import { WeatherCard } from '../components/Weather'
+import { FarmPrompt } from '../components/FarmPrompt'
 
 export function SeasonsPage() {
   const db = useDB()
@@ -45,6 +46,7 @@ export function SeasonsPage() {
         }
       />
 
+      <FarmPrompt />
       <WeatherCard />
 
       {adding && (
