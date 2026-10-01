@@ -358,7 +358,7 @@ function NotLinked() {
       setError(
         t(
           code === 'no_assistant_owner'
-            ? 'Nobody in your farm has the assistant running yet.'
+            ? 'Nobody has set up the assistant yet.'
             : code === 'owner_cannot_be_messaged'
               ? 'The owner of the assistant has not started the Telegram bot yet.'
               : code === 'offline'

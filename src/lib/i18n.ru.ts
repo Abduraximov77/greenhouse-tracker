@@ -866,4 +866,5 @@ export const ru: Record<string, string> = {
   'No trusted page was opened for this answer. Treat it as unconfirmed.':
     'Для этого ответа не удалось открыть ни одной надёжной страницы. Считайте его неподтверждённым.',
   '{n} unchecked links were removed.': 'Удалено непроверенных ссылок: {n}.',
+  'Nobody has set up the assistant yet.': 'Помощника пока никто не настроил.',
 }

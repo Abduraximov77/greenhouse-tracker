@@ -873,4 +873,5 @@ export const uz: Record<string, string> = {
   'No trusted page was opened for this answer. Treat it as unconfirmed.':
     'Bu javob uchun birorta ishonchli sahifa ochilmadi. Uni tasdiqlanmagan deb hisoblang.',
   '{n} unchecked links were removed.': 'Tekshirilmagan {n} ta havola olib tashlandi.',
+  'Nobody has set up the assistant yet.': 'Hali hech kim yordamchini sozlamagan.',
 }

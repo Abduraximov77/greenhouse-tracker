@@ -28,6 +28,7 @@ interface UserRow {
   alert_hour: number
   can_message: number
   assistant: string | null
+  assistant_from: number | null
 }
 
 const COLLS = new Set([
@@ -298,8 +299,12 @@ async function updateMe(req: Request, env: Env, user: UserRow) {
   if ('assistant' in b) {
     const a = b.assistant as { u?: unknown; k?: unknown } | null
     const ok = a && typeof a.u === 'string' && typeof a.k === 'string' && a.u.length < 300 && a.k.length < 300 && /^https?:\/\//.test(a.u)
-    await env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?')
-      .bind(ok ? JSON.stringify({ u: a!.u, k: a!.k }) : null, user.id)
+    const link = ok ? JSON.stringify({ u: a!.u, k: a!.k }) : null
+    // someone given access keeps "given by" while the same helper's address changes; a different key means
+    // they linked a helper of their own
+    const sameHelper = user.assistant_from != null && link && parseAssistant(user.assistant)?.k === a!.k
+    await env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = ? WHERE id = ?')
+      .bind(link, link && sameHelper ? user.assistant_from : null, user.id)
       .run()
   }
   const lang = ['uz', 'ru', 'en'].includes(b.lang ?? '') ? b.lang! : user.lang
@@ -623,14 +628,10 @@ async function restore(req: Request, env: Env, user: UserRow, farmId: string) {
 }
 
 // ---------- AI assistant access for another account ----------
-/** People who run the assistant on their computer and share an active farm with this user. */
+/** People who run the assistant on their own computer (linked it themselves, not given access). */
 async function assistantGivers(env: Env, userId: number) {
-  const rows = await env.DB.prepare(
-    `SELECT DISTINCT u.* FROM members me JOIN members m ON m.farm_id = me.farm_id AND m.status = 'active'
-     JOIN users u ON u.id = m.user_id
-     WHERE me.user_id = ? AND me.status = 'active' AND u.id != ? AND u.assistant IS NOT NULL`,
-  )
-    .bind(userId, userId)
+  const rows = await env.DB.prepare('SELECT * FROM users WHERE assistant IS NOT NULL AND assistant_from IS NULL AND id != ?')
+    .bind(userId)
     .all<UserRow>()
   return rows.results
 }
@@ -650,7 +651,7 @@ async function assistantRequest(env: Env, user: UserRow) {
   )
     .bind(user.id, now())
     .run()
-  const who = user.name + (user.username ? ` (@${user.username})` : '')
+  const who = user.name + (user.username ? ` (@${user.username})` : '') + ` · ID ${user.id}`
   let sent = 0
   for (const g of givers) {
     const r = await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
@@ -701,7 +702,9 @@ async function decideAssistant(
         t0,
         uid,
       ),
-      ...(allow ? [env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?').bind(giver.assistant, uid)] : []),
+      ...(allow
+        ? [env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = ? WHERE id = ?').bind(giver.assistant, giver.id, uid)]
+        : []),
     ])
     await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
       chat_id: uid,
