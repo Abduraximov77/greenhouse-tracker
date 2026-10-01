@@ -880,4 +880,15 @@ export const ru: Record<string, string> = {
   'Fill only the sizes you sold. With a weight the price is per kg, without it per box.':
     'Заполните только проданные размеры. Если указан вес — цена за кг, если нет — за ящик.',
   optional: 'необяз.',
+  'Close the greenhouse in the evening and keep it heated at night.': 'Вечером закройте теплицу и отапливайте её ночью.',
+  'Open all vents from early morning and check the temperature inside at noon.':
+    'С раннего утра откройте все форточки и проверьте температуру внутри в полдень.',
+  'Keep vents on the windward side closed.': 'Держите закрытыми форточки с наветренной стороны.',
+  'Check the humidity inside the greenhouse.': 'Проверьте влажность внутри теплицы.',
+  'Close vents before it starts.': 'Закройте форточки до начала.',
+  'Damp air: ventilate whenever the rain stops.': 'Сырой воздух: проветривайте, как только прекращается дождь.',
+  'The air is very damp: ventilate once the fog lifts.': 'Воздух очень влажный: проветрите, когда рассеется туман.',
+  'Very damp air: ventilate in the morning.': 'Очень влажный воздух: проветривайте утром.',
+  'Dew forms on the film in the morning: open vents gradually after sunrise.':
+    'Утром на плёнке выпадает роса: после восхода постепенно открывайте форточки.',
 }

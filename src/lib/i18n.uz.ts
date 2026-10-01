@@ -887,4 +887,15 @@ export const uz: Record<string, string> = {
   'Fill only the sizes you sold. With a weight the price is per kg, without it per box.':
     'Faqat sotilgan razmerlarni to‘ldiring. Og‘irlik yozilsa narx 1 kg uchun, yozilmasa 1 quti uchun.',
   optional: 'ixtiyoriy',
+  'Close the greenhouse in the evening and keep it heated at night.': 'Kechqurun issiqxonani yoping va tunda isitib turing.',
+  'Open all vents from early morning and check the temperature inside at noon.':
+    'Erta tongdan barcha fortochkalarni oching va tushda ichkaridagi haroratni tekshiring.',
+  'Keep vents on the windward side closed.': 'Shamol tomondagi fortochkalarni yopiq tuting.',
+  'Check the humidity inside the greenhouse.': 'Issiqxona ichidagi namlikni tekshiring.',
+  'Close vents before it starts.': 'Boshlanishidan oldin fortochkalarni yoping.',
+  'Damp air: ventilate whenever the rain stops.': 'Havo nam: yomg‘ir to‘xtashi bilan shamollating.',
+  'The air is very damp: ventilate once the fog lifts.': 'Havo juda nam: tuman tarqalgach shamollating.',
+  'Very damp air: ventilate in the morning.': 'Havo juda nam: ertalab shamollating.',
+  'Dew forms on the film in the morning: open vents gradually after sunrise.':
+    'Ertalab plyonkada shudring hosil bo‘ladi: quyosh chiqqach fortochkalarni asta-sekin oching.',
 }

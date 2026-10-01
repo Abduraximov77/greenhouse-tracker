@@ -42,6 +42,8 @@ export interface AlertRule {
   levels: AlertLevel[]
   /** The alert text; {placeholders} are filled from the forecast. */
   message: string
+  /** What to do. */
+  action: string
 }
 
 /** Every rule, in the order the guide shows them. */
@@ -53,6 +55,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Air temperature 0 °C or below.',
     levels: ['danger'],
     message: 'Frost: down to {t}°C.',
+    action: 'Close the greenhouse in the evening and keep it heated at night.',
   },
   {
     id: 'freezingRain',
@@ -61,6 +64,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Rain or drizzle that freezes on contact.',
     levels: ['danger'],
     message: 'Freezing rain or icy drizzle.',
+    action: 'Keep the greenhouse closed and heated; remove ice from the roof carefully so the film does not tear.',
   },
   {
     id: 'cold',
@@ -69,6 +73,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Temperature from 0 to 4 °C.',
     levels: ['warn'],
     message: 'Cold night: down to {t}°C.',
+    action: 'Close vents and doors before sunset; have heating ready.',
   },
   {
     id: 'sharpDrop',
@@ -77,6 +82,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Tomorrow’s highest temperature is 8 °C or more below today’s.',
     levels: ['warn'],
     message: 'Sharp cooling: tomorrow up to {d}°C colder than today.',
+    action: 'Close vents earlier in the afternoon and be ready to heat at night.',
   },
   {
     id: 'heat',
@@ -85,6 +91,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: '35 °C or more (38 °C or more is dangerous).',
     levels: ['danger', 'warn'],
     message: 'Heat: up to {t}°C.',
+    action: 'Open all vents from early morning and check the temperature inside at noon.',
   },
   {
     id: 'warm',
@@ -93,6 +100,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'From 30 to 34 °C outside: inside a closed greenhouse it can pass 40 °C.',
     levels: ['info'],
     message: 'Warm day: up to {t}°C outside, much hotter inside a closed greenhouse.',
+    action: 'Open vents by mid-morning and check the temperature inside at noon.',
   },
   {
     id: 'dryWind',
@@ -101,6 +109,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'In the same hour: 30 °C or more, humidity 25% or less, gusts 30 km/h or more.',
     levels: ['danger'],
     message: 'Hot dry wind (garmsel): {t}°C, humidity {h}%, gusts {w} km/h ({from}–{to}).',
+    action: 'Keep vents on the windward side closed.',
   },
   {
     id: 'dryAir',
@@ -109,6 +118,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Humidity 20% or less on a day of 25 °C or more.',
     levels: ['info'],
     message: 'Very dry air: humidity down to {h}%.',
+    action: 'Check the humidity inside the greenhouse.',
   },
   {
     id: 'wind',
@@ -117,6 +127,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Gusts 45 km/h or more (60 km/h or more is dangerous).',
     levels: ['danger', 'warn'],
     message: 'Strong wind: gusts up to {w} km/h ({from}–{to}).',
+    action: 'Close vents and doors, tie down the film, remove loose things around the greenhouse.',
   },
   {
     id: 'hail',
@@ -125,6 +136,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'The forecast shows a thunderstorm with hail.',
     levels: ['danger'],
     message: 'Thunderstorm with hail possible ({from}–{to}).',
+    action: 'Close everything and secure the film; check the roof for damage afterwards.',
   },
   {
     id: 'storm',
@@ -133,6 +145,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'The forecast shows a thunderstorm.',
     levels: ['warn'],
     message: 'Thunderstorm ({from}–{to}).',
+    action: 'Close vents and doors, secure the film, do not work outside during lightning.',
   },
   {
     id: 'snow',
@@ -141,6 +154,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Any snowfall.',
     levels: ['warn'],
     message: 'Snow expected ({from}–{to}).',
+    action: 'Keep heating on so snow slides off; clear the roof so the film does not tear.',
   },
   {
     id: 'heavyRain',
@@ -149,6 +163,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: '10 mm or more in a day (25 mm or more is dangerous).',
     levels: ['danger', 'warn'],
     message: 'Heavy rain: {mm} mm ({from}–{to}).',
+    action: 'Close vents, check the film for holes and clear the drains around the greenhouse.',
   },
   {
     id: 'rain',
@@ -157,6 +172,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'From 0.3 to 10 mm in a day.',
     levels: ['info'],
     message: 'Rain: about {mm} mm ({from}–{to}).',
+    action: 'Close vents before it starts.',
   },
   {
     id: 'longRain',
@@ -165,6 +181,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Rain of 1 mm or more on 3 or more days in a row.',
     levels: ['warn'],
     message: 'Rain {n} days in a row.',
+    action: 'Damp air: ventilate whenever the rain stops.',
   },
   {
     id: 'fog',
@@ -173,6 +190,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'The forecast shows fog.',
     levels: ['info'],
     message: 'Fog ({from}–{to}).',
+    action: 'The air is very damp: ventilate once the fog lifts.',
   },
   {
     id: 'diseaseRisk',
@@ -181,6 +199,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Humidity 90% or more for 6 hours or more, at 10–25 °C.',
     levels: ['warn'],
     message: 'Damp and mild: humidity over 90% for {n} hours at {range}°C.',
+    action: 'Very damp air: ventilate in the morning.',
   },
   {
     id: 'bigSwing',
@@ -189,6 +208,7 @@ export const ALERT_RULES: AlertRule[] = [
     when: 'Day and night temperatures differ by 18 °C or more.',
     levels: ['info'],
     message: 'Warm day, cold night: {max}°C by day, {min}°C at night.',
+    action: 'Dew forms on the film in the morning: open vents gradually after sunrise.',
   },
 ]
 
@@ -316,8 +336,7 @@ export function evaluateAlerts(f: Forecast, days = 2): Alert[] {
 }
 
 /**
- * The full text of an alert in the chosen language: only what is coming. (No farm-work advice: the app
- * cannot know what is planted now or what was already done.)
+ * The full text of an alert in the chosen language: what is coming, then what to do.
  * Hours that are not known are left out ("Heavy rain: 12 mm." instead of "(…–…)").
  */
 export function alertText(
@@ -329,5 +348,5 @@ export function alertText(
   const rule = RULES_BY_ID[a.rule]
   const vars = Object.fromEntries(Object.entries(a.vars).map(([k, v]) => [k, typeof v === 'number' ? num(v) : v]))
   const msg = t(rule.message, vars).replace(/\s*\(\{from\}[–-]\{to\}\)/g, '')
-  return msg
+  return `${msg} ${t(rule.action)}`
 }
