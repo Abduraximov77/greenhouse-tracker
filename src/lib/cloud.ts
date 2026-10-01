@@ -20,6 +20,8 @@ export interface CloudUser {
   alertsOn: boolean
   alertHour: number
   canMessage: boolean
+  /** this person's own AI-assistant link, if they linked one on any device */
+  assistant?: { u: string; k: string } | null
 }
 export interface FarmRef {
   id: string
@@ -79,6 +81,11 @@ function set(patch: Partial<State>) {
   if ('session' in patch) write(SESSION_KEY, state.session)
   listeners.forEach((f) => f())
 }
+export function subscribeCloud(f: () => void) {
+  listeners.add(f)
+  return () => listeners.delete(f)
+}
+export const getCloud = () => state
 export function useCloud() {
   return useSyncExternalStore(
     (f) => {
@@ -199,7 +206,12 @@ export async function refreshMe(open = true) {
   if (open && switched && farmId) await enterFarm(farmId, 'replace')
 }
 
-export async function updateMe(patch: { lang?: string; alertsOn?: boolean; alertHour?: number }) {
+export async function updateMe(patch: {
+  lang?: string
+  alertsOn?: boolean
+  alertHour?: number
+  assistant?: { u: string; k: string } | null
+}) {
   const res = await api<MeResponse>('PATCH', '/me', { ...patch, tz: -new Date().getTimezoneOffset() })
   if (state.session) set({ session: { ...state.session, user: res.user, farms: res.farms } })
 }

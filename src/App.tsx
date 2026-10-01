@@ -15,6 +15,9 @@ import { ConnectPage, LinkedPage } from './pages/AssistantSetup'
 import { fetchRatesOnline, formatMoney } from './lib/money'
 import { cloudAvailable, useCloud } from './lib/cloud'
 import { WelcomeGate } from './pages/AccountSettings'
+import { startAssistantSync } from './lib/assistantSync'
+
+startAssistantSync()
 
 // How long the loading screen shows at minimum, so it doesn't just flash.
 const MIN_SPLASH_MS = 2100

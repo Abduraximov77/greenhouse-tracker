@@ -26,6 +26,7 @@ interface UserRow {
   alerts_on: number
   alert_hour: number
   can_message: number
+  assistant: string | null
 }
 
 const COLLS = new Set([
@@ -57,7 +58,8 @@ const T: Record<string, Record<string, string>> = {
     rejected: '❌ {who} rad etdi: {name}.',
     youIn: '✅ Siz “{farm}” fermasiga qo‘shildingiz. AgroLedger’ni oching.',
     youOut: '❌ “{farm}” fermasiga qo‘shilish so‘rovingiz rad etildi.',
-    start: 'Assalomu alaykum! Bu AgroLedger boti.\nOb-havo ogohlantirishlari va fermaga qo‘shilish so‘rovlari shu yerga keladi.\nIlovani ochish uchun pastdagi tugmani bosing.',
+    start:
+      'Assalomu alaykum! Bu AgroLedger boti.\nOb-havo ogohlantirishlari va fermaga qo‘shilish so‘rovlari shu yerga keladi.\nIlovani ochish uchun pastdagi tugmani bosing.',
     open: 'AgroLedger’ni ochish',
     already: 'Bu so‘rov allaqachon hal qilingan.',
     notOwner: 'Faqat ferma egasi javob bera oladi.',
@@ -70,7 +72,8 @@ const T: Record<string, Record<string, string>> = {
     rejected: '❌ {who} отклонил(а): {name}.',
     youIn: '✅ Вы присоединились к «{farm}». Откройте AgroLedger.',
     youOut: '❌ Запрос на вступление в «{farm}» отклонён.',
-    start: 'Здравствуйте! Это бот AgroLedger.\nСюда приходят предупреждения о погоде и запросы на вступление в хозяйство.\nНажмите кнопку ниже, чтобы открыть приложение.',
+    start:
+      'Здравствуйте! Это бот AgroLedger.\nСюда приходят предупреждения о погоде и запросы на вступление в хозяйство.\nНажмите кнопку ниже, чтобы открыть приложение.',
     open: 'Открыть AgroLedger',
     already: 'Этот запрос уже решён.',
     notOwner: 'Ответить может только владелец хозяйства.',
@@ -153,7 +156,9 @@ async function route(req: Request, env: Env): Promise<Response> {
 
   const user = await auth(req, env)
   if (M === 'POST' && p === '/auth/logout') {
-    await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await tokenHash(req)).run()
+    await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?')
+      .bind(await tokenHash(req))
+      .run()
     return json({ ok: true })
   }
   if (M === 'GET' && p === '/me') return json(await me(env, user))
@@ -183,9 +188,7 @@ async function tokenHash(req: Request) {
 
 async function auth(req: Request, env: Env): Promise<UserRow> {
   const th = await tokenHash(req)
-  const row = await env.DB.prepare(
-    'SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?',
-  )
+  const row = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?')
     .bind(th)
     .first<UserRow>()
   if (!row) throw new HttpError(401, 'signed_out')
@@ -194,7 +197,14 @@ async function auth(req: Request, env: Env): Promise<UserRow> {
 }
 
 async function signIn(req: Request, env: Env) {
-  const b = await body<{ widget?: Record<string, unknown>; initData?: string; device?: string; lang?: string; tz?: number; write?: boolean }>(req)
+  const b = await body<{
+    widget?: Record<string, unknown>
+    initData?: string
+    device?: string
+    lang?: string
+    tz?: number
+    write?: boolean
+  }>(req)
   let u: TgUser | null = null
   let canMessage = false
   if (b.widget) {
@@ -241,14 +251,30 @@ async function me(env: Env, user: UserRow) {
       alertsOn: !!user.alerts_on,
       alertHour: user.alert_hour,
       canMessage: !!user.can_message,
+      assistant: parseAssistant(user.assistant),
     },
     farms: farms.results,
     bot: env.BOT_USERNAME,
   }
 }
 
+function parseAssistant(v: string | null) {
+  try {
+    return v ? (JSON.parse(v) as { u: string; k: string }) : null
+  } catch {
+    return null
+  }
+}
+
 async function updateMe(req: Request, env: Env, user: UserRow) {
-  const b = await body<{ lang?: string; tz?: number; alertsOn?: boolean; alertHour?: number }>(req)
+  const b = await body<{ lang?: string; tz?: number; alertsOn?: boolean; alertHour?: number; assistant?: unknown }>(req)
+  if ('assistant' in b) {
+    const a = b.assistant as { u?: unknown; k?: unknown } | null
+    const ok = a && typeof a.u === 'string' && typeof a.k === 'string' && a.u.length < 300 && a.k.length < 300 && /^https?:\/\//.test(a.u)
+    await env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?')
+      .bind(ok ? JSON.stringify({ u: a!.u, k: a!.k }) : null, user.id)
+      .run()
+  }
   const lang = ['uz', 'ru', 'en'].includes(b.lang ?? '') ? b.lang! : user.lang
   const hour = Number.isInteger(b.alertHour) && b.alertHour! >= 0 && b.alertHour! <= 23 ? b.alertHour! : user.alert_hour
   const on = typeof b.alertsOn === 'boolean' ? (b.alertsOn ? 1 : 0) : user.alerts_on
@@ -282,7 +308,9 @@ function checkPassword(p: unknown) {
 
 async function createFarm(req: Request, env: Env, user: UserRow) {
   const b = await body<{ name?: string; password?: string }>(req)
-  const name = String(b.name ?? '').trim().slice(0, 80)
+  const name = String(b.name ?? '')
+    .trim()
+    .slice(0, 80)
   if (!name) throw new HttpError(400, 'name_required')
   const { salt, hash } = await hashPassword(checkPassword(b.password))
   const id = randomId()
@@ -291,15 +319,9 @@ async function createFarm(req: Request, env: Env, user: UserRow) {
     const code = farmCode()
     try {
       await env.DB.batch([
-        env.DB.prepare('INSERT INTO farms (id, name, code, pass_salt, pass_hash, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
-          id,
-          name,
-          code,
-          salt,
-          hash,
-          user.id,
-          t,
-        ),
+        env.DB.prepare(
+          'INSERT INTO farms (id, name, code, pass_salt, pass_hash, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).bind(id, name, code, salt, hash, user.id, t),
         env.DB.prepare(
           "INSERT INTO members (farm_id, user_id, role, status, requested_at, decided_by, decided_at) VALUES (?, ?, 'owner', 'active', ?, ?, ?)",
         ).bind(id, user.id, t, user.id, t),
@@ -325,7 +347,9 @@ async function joinFarm(req: Request, env: Env, user: UserRow) {
     .first<{ fails: number; locked_until: string | null }>()
   if (att?.locked_until && att.locked_until > now()) throw new HttpError(429, 'locked')
 
-  const farm = await env.DB.prepare('SELECT * FROM farms WHERE code = ?').bind(code).first<{ id: string; name: string; pass_salt: string; pass_hash: string }>()
+  const farm = await env.DB.prepare('SELECT * FROM farms WHERE code = ?')
+    .bind(code)
+    .first<{ id: string; name: string; pass_salt: string; pass_hash: string }>()
   const ok = farm && safeEqual((await hashPassword(String(b.password ?? ''), farm.pass_salt)).hash, farm.pass_hash)
   if (!farm || !ok) {
     const fails = (att?.fails ?? 0) + 1
@@ -390,14 +414,21 @@ async function farmInfo(env: Env, user: UserRow, farmId: string) {
 }
 
 async function decide(env: Env, farmId: string, targetId: number, allow: boolean, by: UserRow, role: Role = 'member') {
-  const target = await env.DB.prepare('SELECT * FROM members WHERE farm_id = ? AND user_id = ?').bind(farmId, targetId).first<{ status: string }>()
+  const target = await env.DB.prepare('SELECT * FROM members WHERE farm_id = ? AND user_id = ?')
+    .bind(farmId, targetId)
+    .first<{ status: string }>()
   if (!target || target.status !== 'pending') return false
   await env.DB.prepare('UPDATE members SET status = ?, role = ?, decided_by = ?, decided_at = ? WHERE farm_id = ? AND user_id = ?')
     .bind(allow ? 'active' : 'rejected', role, by.id, now(), farmId, targetId)
     .run()
   const farm = await env.DB.prepare('SELECT name FROM farms WHERE id = ?').bind(farmId).first<{ name: string }>()
   const u = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(targetId).first<UserRow>()
-  if (u) await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', { chat_id: u.id, parse_mode: 'HTML', text: txt(u.lang, allow ? 'youIn' : 'youOut', { farm: farm?.name ?? '' }) })
+  if (u)
+    await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
+      chat_id: u.id,
+      parse_mode: 'HTML',
+      text: txt(u.lang, allow ? 'youIn' : 'youOut', { farm: farm?.name ?? '' }),
+    })
   return true
 }
 
@@ -419,7 +450,8 @@ async function memberAction(req: Request, env: Env, user: UserRow, farmId: strin
         .first<{ n: number }>()
       if ((n?.n ?? 0) <= 1) throw new HttpError(409, 'last_owner')
     }
-    if (b.action === 'role') await env.DB.prepare('UPDATE members SET role = ? WHERE farm_id = ? AND user_id = ?').bind(role, farmId, targetId).run()
+    if (b.action === 'role')
+      await env.DB.prepare('UPDATE members SET role = ? WHERE farm_id = ? AND user_id = ?').bind(role, farmId, targetId).run()
     else {
       await env.DB.prepare("UPDATE members SET status = 'removed', decided_by = ?, decided_at = ? WHERE farm_id = ? AND user_id = ?")
         .bind(user.id, now(), farmId, targetId)
@@ -544,7 +576,9 @@ async function trash(env: Env, user: UserRow, farmId: string) {
   )
     .bind(farmId, since)
     .all<{ coll: string; id: string; data: string; updated_at: string; by_name: string | null }>()
-  return json({ items: rows.results.map((r) => ({ coll: r.coll, id: r.id, data: JSON.parse(r.data), deletedAt: r.updated_at, by: r.by_name })) })
+  return json({
+    items: rows.results.map((r) => ({ coll: r.coll, id: r.id, data: JSON.parse(r.data), deletedAt: r.updated_at, by: r.by_name })),
+  })
 }
 
 async function restore(req: Request, env: Env, user: UserRow, farmId: string) {
@@ -553,14 +587,9 @@ async function restore(req: Request, env: Env, user: UserRow, farmId: string) {
   const farm = await env.DB.prepare('SELECT seq FROM farms WHERE id = ?').bind(farmId).first<{ seq: number }>()
   const seq = (farm?.seq ?? 0) + 1
   await env.DB.batch([
-    env.DB.prepare('UPDATE records SET deleted = 0, updated_at = ?, updated_by = ?, seq = ? WHERE farm_id = ? AND coll = ? AND id = ?').bind(
-      now(),
-      user.id,
-      seq,
-      farmId,
-      b.coll,
-      b.id,
-    ),
+    env.DB.prepare(
+      'UPDATE records SET deleted = 0, updated_at = ?, updated_by = ?, seq = ? WHERE farm_id = ? AND coll = ? AND id = ?',
+    ).bind(now(), user.id, seq, farmId, b.coll, b.id),
     env.DB.prepare('UPDATE farms SET seq = MAX(seq, ?) WHERE id = ?').bind(seq, farmId),
   ])
   return json({ ok: true })

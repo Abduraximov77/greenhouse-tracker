@@ -8,8 +8,9 @@ import { todayISO } from './format'
 
 /**
  * The AI assistant runs through a small helper on the owner's own computer, which uses the owner's
- * Claude Code login. This device only keeps the helper's address and secret key — in its own storage,
- * never in the farm data, so other family members' phones don't get it.
+ * Claude Code login. This device keeps the helper's address and secret key in its own storage; when
+ * signed in, it is also kept with the person's own account (not the farm), so their other devices
+ * get it too and other family members don't (see assistantSync.ts).
  */
 export interface HelperLink {
   /** Helper address, e.g. https://xyz.trycloudflare.com or http://127.0.0.1:4555 */
@@ -40,6 +41,12 @@ export function setHelperLink(link: HelperLink | null) {
     // storage blocked: kept for this visit only
   }
   listeners.forEach((f) => f())
+}
+
+export const getHelperLink = () => current
+export function subscribeHelperLink(f: () => void) {
+  listeners.add(f)
+  return () => listeners.delete(f)
 }
 
 export function useHelperLink() {
