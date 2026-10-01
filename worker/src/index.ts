@@ -5,13 +5,14 @@
  * - Telegram bot: approval buttons, weather alerts (see alerts.ts), weekly backup to owners
  */
 import { HttpError, farmCode, hashPassword, json, now, randomId, randomToken, safeEqual, sha256Hex } from './util'
-import { displayName, tg, verifyInitData, verifyWidget, webhookSecret, type TgUser } from './telegram'
+import { displayName, setTgBase, tg, verifyInitData, verifyWidget, webhookSecret, type TgUser } from './telegram'
 import { runAlerts, weeklyBackups } from './alerts'
 
 export interface Env {
   DB: D1Database
   TELEGRAM_BOT_TOKEN: string
   APP_ORIGIN: string
+  TG_API?: string
   BOT_USERNAME: string
 }
 
@@ -63,6 +64,13 @@ const T: Record<string, Record<string, string>> = {
     open: 'AgroLedger’ni ochish',
     already: 'Bu so‘rov allaqachon hal qilingan.',
     notOwner: 'Faqat ferma egasi javob bera oladi.',
+    aiAsk:
+      '🤖 <b>{name}</b> sizning AI yordamchingizdan foydalanmoqchi.\nRuxsat bersangiz, savollari sizning kompyuteringiz va Claude hisobingiz orqali javob oladi.',
+    aiAllowed: '✅ {name} endi AI yordamchidan foydalana oladi.',
+    aiRejected: '❌ {name} uchun AI yordamchi rad etildi.',
+    aiYouIn: '✅ AI yordamchiga ruxsat berildi. AgroLedger’ni oching.',
+    aiYouOut: '❌ AI yordamchiga ruxsat berilmadi.',
+    aiNotYours: 'Faqat yordamchi egasi javob bera oladi.',
   },
   ru: {
     joinAsk: '🔔 <b>{name}</b> хочет присоединиться к хозяйству «{farm}».\nКод и пароль введены верно.',
@@ -77,6 +85,13 @@ const T: Record<string, Record<string, string>> = {
     open: 'Открыть AgroLedger',
     already: 'Этот запрос уже решён.',
     notOwner: 'Ответить может только владелец хозяйства.',
+    aiAsk:
+      '🤖 <b>{name}</b> хочет пользоваться вашим AI-помощником.\nЕсли разрешите, его вопросы будут обрабатываться через ваш компьютер и ваш аккаунт Claude.',
+    aiAllowed: '✅ {name} теперь может пользоваться AI-помощником.',
+    aiRejected: '❌ {name}: доступ к AI-помощнику отклонён.',
+    aiYouIn: '✅ Доступ к AI-помощнику разрешён. Откройте AgroLedger.',
+    aiYouOut: '❌ Доступ к AI-помощнику не разрешён.',
+    aiNotYours: 'Ответить может только владелец помощника.',
   },
   en: {
     joinAsk: '🔔 <b>{name}</b> wants to join the farm “{farm}”.\nThe code and password were correct.',
@@ -90,6 +105,13 @@ const T: Record<string, Record<string, string>> = {
     open: 'Open AgroLedger',
     already: 'This request was already answered.',
     notOwner: 'Only a farm owner can answer.',
+    aiAsk:
+      '🤖 <b>{name}</b> wants to use your AI assistant.\nIf you allow it, their questions are answered through your computer and your Claude account.',
+    aiAllowed: '✅ {name} can now use the AI assistant.',
+    aiRejected: '❌ {name}: AI assistant access rejected.',
+    aiYouIn: '✅ You can use the AI assistant now. Open AgroLedger.',
+    aiYouOut: '❌ AI assistant access was not allowed.',
+    aiNotYours: 'Only the owner of the assistant can answer.',
   },
 }
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -101,6 +123,7 @@ function txt(lang: string, key: string, vars: Record<string, string> = {}) {
 // ---------- request handling ----------
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    setTgBase(env.TG_API)
     const origin = req.headers.get('Origin')
     const cors: Record<string, string> =
       origin && isAllowedOrigin(origin, env)
@@ -125,6 +148,7 @@ export default {
   },
 
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    setTgBase(env.TG_API)
     ctx.waitUntil(runAlerts(env))
     const d = new Date(event.scheduledTime)
     // Sunday 15:xx UTC (20:xx in Uzbekistan): weekly backup file to each owner
@@ -163,6 +187,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (M === 'GET' && p === '/me') return json(await me(env, user))
   if (M === 'PATCH' && p === '/me') return updateMe(req, env, user)
+  if (M === 'POST' && p === '/assistant/request') return assistantRequest(env, user)
   if (M === 'POST' && p === '/farms') return createFarm(req, env, user)
   if (M === 'POST' && p === '/farms/join') return joinFarm(req, env, user)
 
@@ -241,6 +266,7 @@ async function me(env: Env, user: UserRow) {
   )
     .bind(user.id)
     .all()
+  const areq = await env.DB.prepare('SELECT status FROM assistant_requests WHERE user_id = ?').bind(user.id).first<{ status: string }>()
   return {
     user: {
       id: user.id,
@@ -252,6 +278,7 @@ async function me(env: Env, user: UserRow) {
       alertHour: user.alert_hour,
       canMessage: !!user.can_message,
       assistant: parseAssistant(user.assistant),
+      assistantRequest: user.assistant ? null : (areq?.status ?? null),
     },
     farms: farms.results,
     bot: env.BOT_USERNAME,
@@ -595,6 +622,108 @@ async function restore(req: Request, env: Env, user: UserRow, farmId: string) {
   return json({ ok: true })
 }
 
+// ---------- AI assistant access for another account ----------
+/** People who run the assistant on their computer and share an active farm with this user. */
+async function assistantGivers(env: Env, userId: number) {
+  const rows = await env.DB.prepare(
+    `SELECT DISTINCT u.* FROM members me JOIN members m ON m.farm_id = me.farm_id AND m.status = 'active'
+     JOIN users u ON u.id = m.user_id
+     WHERE me.user_id = ? AND me.status = 'active' AND u.id != ? AND u.assistant IS NOT NULL`,
+  )
+    .bind(userId, userId)
+    .all<UserRow>()
+  return rows.results
+}
+
+async function assistantRequest(env: Env, user: UserRow) {
+  if (user.assistant) return json({ status: 'approved' })
+  const givers = await assistantGivers(env, user.id)
+  if (!givers.length) throw new HttpError(409, 'no_assistant_owner')
+  const old = await env.DB.prepare('SELECT status, requested_at FROM assistant_requests WHERE user_id = ?')
+    .bind(user.id)
+    .first<{ status: string; requested_at: string }>()
+  // asked less than 10 minutes ago: don't send the message again
+  if (old?.status === 'pending' && Date.now() - new Date(old.requested_at).getTime() < 10 * 60000) return json({ status: 'pending' })
+  await env.DB.prepare(
+    `INSERT INTO assistant_requests (user_id, status, requested_at) VALUES (?, 'pending', ?)
+     ON CONFLICT(user_id) DO UPDATE SET status = 'pending', requested_at = excluded.requested_at, decided_by = NULL, decided_at = NULL`,
+  )
+    .bind(user.id, now())
+    .run()
+  const who = user.name + (user.username ? ` (@${user.username})` : '')
+  let sent = 0
+  for (const g of givers) {
+    const r = await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
+      chat_id: g.id,
+      parse_mode: 'HTML',
+      text: txt(g.lang, 'aiAsk', { name: who }),
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: txt(g.lang, 'allow'), callback_data: `aa:${user.id}` },
+            { text: txt(g.lang, 'reject'), callback_data: `ar:${user.id}` },
+          ],
+        ],
+      },
+    })
+    if (r.ok) sent++
+  }
+  if (!sent) {
+    await env.DB.prepare('DELETE FROM assistant_requests WHERE user_id = ?').bind(user.id).run()
+    throw new HttpError(409, 'owner_cannot_be_messaged')
+  }
+  return json({ status: 'pending' })
+}
+
+async function decideAssistant(
+  env: Env,
+  cq: { id: string; from: TgUser; data?: string; message?: { chat: { id: number }; message_id: number } },
+) {
+  const [kind, uidS] = cq.data!.split(':')
+  const uid = Number(uidS)
+  const giver = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(cq.from.id).first<UserRow>()
+  const lang = giver?.lang ?? 'uz'
+  const allowedGiver = giver?.assistant && (await assistantGivers(env, uid)).some((g) => g.id === giver.id)
+  if (!giver || !allowedGiver) {
+    await tg(env.TELEGRAM_BOT_TOKEN, 'answerCallbackQuery', { callback_query_id: cq.id, text: txt(lang, 'aiNotYours'), show_alert: true })
+    return
+  }
+  const req = await env.DB.prepare('SELECT status FROM assistant_requests WHERE user_id = ?').bind(uid).first<{ status: string }>()
+  const target = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(uid).first<UserRow>()
+  const allow = kind === 'aa'
+  const done = req?.status === 'pending' && !!target
+  if (done) {
+    const t0 = now()
+    await env.DB.batch([
+      env.DB.prepare('UPDATE assistant_requests SET status = ?, decided_by = ?, decided_at = ? WHERE user_id = ?').bind(
+        allow ? 'approved' : 'rejected',
+        giver.id,
+        t0,
+        uid,
+      ),
+      ...(allow ? [env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?').bind(giver.assistant, uid)] : []),
+    ])
+    await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
+      chat_id: uid,
+      text: txt(target!.lang, allow ? 'aiYouIn' : 'aiYouOut'),
+      reply_markup: allow
+        ? { inline_keyboard: [[{ text: txt(target!.lang, 'open'), web_app: { url: env.APP_ORIGIN + '/' } }]] }
+        : undefined,
+    })
+  }
+  await tg(env.TELEGRAM_BOT_TOKEN, 'answerCallbackQuery', { callback_query_id: cq.id, text: done ? '✓' : txt(lang, 'already') })
+  if (cq.message) {
+    await tg(env.TELEGRAM_BOT_TOKEN, 'editMessageText', {
+      chat_id: cq.message.chat.id,
+      message_id: cq.message.message_id,
+      parse_mode: 'HTML',
+      text: done
+        ? txt(lang, allow ? 'aiAllowed' : 'aiRejected', { name: target!.name + (target!.username ? ` (@${target!.username})` : '') })
+        : txt(lang, 'already'),
+    })
+  }
+}
+
 // ---------- Telegram bot ----------
 async function telegramWebhook(req: Request, env: Env) {
   const secret = req.headers.get('X-Telegram-Bot-Api-Secret-Token') ?? ''
@@ -616,6 +745,7 @@ async function telegramWebhook(req: Request, env: Env) {
   }
 
   const cq = u.callback_query
+  if (cq?.data && /^a[ar]:\d+$/.test(cq.data)) await decideAssistant(env, cq)
   if (cq?.data && /^(ok|no):/.test(cq.data)) {
     const [kind, farmId, uid] = cq.data.split(':')
     const by = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(cq.from.id).first<UserRow>()

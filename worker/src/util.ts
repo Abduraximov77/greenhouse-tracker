@@ -25,7 +25,10 @@ export function safeEqual(a: string, b: string) {
 export function randomToken(bytes = 32) {
   const b = new Uint8Array(bytes)
   crypto.getRandomValues(b)
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return btoa(String.fromCharCode(...b))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
 }
 
 export function randomId() {

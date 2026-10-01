@@ -855,4 +855,12 @@ export const uz: Record<string, string> = {
     'Oilangiz fermasining yozuvlari — har bir telefonda. Boshlash uchun ikki qisqa qadam:',
   'Sign in with Telegram': 'Telegram orqali kiring',
   'Create a farm or join your family’s farm': 'Ferma yarating yoki oilangiz fermasiga qo‘shiling',
+  'Nobody in your farm has the assistant running yet.': 'Fermangizda hali hech kim yordamchini ishga tushirmagan.',
+  'The owner of the assistant has not started the Telegram bot yet.': 'Yordamchi egasi hali Telegram botida Start bosmagan.',
+  'Request sent. The owner of the assistant gets it in Telegram; it turns on here as soon as they allow it.':
+    'So‘rov yuborildi. Yordamchi egasi uni Telegramda oladi; ruxsat berishi bilan bu yerda yoqiladi.',
+  'The last request was not allowed. You can ask again.': 'Oxirgi so‘rovga ruxsat berilmadi. Yana so‘rashingiz mumkin.',
+  'Ask the person who runs the assistant on their computer. They get a message in Telegram and allow it with one tap.':
+    'Yordamchini o‘z kompyuterida ishlatayotgan odamdan so‘rang. U Telegramda xabar oladi va bitta tugma bilan ruxsat beradi.',
+  'Ask for access': 'Ruxsat so‘rash',
 }

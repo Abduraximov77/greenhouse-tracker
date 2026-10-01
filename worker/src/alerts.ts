@@ -69,7 +69,13 @@ async function fetchForecast(p: Place): Promise<Forecast | null> {
       utcOffset: j.utc_offset_seconds,
       lat: p.lat,
       lon: p.lon,
-      now: { temp: j.current.temperature_2m, code: j.current.weather_code, wind: j.current.wind_speed_10m, humidity: j.current.relative_humidity_2m ?? null, time: j.current.time },
+      now: {
+        temp: j.current.temperature_2m,
+        code: j.current.weather_code,
+        wind: j.current.wind_speed_10m,
+        humidity: j.current.relative_humidity_2m ?? null,
+        time: j.current.time,
+      },
       days,
       hours,
     }
@@ -156,7 +162,9 @@ export async function runAlerts(env: Env) {
         const done = await env.DB.prepare('SELECT 1 FROM digests WHERE user_id = ? AND day = ?').bind(m.id, day).first()
         if (done) continue
       }
-      const sentRows = await env.DB.prepare('SELECT key FROM sent_alerts WHERE user_id = ? AND farm_id = ?').bind(m.id, farm.id).all<{ key: string }>()
+      const sentRows = await env.DB.prepare('SELECT key FROM sent_alerts WHERE user_id = ? AND farm_id = ?')
+        .bind(m.id, farm.id)
+        .all<{ key: string }>()
       const sent = new Set(sentRows.results.map((r) => r.key))
       const lang: Lang = (['uz', 'ru', 'en'] as const).includes(m.lang) ? m.lang : 'uz'
       const t = tr(lang)
@@ -181,7 +189,9 @@ export async function runAlerts(env: Env) {
         blocks.push(`📍 <b>${esc(pp.place.name)}</b>${crops ? ' · ' + esc(crops) : ''}\n` + lines.join('\n'))
       }
       if (blocks.length) {
-        const head = evening ? `🌦 <b>${esc(farm.name)}</b> — ${esc(t('Weather warnings'))}` : `⚠ <b>${esc(farm.name)}</b> — ${esc(t('Weather warnings'))}`
+        const head = evening
+          ? `🌦 <b>${esc(farm.name)}</b> — ${esc(t('Weather warnings'))}`
+          : `⚠ <b>${esc(farm.name)}</b> — ${esc(t('Weather warnings'))}`
         const r = await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
           chat_id: m.id,
           parse_mode: 'HTML',
@@ -194,7 +204,16 @@ export async function runAlerts(env: Env) {
         }
         if (r.ok && newKeys.length) {
           const t0 = now()
-          await env.DB.batch(newKeys.map((k) => env.DB.prepare('INSERT OR IGNORE INTO sent_alerts (user_id, farm_id, key, sent_at) VALUES (?, ?, ?, ?)').bind(m.id, farm.id, k, t0)))
+          await env.DB.batch(
+            newKeys.map((k) =>
+              env.DB.prepare('INSERT OR IGNORE INTO sent_alerts (user_id, farm_id, key, sent_at) VALUES (?, ?, ?, ?)').bind(
+                m.id,
+                farm.id,
+                k,
+                t0,
+              ),
+            ),
+          )
         }
       }
       if (evening) await env.DB.prepare('INSERT OR IGNORE INTO digests (user_id, day) VALUES (?, ?)').bind(m.id, day).run()

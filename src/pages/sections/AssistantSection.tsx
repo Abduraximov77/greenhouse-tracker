@@ -14,6 +14,7 @@ import {
   type JobState,
 } from '../../lib/assistant'
 import { DeleteButton, Empty } from '../../components/ui'
+import { refreshMe, requestAssistant, useCloud } from '../../lib/cloud'
 import { Markdown } from '../../components/Markdown'
 
 // Questions still being answered, kept outside the page so leaving and coming back doesn't lose them.
@@ -325,17 +326,81 @@ function useHealth(link: HelperLink | null) {
 
 function NotLinked() {
   const t = useT()
+  const session = useCloud().session
+  const status = session?.user.assistantRequest ?? null
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // waiting for the answer in Telegram: check every few seconds; the link arrives by itself
+  useEffect(() => {
+    if (status !== 'pending') return
+    const i = setInterval(() => void refreshMe(false).catch(() => {}), 6000)
+    return () => clearInterval(i)
+  }, [status])
+
+  async function ask() {
+    setBusy(true)
+    setError(null)
+    try {
+      await requestAssistant()
+    } catch (e) {
+      const code = (e as Error).message
+      setError(
+        t(
+          code === 'no_assistant_owner'
+            ? 'Nobody in your farm has the assistant running yet.'
+            : code === 'owner_cannot_be_messaged'
+              ? 'The owner of the assistant has not started the Telegram bot yet.'
+              : code === 'offline'
+                ? 'No internet connection. Try again.'
+                : 'Something went wrong. Try again.',
+        ),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="card assist-setup">
       <p className="empty-title">🤖 {t('The assistant is not linked on this device')}</p>
-      <p>{t('The assistant runs through Claude Code on your own computer, with your Claude account. Only devices you link can use it.')}</p>
-      <ol>
-        <li>{t('On your computer, start the AgroLedger helper (see the steps in Settings).')}</li>
-        <li>{t('It prints a link. Open that link on this device — the assistant is then linked here.')}</li>
-      </ol>
-      <a className="btn btn-primary" href={href('settings', 'assistant')}>
-        {t('Setup steps')}
-      </a>
+      {session ? (
+        <>
+          {status === 'pending' ? (
+            <p role="status">
+              ⏳ {t('Request sent. The owner of the assistant gets it in Telegram; it turns on here as soon as they allow it.')}
+            </p>
+          ) : (
+            <p>
+              {status === 'rejected'
+                ? t('The last request was not allowed. You can ask again.')
+                : t('Ask the person who runs the assistant on their computer. They get a message in Telegram and allow it with one tap.')}
+            </p>
+          )}
+          {error && <p className="form-error">{error}</p>}
+          <div className="assist-setup-actions">
+            <button type="button" className="btn btn-primary" disabled={busy || status === 'pending'} onClick={() => void ask()}>
+              {busy ? t('Please wait…') : status === 'pending' ? t('Waiting for approval') : t('Ask for access')}
+            </button>
+            <a className="btn btn-ghost" href={href('settings', 'assistant')}>
+              {t('Setup steps')}
+            </a>
+          </div>
+        </>
+      ) : (
+        <>
+          <p>
+            {t('The assistant runs through Claude Code on your own computer, with your Claude account. Only devices you link can use it.')}
+          </p>
+          <ol>
+            <li>{t('On your computer, start the AgroLedger helper (see the steps in Settings).')}</li>
+            <li>{t('It prints a link. Open that link on this device — the assistant is then linked here.')}</li>
+          </ol>
+          <a className="btn btn-primary" href={href('settings', 'assistant')}>
+            {t('Setup steps')}
+          </a>
+        </>
+      )}
     </div>
   )
 }

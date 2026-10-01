@@ -63,9 +63,19 @@ export function displayName(u: TgUser) {
 }
 
 /** Call the Telegram Bot API. Returns null on failure (never throws). */
-export async function tg<T = unknown>(botToken: string, method: string, body: unknown): Promise<{ ok: boolean; result?: T; error_code?: number }> {
+/** Only for local testing (TG_API in .dev.vars points to a fake Telegram); live it is always Telegram. */
+let TG_BASE = 'https://api.telegram.org'
+export function setTgBase(base?: string) {
+  if (base) TG_BASE = base.replace(/\/+$/, '')
+}
+
+export async function tg<T = unknown>(
+  botToken: string,
+  method: string,
+  body: unknown,
+): Promise<{ ok: boolean; result?: T; error_code?: number }> {
   try {
-    const r = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+    const r = await fetch(`${TG_BASE}/bot${botToken}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -83,7 +93,7 @@ export async function tgDocument(botToken: string, chatId: number, filename: str
   form.append('caption', caption)
   form.append('document', new Blob([content], { type: 'application/json' }), filename)
   try {
-    const r = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, { method: 'POST', body: form })
+    const r = await fetch(`${TG_BASE}/bot${botToken}/sendDocument`, { method: 'POST', body: form })
     return ((await r.json()) as { ok: boolean }).ok
   } catch {
     return false

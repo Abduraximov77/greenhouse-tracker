@@ -847,4 +847,12 @@ export const ru: Record<string, string> = {
     'Записи семейной фермы — на каждом телефоне. Два коротких шага, чтобы начать:',
   'Sign in with Telegram': 'Войдите через Telegram',
   'Create a farm or join your family’s farm': 'Создайте ферму или присоединитесь к ферме семьи',
+  'Nobody in your farm has the assistant running yet.': 'В вашем хозяйстве пока никто не запустил помощника.',
+  'The owner of the assistant has not started the Telegram bot yet.': 'Владелец помощника ещё не нажал Start в Telegram-боте.',
+  'Request sent. The owner of the assistant gets it in Telegram; it turns on here as soon as they allow it.':
+    'Запрос отправлен. Владелец помощника получит его в Telegram; здесь он включится, как только тот разрешит.',
+  'The last request was not allowed. You can ask again.': 'Последний запрос не был разрешён. Можно спросить снова.',
+  'Ask the person who runs the assistant on their computer. They get a message in Telegram and allow it with one tap.':
+    'Попросите того, у кого помощник работает на компьютере. Он получит сообщение в Telegram и разрешит одним нажатием.',
+  'Ask for access': 'Запросить доступ',
 }

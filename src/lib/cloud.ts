@@ -22,6 +22,8 @@ export interface CloudUser {
   canMessage: boolean
   /** this person's own AI-assistant link, if they linked one on any device */
   assistant?: { u: string; k: string } | null
+  /** asked to use someone else's assistant: pending | rejected */
+  assistantRequest?: string | null
 }
 export interface FarmRef {
   id: string
@@ -214,6 +216,12 @@ export async function updateMe(patch: {
 }) {
   const res = await api<MeResponse>('PATCH', '/me', { ...patch, tz: -new Date().getTimezoneOffset() })
   if (state.session) set({ session: { ...state.session, user: res.user, farms: res.farms } })
+}
+
+/** Ask the person who runs the AI assistant (in the same farm) to allow this account; they answer in Telegram. */
+export async function requestAssistant() {
+  await api('POST', '/assistant/request')
+  await refreshMe(false)
 }
 
 export async function signOut() {
