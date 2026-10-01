@@ -25,34 +25,24 @@ export function navigate(...parts: string[]) {
 }
 
 // ---------- Back button ----------
-// We keep our own list of visited pages, so "Back" always stays inside the app.
+// "Back" goes one level up in the app (a crop section → the crop's overview → the season → the
+// seasons list), not back through the pages you happened to open.
 
-const visited: string[] = [getHash()]
-let goingBack = false
-
-window.addEventListener('hashchange', () => {
-  const h = getHash()
-  if (goingBack) {
-    goingBack = false
-    return
-  }
-  if (visited.length > 1 && visited[visited.length - 2] === h)
-    visited.pop() // browser back button
-  else if (visited[visited.length - 1] !== h) visited.push(h)
-})
-
-/** The page one level up: a crop section → the season, a season → the seasons list. */
+/** The page one level up. */
 function parentOf(hash: string) {
   const p = hash.split('/').filter(Boolean)
+  if (p[0] === 'season' && p[2] === 'crop' && p[3]) {
+    // a crop section (expenses, harvest…) → the crop's overview; the overview → the season
+    if (p[4] && p[4] !== 'overview') return `/season/${p[1]}/crop/${p[3]}`
+    return `/season/${p[1]}`
+  }
   if (p[0] === 'season' && p.length > 2) return `/season/${p[1]}`
+  if (p[0] === 'settings' && p.length > 1) return '/settings'
   return '/'
 }
 
 export function goBack() {
-  const target = visited.length > 1 ? visited[visited.length - 2] : parentOf(getHash())
-  if (visited.length > 1) visited.pop()
-  else visited[0] = target
-  goingBack = true
+  const target = parentOf(getHash())
   // replace, so going back doesn't add another step to the browser history
   window.location.replace(`${window.location.href.split('#')[0]}#${target}`)
   window.scrollTo({ top: 0 })
