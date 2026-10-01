@@ -3733,3 +3733,27 @@ button.wx-day.is-open {
 @media (max-width: 520px) { .chat-head { flex-direction: column; align-items: stretch; } .chat-pick { flex: none; } }
 .chat-full { display: grid; gap: 10px; justify-items: start; border-top: 1px solid var(--line); padding-top: 12px; }
 .chat-full p { margin: 0; }
+
+/* chat list on the left, like Claude; hidden with the toggle */
+.chat.side-open { grid-template-columns: 240px minmax(0, 1fr); align-items: start; column-gap: 14px; }
+.chat-main { display: grid; gap: 10px; min-width: 0; }
+.chat-side { display: grid; gap: 8px; align-content: start; border-right: 1px solid var(--line); padding-right: 12px; max-height: 80vh; overflow-y: auto; }
+.chat-new { justify-self: stretch; }
+.chat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.chat-item { width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; color: var(--text); display: grid; gap: 2px; font: inherit; }
+.chat-item:hover { background: var(--brand-soft); }
+.chat-item.is-on { background: var(--brand-soft); font-weight: 600; }
+.chat-item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-item-meta { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
+.chat-head { flex-wrap: nowrap; }
+.chat-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-toggle { flex: none; }
+.chat-scrim { display: none; }
+@media (max-width: 719px) {
+  .chat.side-open { grid-template-columns: minmax(0, 1fr); }
+  .chat { position: relative; }
+  .chat-side { position: absolute; z-index: 5; top: 0; left: 0; bottom: 0; width: min(82%, 300px); max-height: none; background: var(--surface); padding: 12px; border-right: 1px solid var(--line); box-shadow: 4px 0 16px rgb(0 0 0 / 0.15); border-radius: 8px 0 0 8px; }
+  .chat-scrim { display: block; position: absolute; inset: 0; z-index: 4; background: rgb(0 0 0 / 0.2); border: 0; border-radius: 8px; }
+  .chat-head { flex-wrap: wrap; }
+  .chat-head { flex-direction: row; align-items: center; }
+}

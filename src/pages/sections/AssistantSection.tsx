@@ -41,6 +41,7 @@ type Photo = { type: string; data: string; preview: string }
 type Chat = { id: string; messages: Answer[]; last: string }
 
 const newChatId = () => crypto.randomUUID()
+const narrow = () => typeof window !== 'undefined' && window.innerWidth < 720
 /** A chat holds this many questions; then a new chat starts (long chats send more each time). */
 const CHAT_LIMIT = 5
 
@@ -74,6 +75,23 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
   const chat = chats.find((c) => c.id === openId) ?? null
   const chatId = openId ?? fresh ?? null
 
+  // the chat list on the left: remembered on this device; closed by default on a phone
+  const [side, setSide] = useState(() => {
+    try {
+      const v = localStorage.getItem('agroledger:chat-side')
+      return v ? v === '1' : !narrow()
+    } catch {
+      return !narrow()
+    }
+  })
+  const setSideOpen = (v: boolean) => {
+    setSide(v)
+    try {
+      localStorage.setItem('agroledger:chat-side', v ? '1' : '0')
+    } catch {
+      // storage blocked
+    }
+  }
   const [question, setQuestion] = useState('')
   const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -97,6 +115,11 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
     setQuestion('')
     setPhotos([])
     setError(null)
+  }
+
+  function pickNew() {
+    startNew()
+    if (narrow()) setSideOpen(false)
   }
 
   async function addPhotos(files: FileList | null) {
@@ -199,160 +222,188 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
         {health.state === 'nokey' && <span>● {t('The key is not accepted. Open the new link from the helper.')}</span>}
       </div>
 
-      <div className="card chat">
-        <div className="chat-head">
-          {chats.length > 0 ? (
-            <select
-              className="input input-compact chat-pick"
-              aria-label={t('Chats')}
-              value={isNew ? '' : (chat?.id ?? '')}
-              disabled={!!waitingFor}
-              onChange={(e) => {
-                setPicked(e.target.value || null)
-                setError(null)
-              }}
-            >
-              {isNew && <option value="">{t('New chat')}</option>}
-              {chats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {formatDate(new Date(c.last).toLocaleDateString('sv'))} · {c.messages[0].question.slice(0, 50)}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <b>{t('New chat')}</b>
-          )}
-          <span className="chat-head-actions">
-            {!isNew && (
-              <button type="button" className="btn btn-ghost btn-small" onClick={startNew} disabled={!!waitingFor}>
+      <div className={`card chat${side ? ' side-open' : ''}`}>
+        {side && (
+          <>
+            <aside className="chat-side" aria-label={t('Chats')}>
+              <button type="button" className="btn btn-primary btn-small chat-new" onClick={pickNew} disabled={!!waitingFor}>
                 + {t('New chat')}
               </button>
-            )}
-            {chat && (
-              <DeleteButton
-                label={t('Delete chat')}
-                onDelete={() => {
-                  for (const m of chat.messages) removeRecord('answers', m.id)
-                  setPicked(null)
-                }}
-              />
-            )}
-          </span>
-        </div>
-
-        <div className="chat-thread">
-          {isNew && !busy && (
-            <p className="chat-empty">
-              {t('Ask about this crop. You can add up to 4 photos, then ask follow-up questions in the same chat.')}
-            </p>
-          )}
-          {chat?.messages.map((a) => (
-            <div key={a.id} className="chat-turn">
-              <div className="chat-msg chat-me">
-                <p>{a.question}</p>
-                <span className="assist-meta">
-                  {a.photos > 0 && `📷 ${a.photos} · `}
-                  {formatDateTime(a.createdAt)}
-                  {a.by ? ` · ${a.by}` : ''}
-                </span>
-              </div>
-              <div className="chat-msg chat-ai">
-                <Markdown text={a.answer} links={a.sources ? (a.sourceUrls ?? []) : undefined} />
-                {a.sources && (
-                  <p className={`assist-check ${a.sources.read ? 'is-ok' : 'is-unsure'}`}>
-                    {a.sources.read
-                      ? '✓ ' + t('Checked: based on {n} trusted pages that were opened and read.', { n: a.sources.read })
-                      : 'ℹ ' + t('No trusted page was opened for this answer. Treat it as unconfirmed.')}
-                    {a.sources.removed > 0 && ' ' + t('{n} unchecked links were removed.', { n: a.sources.removed })}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-          {busy && busy.chatId === (chat?.id ?? chatId) && <PendingBubble crop={crop} p={busy} />}
-          <div ref={endRef} />
-        </div>
-
-        <p className="assist-caution">
-          ⚠ {t('AI answer. Before spraying, buying or other important decisions, check with an agronomist and follow the product label.')}
-        </p>
-        {full && (
-          <div className="chat-full">
-            <p>
-              {t('This chat has {n} questions. To ask more, start a new chat: it answers faster and uses less of your Claude limit.', {
-                n: CHAT_LIMIT,
-              })}
-            </p>
-            <button type="button" className="btn btn-primary" onClick={startNew}>
-              + {t('New chat')}
+              {chats.length === 0 && <p className="field-hint">{t('No chats yet')}</p>}
+              <ul className="chat-list">
+                {chats.map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className={`chat-item${c.id === chat?.id ? ' is-on' : ''}`}
+                      disabled={!!waitingFor}
+                      aria-current={c.id === chat?.id ? 'true' : undefined}
+                      onClick={() => {
+                        setPicked(c.id)
+                        setError(null)
+                        if (narrow()) setSideOpen(false)
+                      }}
+                    >
+                      <span className="chat-item-title">{c.messages[0].question}</span>
+                      <span className="chat-item-meta">
+                        {formatDate(new Date(c.last).toLocaleDateString('sv'))} · {c.messages.length}/{CHAT_LIMIT}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+            <button type="button" className="chat-scrim" aria-label={t('Hide chats')} onClick={() => setSideOpen(false)} />
+          </>
+        )}
+        <div className="chat-main">
+          <div className="chat-head">
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon chat-toggle"
+              aria-label={side ? t('Hide chats') : t('Show chats')}
+              title={side ? t('Hide chats') : t('Show chats')}
+              aria-expanded={side}
+              onClick={() => setSideOpen(!side)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+                <rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M9.5 4.5v15" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
             </button>
-          </div>
-        )}
-
-        {!full && (
-          <form
-            className="chat-compose"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void send()
-            }}
-          >
-            <textarea
-              id={`ask-${crop.id}`}
-              className="input assist-input"
-              rows={isNew ? 3 : 2}
-              value={question}
-              aria-label={t('Your question')}
-              placeholder={
-                isNew
-                  ? t(
-                      'Describe what you see and what you want to know, e.g. “Lower leaves turn yellow with brown spots. What is it and what should I do?”',
-                    )
-                  : t('Ask a follow-up question…')
-              }
-              onChange={(e) => setQuestion(e.target.value)}
-              disabled={!!waitingFor}
-            />
-            <div className="assist-photos">
-              {photos.map((p, i) => (
-                <span key={i} className="assist-thumb">
-                  <img src={p.preview} alt={t('Photo {n}', { n: i + 1 })} />
-                  <button type="button" aria-label={t('Remove photo')} onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>
-                    ×
-                  </button>
-                </span>
-              ))}
-              {photos.length < 4 && (
-                <label className="btn btn-ghost btn-small assist-add-photo">
-                  📷 {t('Add photos')} ({photos.length}/4)
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="sr-only"
-                    onChange={(e) => void addPhotos(e.target.files)}
-                    disabled={!!waitingFor}
-                  />
-                </label>
+            <b className="chat-title">{chat ? chat.messages[0].question : t('New chat')}</b>
+            <span className="chat-head-actions">
+              {!side && !isNew && (
+                <button type="button" className="btn btn-ghost btn-small" onClick={startNew} disabled={!!waitingFor}>
+                  + {t('New chat')}
+                </button>
               )}
-              <button type="submit" className="btn btn-primary chat-send" disabled={!!waitingFor || !question.trim()}>
-                {t('Send')}
+              {chat && (
+                <DeleteButton
+                  label={t('Delete chat')}
+                  onDelete={() => {
+                    for (const m of chat.messages) removeRecord('answers', m.id)
+                    setPicked(null)
+                  }}
+                />
+              )}
+            </span>
+          </div>
+
+          <div className="chat-thread">
+            {isNew && !busy && (
+              <p className="chat-empty">
+                {t('Ask about this crop. You can add up to 4 photos, then ask follow-up questions in the same chat.')}
+              </p>
+            )}
+            {chat?.messages.map((a) => (
+              <div key={a.id} className="chat-turn">
+                <div className="chat-msg chat-me">
+                  <p>{a.question}</p>
+                  <span className="assist-meta">
+                    {a.photos > 0 && `📷 ${a.photos} · `}
+                    {formatDateTime(a.createdAt)}
+                    {a.by ? ` · ${a.by}` : ''}
+                  </span>
+                </div>
+                <div className="chat-msg chat-ai">
+                  <Markdown text={a.answer} links={a.sources ? (a.sourceUrls ?? []) : undefined} />
+                  {a.sources && (
+                    <p className={`assist-check ${a.sources.read ? 'is-ok' : 'is-unsure'}`}>
+                      {a.sources.read
+                        ? '✓ ' + t('Checked: based on {n} trusted pages that were opened and read.', { n: a.sources.read })
+                        : 'ℹ ' + t('No trusted page was opened for this answer. Treat it as unconfirmed.')}
+                      {a.sources.removed > 0 && ' ' + t('{n} unchecked links were removed.', { n: a.sources.removed })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+            {busy && busy.chatId === (chat?.id ?? chatId) && <PendingBubble crop={crop} p={busy} />}
+            <div ref={endRef} />
+          </div>
+
+          <p className="assist-caution">
+            ⚠ {t('AI answer. Before spraying, buying or other important decisions, check with an agronomist and follow the product label.')}
+          </p>
+          {full && (
+            <div className="chat-full">
+              <p>
+                {t('This chat has {n} questions. To ask more, start a new chat: it answers faster and uses less of your Claude limit.', {
+                  n: CHAT_LIMIT,
+                })}
+              </p>
+              <button type="button" className="btn btn-primary" onClick={startNew}>
+                + {t('New chat')}
               </button>
             </div>
-            {error && <p className="form-error">{error}</p>}
-            <div className="assist-actions">
-              <button type="button" className="link-btn" onClick={() => setShowContext(!showContext)} aria-expanded={showContext}>
-                {showContext ? t('Hide what is sent') : t('What is sent with the question')}
-              </button>
-            </div>
-            {showContext && <pre className="assist-context">{cropContext(db, crop)}</pre>}
-            <p className="field-hint">
-              {t('Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.')}{' '}
-              {t('Only questions about farming and your farm are answered.')}
-            </p>
-          </form>
-        )}
+          )}
+
+          {!full && (
+            <form
+              className="chat-compose"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void send()
+              }}
+            >
+              <textarea
+                id={`ask-${crop.id}`}
+                className="input assist-input"
+                rows={isNew ? 3 : 2}
+                value={question}
+                aria-label={t('Your question')}
+                placeholder={
+                  isNew
+                    ? t(
+                        'Describe what you see and what you want to know, e.g. “Lower leaves turn yellow with brown spots. What is it and what should I do?”',
+                      )
+                    : t('Ask a follow-up question…')
+                }
+                onChange={(e) => setQuestion(e.target.value)}
+                disabled={!!waitingFor}
+              />
+              <div className="assist-photos">
+                {photos.map((p, i) => (
+                  <span key={i} className="assist-thumb">
+                    <img src={p.preview} alt={t('Photo {n}', { n: i + 1 })} />
+                    <button type="button" aria-label={t('Remove photo')} onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {photos.length < 4 && (
+                  <label className="btn btn-ghost btn-small assist-add-photo">
+                    📷 {t('Add photos')} ({photos.length}/4)
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={(e) => void addPhotos(e.target.files)}
+                      disabled={!!waitingFor}
+                    />
+                  </label>
+                )}
+                <button type="submit" className="btn btn-primary chat-send" disabled={!!waitingFor || !question.trim()}>
+                  {t('Send')}
+                </button>
+              </div>
+              {error && <p className="form-error">{error}</p>}
+              <div className="assist-actions">
+                <button type="button" className="link-btn" onClick={() => setShowContext(!showContext)} aria-expanded={showContext}>
+                  {showContext ? t('Hide what is sent') : t('What is sent with the question')}
+                </button>
+              </div>
+              {showContext && <pre className="assist-context">{cropContext(db, crop)}</pre>}
+              <p className="field-hint">
+                {t('Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.')}{' '}
+                {t('Only questions about farming and your farm are answered.')}
+              </p>
+            </form>
+          )}
+        </div>
       </div>
     </>
   )

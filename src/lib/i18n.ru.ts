@@ -939,4 +939,7 @@ export const ru: Record<string, string> = {
     'Уточняющие вопросы продолжают этот же разговор и используют уже прочитанные страницы, поэтому тратят меньше лимита Claude.',
   'This chat has {n} questions. To ask more, start a new chat: it answers faster and uses less of your Claude limit.':
     'В этом чате уже {n} вопросов. Чтобы спросить ещё, начните новый чат: ответ будет быстрее и расходует меньше лимита Claude.',
+  'Hide chats': 'Скрыть чаты',
+  'Show chats': 'Показать чаты',
+  'No chats yet': 'Пока нет чатов',
 }
