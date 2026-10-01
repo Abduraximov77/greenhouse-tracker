@@ -450,6 +450,13 @@ export async function syncNow() {
   }
   running = true
   set({ status: 'syncing' })
+  // once a day (and after a refused change) download the whole farm and make this phone match it exactly
+  const FULL_KEY = 'agroledger:full-check'
+  const lastFull = read<{ farmId: string; at: number } | null>(FULL_KEY, null)
+  if (!lastFull || lastFull.farmId !== farm.id || Date.now() - lastFull.at > 86400000) write(CURSOR_KEY, { farmId: farm.id, cursor: 0 })
+  const full = cursorFor(farm.id) === 0
+  const seen = new Set<string>()
+  let refused = false
   try {
     let more = true
     while (more) {
@@ -468,6 +475,8 @@ export async function syncNow() {
       }
       write(PENDING_KEY, pending)
       // apply what others changed (skip records still waiting to be sent from here)
+      // every record the farm knows, including ones deleted on purpose (those stay deleted)
+      if (full) for (const c of res.changes) seen.add(`${c.coll}|${c.id}`)
       const incoming = res.changes.filter((c) => !pending[`${c.coll}|${c.id}`])
       applyRemote(incoming)
       write(CURSOR_KEY, { farmId: farm.id, cursor: res.cursor })
@@ -476,6 +485,7 @@ export async function syncNow() {
       if (sNow && res.role && sNow.farms.some((x) => x.id === farm.id && x.role !== res.role))
         set({ session: { ...sNow, farms: sNow.farms.map((x) => (x.id === farm.id ? { ...x, role: res.role as FarmRef['role'] } : x)) } })
       if (res.rejected.length) {
+        refused = true
         // not allowed (e.g. a member deleting a crop): get the farm's version back
         errorAt = Date.now()
         set({ error: res.rejected.some((r) => r.reason === 'owners_only') ? 'owners_only' : 'rejected' })
@@ -484,6 +494,24 @@ export async function syncNow() {
       }
       more = res.more || Object.keys(pending).length > 0
       if (!res.more && batch.length === 0) more = false
+    }
+    // the whole farm came down: records this phone has that the farm never got are sent now,
+    // so nothing typed on a phone is ever left behind (nothing is removed here)
+    if (full && !refused) {
+      const all = allAsChanges()
+      let missing = all.filter((c) => !seen.has(`${c.coll}|${c.id}`) && !pending[`${c.coll}|${c.id}`])
+      // an empty season of a year the farm already has (e.g. the starting "2027") is not sent twice
+      const farmYears = new Set(
+        all.filter((c) => c.coll === 'seasons' && seen.has(`seasons|${c.id}`)).map((c) => (c.data as { startYear?: number })?.startYear),
+      )
+      const usedSeasons = new Set(all.filter((c) => c.coll === 'crops').map((c) => (c.data as { seasonId?: string })?.seasonId))
+      missing = missing.filter(
+        (c) => !(c.coll === 'seasons' && !usedSeasons.has(c.id) && farmYears.has((c.data as { startYear?: number })?.startYear)),
+      )
+      for (const c of missing) pending[`${c.coll}|${c.id}`] = c
+      write(PENDING_KEY, pending)
+      if (missing.length) again = true
+      write(FULL_KEY, { farmId: farm.id, at: Date.now() })
     }
     // a "put back" message stays for 20 seconds so it can be read
     const keepError = again || Date.now() - errorAt < 20000
