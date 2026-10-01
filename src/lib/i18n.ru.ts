@@ -926,4 +926,15 @@ export const ru: Record<string, string> = {
   'Partly given back': 'Частично возвращено',
   'Each person has their own pass, not your key. Taking it away stops it on your computer at once if the helper is running.':
     'У каждого свой пропуск, а не ваш ключ. Если его забрать, он сразу перестаёт работать на вашем компьютере (если помощник запущен).',
+  Chats: 'Чаты',
+  'New chat': 'Новый чат',
+  'Delete chat': 'Удалить чат',
+  'Ask about this crop. You can add up to 4 photos, then ask follow-up questions in the same chat.':
+    'Спросите об этой культуре. Можно добавить до 4 фото, а потом задавать уточняющие вопросы в этом же чате.',
+  'This chat is long. For a new topic, start a new chat: it answers faster and uses less of your Claude limit.':
+    'Чат стал длинным. Для новой темы начните новый чат: ответ будет быстрее и расходует меньше лимита Claude.',
+  'Ask a follow-up question…': 'Задайте уточняющий вопрос…',
+  Send: 'Отправить',
+  'Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.':
+    'Уточняющие вопросы продолжают этот же разговор и используют уже прочитанные страницы, поэтому тратят меньше лимита Claude.',
 }

@@ -168,6 +168,8 @@ export interface AskInput {
   lang: string
   images: { type: string; data: string }[]
   previous?: string
+  /** chat id: follow-ups in the same chat continue the same Claude session on the computer */
+  chat?: string
 }
 
 export interface JobState {
@@ -178,6 +180,9 @@ export interface JobState {
   /** checked by the helper: trusted pages really opened, links removed because they were not */
   sources?: { read: string[]; listed: number; removed: number; refused: number }
   position?: number
+  /** message number in this chat, and whether Claude's session was continued */
+  turn?: number
+  continued?: boolean
 }
 
 /** Send one question, then check back every few seconds until the answer is ready. */

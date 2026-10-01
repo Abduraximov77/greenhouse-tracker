@@ -224,6 +224,8 @@ export interface Answer extends Meta {
   sources?: { read: number; removed: number }
   /** The trusted pages the helper really opened; only these are shown as links. */
   sourceUrls?: string[]
+  /** The chat this message belongs to (older answers have none: each is its own chat). */
+  chatId?: string | null
   /** The answer this question followed up on. */
   followUpOf?: ID | null
 }

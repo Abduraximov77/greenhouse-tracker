@@ -933,4 +933,15 @@ export const uz: Record<string, string> = {
   'Partly given back': 'Qisman qaytarildi',
   'Each person has their own pass, not your key. Taking it away stops it on your computer at once if the helper is running.':
     'Har bir odamning o‘z ruxsatnomasi bor, sizning kalitingiz emas. Olib tashlansa, yordamchi ishlayotgan bo‘lsa, kompyuteringizda darhol to‘xtaydi.',
+  Chats: 'Suhbatlar',
+  'New chat': 'Yangi suhbat',
+  'Delete chat': 'Suhbatni o‘chirish',
+  'Ask about this crop. You can add up to 4 photos, then ask follow-up questions in the same chat.':
+    'Shu ekin haqida so‘rang. 4 tagacha rasm qo‘shishingiz, keyin shu suhbatda qo‘shimcha savollar berishingiz mumkin.',
+  'This chat is long. For a new topic, start a new chat: it answers faster and uses less of your Claude limit.':
+    'Suhbat uzun bo‘lib ketdi. Yangi mavzu uchun yangi suhbat boshlang: tezroq javob beradi va Claude limitingizdan kamroq sarflaydi.',
+  'Ask a follow-up question…': 'Qo‘shimcha savol bering…',
+  Send: 'Yuborish',
+  'Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.':
+    'Qo‘shimcha savollar shu suhbatni davom ettiradi va o‘qilgan sahifalardan qayta foydalanadi, shuning uchun Claude limitingizdan kamroq sarflanadi.',
 }

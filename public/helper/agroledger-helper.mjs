@@ -37,7 +37,7 @@ const ALLOWED_ORIGINS = new Set([APP_URL, 'http://localhost:5173', 'http://local
 const JOB_TIMEOUT_MS = 6 * 60 * 1000
 const MAX_BODY = 14 * 1024 * 1024 // photos included (the app sends at most 4 small JPEGs)
 /** Raise by 1 with every change to this file; the hourly update only installs a higher number. */
-const RELEASE = 4
+const RELEASE = 5
 const MAX_WAITING = 5 // questions waiting in line; more are refused so nobody can run up the Claude usage
 const IS_WIN = process.platform === 'win32'
 // The helper runs as two processes: a small "supervisor" (tunnel, keep-awake, updates) and a "worker"
@@ -147,30 +147,87 @@ function systemPromptFile() {
 
 const LANG_NAMES = { uz: 'Uzbek (Latin script, o‘zbekcha)', ru: 'Russian', en: 'English' }
 
-/** One question = one separate Claude Code run (no chat history), so each costs the same. */
+// ---------- chats: each chat is one Claude session, kept in its own folder so it can be continued ----------
+const CHATS_DIR = path.join(os.homedir(), '.agroledger-helper-chats')
+const CHAT_DAYS = 14 // chats not used for this long are forgotten
+const chatDir = (id) => path.join(CHATS_DIR, id)
+function readChat(id) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(chatDir(id), 'chat.json'), 'utf8'))
+  } catch {
+    return null
+  }
+}
+function writeChat(id, meta) {
+  fs.mkdirSync(chatDir(id), { recursive: true, mode: 0o700 })
+  fs.writeFileSync(path.join(chatDir(id), 'chat.json'), JSON.stringify(meta), { mode: 0o600 })
+}
+function forgetOldChats() {
+  try {
+    for (const id of fs.readdirSync(CHATS_DIR)) {
+      const m = readChat(id)
+      if (!m || Date.now() - (m.updated ?? 0) > CHAT_DAYS * 86400000) fs.rmSync(chatDir(id), { recursive: true, force: true })
+    }
+  } catch {
+    // no chats yet
+  }
+}
+const hashText = (t) =>
+  crypto
+    .createHash('sha256')
+    .update(String(t ?? ''))
+    .digest('hex')
+    .slice(0, 16)
+
+/**
+ * One question = one Claude Code run. In a chat, follow-ups continue the same Claude session
+ * (--resume): earlier messages and pages already read come from Claude's cache, which costs far less
+ * than sending them again. Without a chat (older app), each question stands alone.
+ */
 function runClaude(job) {
   return new Promise((resolve) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agroledger-q-'))
+    const chatId = typeof job.chat === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(job.chat) ? job.chat : null
+    const old = chatId ? readChat(chatId) : null
+    // only the same person continues a session; anyone else starts a new one with a short summary
+    const resume = old && old.who === job.who && old.session ? old.session : null
+    const dir = chatId ? chatDir(chatId) : fs.mkdtempSync(path.join(os.tmpdir(), 'agroledger-q-'))
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
+    const turn = (resume ? (old.turns ?? 0) : 0) + 1
     const photoNames = []
     for (const [i, img] of (job.images ?? []).entries()) {
       const ext = img.type === 'image/png' ? 'png' : img.type === 'image/webp' ? 'webp' : 'jpg'
-      const name = `photo-${i + 1}.${ext}`
+      const name = `photo-${turn}-${i + 1}.${ext}`
       fs.writeFileSync(path.join(dir, name), Buffer.from(img.data, 'base64'))
       photoNames.push(name)
     }
-    const prompt = [
-      `Answer in the same language the farmer wrote the question in (Uzbek, Russian, English…). Uzbek written in Latin letters, even with typos, is Uzbek: answer in Uzbek (Latin script). If the language is unclear, use ${LANG_NAMES[job.lang] ?? LANG_NAMES.uz}.`,
-      '',
-      '## Farm data from AgroLedger',
-      job.context || '(none)',
-      '',
-      job.previous ? `## Your earlier answer the farmer is following up on\n${job.previous}\n` : '',
-      photoNames.length
-        ? `## Photos from the farmer\nLook at each photo with the Read tool before answering: ${photoNames.map((n) => './' + n).join(', ')}\n`
-        : '',
-      '## Farmer’s question',
-      job.question,
-    ].join('\n')
+    const contextHash = hashText(job.context)
+    const langLine = `Answer in the same language the farmer wrote the question in (Uzbek, Russian, English…). Uzbek written in Latin letters, even with typos, is Uzbek: answer in Uzbek (Latin script). If the language is unclear, use ${LANG_NAMES[job.lang] ?? LANG_NAMES.uz}.`
+    const photoPart = photoNames.length
+      ? `## Photos from the farmer\nLook at each photo with the Read tool before answering: ${photoNames.map((n) => './' + n).join(', ')}\n`
+      : ''
+    const prompt = resume
+      ? [
+          langLine,
+          '',
+          old.contextHash !== contextHash ? `## Farm data from AgroLedger (updated)\n${job.context || '(none)'}\n` : '',
+          photoPart,
+          'This is a follow-up in the same conversation. Use the pages you already opened in this conversation;',
+          'open a new trusted page only for something they do not cover.',
+          '',
+          '## Farmer’s follow-up question',
+          job.question,
+        ].join('\n')
+      : [
+          langLine,
+          '',
+          '## Farm data from AgroLedger',
+          job.context || '(none)',
+          '',
+          job.previous ? `## Earlier in this conversation (short)\n${job.previous}\n` : '',
+          photoPart,
+          '## Farmer’s question',
+          job.question,
+        ].join('\n')
 
     const cliArgs = [
       '-p',
@@ -179,7 +236,8 @@ function runClaude(job) {
       '--verbose',
       '--model',
       MODEL,
-      '--no-session-persistence',
+      ...(chatId ? [] : ['--no-session-persistence']),
+      ...(resume ? ['--resume', resume] : []),
       '--max-turns',
       '20',
       '--system-prompt-file',
@@ -199,34 +257,60 @@ function runClaude(job) {
       // the site itself and its subdomains (www.fao.org, ipm.ucanr.edu…); look-alikes such as evil-fao.org stay blocked
       ...TRUSTED_DOMAINS.flatMap((d) => [`WebFetch(domain:${d})`, `WebFetch(domain:*.${d})`]),
     ]
+    // a Claude Code session this helper may have been started from must not be reused
+    const env = { ...process.env }
+    delete env.CLAUDE_CODE_SESSION_ID
+    delete env.CLAUDE_CODE_CHILD_SESSION
     const child = spawn('claude', IS_WIN ? cliArgs.map((a) => (/[\s()*]/.test(a) ? `"${a}"` : a)) : cliArgs, {
       cwd: dir,
       shell: IS_WIN,
-      env: { ...process.env },
+      env,
     })
     let out = ''
     let err = ''
     child.stdout.on('data', (d) => (out += d))
     child.stderr.on('data', (d) => (err += d))
     const timer = setTimeout(() => child.kill(), JOB_TIMEOUT_MS)
+    const cleanup = () => {
+      if (!chatId) fs.rmSync(dir, { recursive: true, force: true })
+      else for (const n of photoNames) fs.rmSync(path.join(dir, n), { force: true })
+    }
     child.on('error', (e) => {
       clearTimeout(timer)
+      cleanup()
       resolve({ error: 'Claude Code could not start: ' + e.message })
     })
     child.on('close', (code) => {
       clearTimeout(timer)
-      fs.rmSync(dir, { recursive: true, force: true })
+      cleanup()
       const run = readRun(out)
-      if (!run.result) return resolve({ error: (err || out || `Claude Code stopped (code ${code})`).trim().slice(-600) })
+      if (!run.result) {
+        // the saved session could not be continued (e.g. cleaned up): forget it, the next message starts fresh
+        if (resume) writeChat(chatId, { ...old, session: null, updated: Date.now() })
+        return resolve({ error: (err || out || `Claude Code stopped (code ${code})`).trim().slice(-600) })
+      }
       const j = run.result
       if (j.is_error) return resolve({ error: String(j.result || j.subtype || 'Claude Code error') })
-      const checked = checkSources(String(j.result ?? '').trim(), run.read)
+      // pages read earlier in this chat count as read too (they are in the conversation)
+      const read = new Set([...(resume ? (old.read ?? []) : []), ...run.read])
+      const checked = checkSources(String(j.result ?? '').trim(), read)
       if (run.refused.length) log(`question: refused to open ${run.refused.length} page(s) outside the trusted list`)
+      if (chatId)
+        writeChat(chatId, {
+          who: job.who,
+          session: j.session_id ?? null,
+          read: [...read].slice(-60),
+          contextHash,
+          turns: turn,
+          updated: Date.now(),
+        })
       resolve({
         answer: checked.answer,
-        sources: { read: [...run.read], listed: checked.kept, removed: checked.removed, refused: run.refused.length },
+        sources: { read: [...read], listed: checked.kept, removed: checked.removed, refused: run.refused.length },
         costUsd: j.total_cost_usd ?? null,
         ms: j.duration_ms ?? null,
+        turn,
+        continued: !!resume,
       })
     })
     child.stdin.end(prompt)
@@ -437,6 +521,8 @@ const server = http.createServer(async (req, res) => {
       previous: String(body.previous ?? '').slice(0, 6000),
       lang: ['uz', 'ru', 'en'].includes(body.lang) ? body.lang : 'uz',
       person: who.owner ? null : who.person,
+      who: who.owner ? 'owner' : 'p:' + who.person,
+      chat: typeof body.chat === 'string' ? body.chat.slice(0, 64) : null,
       images,
     }
     jobs.set(job.id, job)
@@ -448,8 +534,18 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && m) {
     const j = jobs.get(m[1])
     if (!j) return send(res, 404, { error: 'not found' })
-    const { status, answer, error, costUsd, ms, sources } = j
-    return send(res, 200, { status, answer, error, costUsd, ms, sources, position: status === 'waiting' ? queue.indexOf(j) + 1 : 0 })
+    const { status, answer, error, costUsd, ms, sources, turn, continued } = j
+    return send(res, 200, {
+      status,
+      answer,
+      error,
+      costUsd,
+      ms,
+      sources,
+      turn,
+      continued,
+      position: status === 'waiting' ? queue.indexOf(j) + 1 : 0,
+    })
   }
   send(res, 404, { error: 'not found' })
 })
@@ -562,6 +658,8 @@ function startTunnel() {
 }
 
 if (IS_WORKER) {
+  forgetOldChats()
+  setInterval(forgetOldChats, 6 * 60 * 60 * 1000).unref()
   // ---------- worker: answers questions ----------
   process.on('SIGTERM', () => process.exit(0))
   process.on('SIGINT', () => process.exit(0))
@@ -690,6 +788,12 @@ THE MOST IMPORTANT RULES
    Tell the farmer what you could not confirm and who can (a local agronomist, the district agriculture office, a plant
    clinic or a soil / leaf / lab test).
 5. Say how sure you are: "Aniq" / "Ehtimol" / "Aniq emas" (or the same words in the farmer's language) for the main answer.
+
+IN A CONVERSATION
+- Follow-up questions continue the same conversation. Build on your earlier answers and the pages you already
+  opened and read; do not open them again. Search and open a new trusted page only for something not covered yet.
+- The same rules still apply to every follow-up: serious points must come from trusted pages you actually read
+  (now or earlier in this conversation), and list them under the sources line.
 
 PHOTOS
 - Look at every photo with the Read tool. Describe only what you really see. Many problems look alike (nutrient shortage,
