@@ -949,4 +949,12 @@ export const uz: Record<string, string> = {
   'Hide chats': 'Suhbatlarni yashirish',
   'Show chats': 'Suhbatlarni ko‘rsatish',
   'No chats yet': 'Hozircha suhbatlar yo‘q',
+  'Or on a rented server (works when your computer is off)': 'Yoki ijaraga olingan serverda (kompyuter o‘chiq bo‘lsa ham ishlaydi)',
+  'Rent a small Ubuntu server outside China (about $4–6 a month).':
+    'Xitoydan tashqarida kichik Ubuntu server ijaraga oling (oyiga taxminan 4–6 $).',
+  'On your computer run this and copy the token it prints (never share it):':
+    'Kompyuteringizda buni ishga tushiring va chiqqan tokenni nusxalang (hech kimga bermang):',
+  'Connect to the server and run:': 'Serverga ulaning va buni ishga tushiring:',
+  'Paste the token when asked, then open the link it prints on your devices. It answers only you.':
+    'So‘ralganda tokenni joylang, so‘ng chiqqan havolani qurilmalaringizda oching. U faqat sizga javob beradi.',
 }

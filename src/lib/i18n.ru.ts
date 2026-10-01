@@ -942,4 +942,12 @@ export const ru: Record<string, string> = {
   'Hide chats': 'Скрыть чаты',
   'Show chats': 'Показать чаты',
   'No chats yet': 'Пока нет чатов',
+  'Or on a rented server (works when your computer is off)': 'Или на арендованном сервере (работает, даже когда компьютер выключен)',
+  'Rent a small Ubuntu server outside China (about $4–6 a month).':
+    'Арендуйте небольшой сервер Ubuntu за пределами Китая (около 4–6 $ в месяц).',
+  'On your computer run this and copy the token it prints (never share it):':
+    'На компьютере выполните это и скопируйте выданный токен (никому не передавайте):',
+  'Connect to the server and run:': 'Подключитесь к серверу и выполните:',
+  'Paste the token when asked, then open the link it prints on your devices. It answers only you.':
+    'Вставьте токен, когда попросят, затем откройте выданную ссылку на своих устройствах. Отвечает только вам.',
 }

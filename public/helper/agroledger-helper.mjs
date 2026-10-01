@@ -31,13 +31,15 @@ const opt = (name, def) => {
 }
 const PORT = Number(opt('--port', '4555'))
 const MODEL = opt('--model', 'sonnet')
+/** --only-me: answers only the owner (on a rented server with your own Claude login, nobody else may use it) */
+const ONLY_ME = args.includes('--only-me')
 const USE_TUNNEL = !args.includes('--no-tunnel')
 const APP_URL = 'https://agroledger-app.github.io'
 const ALLOWED_ORIGINS = new Set([APP_URL, 'http://localhost:5173', 'http://localhost:4173'])
 const JOB_TIMEOUT_MS = 6 * 60 * 1000
 const MAX_BODY = 14 * 1024 * 1024 // photos included (the app sends at most 4 small JPEGs)
 /** Raise by 1 with every change to this file; the hourly update only installs a higher number. */
-const RELEASE = 5
+const RELEASE = 6
 const MAX_WAITING = 5 // questions waiting in line; more are refused so nobody can run up the Claude usage
 const IS_WIN = process.platform === 'win32'
 // The helper runs as two processes: a small "supervisor" (tunnel, keep-awake, updates) and a "worker"
@@ -475,6 +477,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, { ok: true })
   }
 
+  if (ONLY_ME && !who.owner) return send(res, 403, { error: 'This assistant answers only its owner.' })
   if (req.method === 'GET' && url.pathname === '/health') {
     return send(res, 200, { ok: true, claude: claudeVersion(), model: MODEL, busy: running, waiting: queue.length })
   }

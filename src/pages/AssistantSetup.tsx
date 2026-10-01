@@ -200,6 +200,19 @@ export function AssistantSettings() {
             'Each question is one separate Claude Code run with your account. Photos are sent to your computer and deleted after the answer.',
           )}
         </p>
+        <p className="field-label">{t('Or on a rented server (works when your computer is off)')}</p>
+        <ol>
+          <li>{t('Rent a small Ubuntu server outside China (about $4–6 a month).')}</li>
+          <li>
+            {t('On your computer run this and copy the token it prints (never share it):')}
+            <pre>claude setup-token</pre>
+          </li>
+          <li>
+            {t('Connect to the server and run:')}
+            <pre>{`curl -fsSL ${location.origin}/helper/server-setup.sh -o setup.sh && sudo bash setup.sh`}</pre>
+          </li>
+          <li>{t('Paste the token when asked, then open the link it prints on your devices. It answers only you.')}</li>
+        </ol>
       </details>
     </div>
   )
