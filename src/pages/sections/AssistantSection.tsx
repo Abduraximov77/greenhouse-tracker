@@ -41,8 +41,8 @@ type Photo = { type: string; data: string; preview: string }
 type Chat = { id: string; messages: Answer[]; last: string }
 
 const newChatId = () => crypto.randomUUID()
-/** A long chat sends more each time: suggest a new one after this many messages. */
-const LONG_CHAT = 10
+/** A chat holds this many questions; then a new chat starts (long chats send more each time). */
+const CHAT_LIMIT = 5
 
 /** All chats about this crop; older answers without a chat are each their own chat. */
 function chatsOf(answers: Answer[]): Chat[] {
@@ -83,6 +83,7 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
   const health = useHealth(link)
 
   const count = chat?.messages.length ?? 0
+  const full = count >= CHAT_LIMIT && !busy
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' })
   }, [count, !!busy])
@@ -275,74 +276,83 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
         <p className="assist-caution">
           ⚠ {t('AI answer. Before spraying, buying or other important decisions, check with an agronomist and follow the product label.')}
         </p>
-        {count >= LONG_CHAT && (
-          <p className="field-hint chat-long">
-            {t('This chat is long. For a new topic, start a new chat: it answers faster and uses less of your Claude limit.')}
-          </p>
+        {full && (
+          <div className="chat-full">
+            <p>
+              {t('This chat has {n} questions. To ask more, start a new chat: it answers faster and uses less of your Claude limit.', {
+                n: CHAT_LIMIT,
+              })}
+            </p>
+            <button type="button" className="btn btn-primary" onClick={startNew}>
+              + {t('New chat')}
+            </button>
+          </div>
         )}
 
-        <form
-          className="chat-compose"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void send()
-          }}
-        >
-          <textarea
-            id={`ask-${crop.id}`}
-            className="input assist-input"
-            rows={isNew ? 3 : 2}
-            value={question}
-            aria-label={t('Your question')}
-            placeholder={
-              isNew
-                ? t(
-                    'Describe what you see and what you want to know, e.g. “Lower leaves turn yellow with brown spots. What is it and what should I do?”',
-                  )
-                : t('Ask a follow-up question…')
-            }
-            onChange={(e) => setQuestion(e.target.value)}
-            disabled={!!waitingFor}
-          />
-          <div className="assist-photos">
-            {photos.map((p, i) => (
-              <span key={i} className="assist-thumb">
-                <img src={p.preview} alt={t('Photo {n}', { n: i + 1 })} />
-                <button type="button" aria-label={t('Remove photo')} onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>
-                  ×
-                </button>
-              </span>
-            ))}
-            {photos.length < 4 && (
-              <label className="btn btn-ghost btn-small assist-add-photo">
-                📷 {t('Add photos')} ({photos.length}/4)
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="sr-only"
-                  onChange={(e) => void addPhotos(e.target.files)}
-                  disabled={!!waitingFor}
-                />
-              </label>
-            )}
-            <button type="submit" className="btn btn-primary chat-send" disabled={!!waitingFor || !question.trim()}>
-              {t('Send')}
-            </button>
-          </div>
-          {error && <p className="form-error">{error}</p>}
-          <div className="assist-actions">
-            <button type="button" className="link-btn" onClick={() => setShowContext(!showContext)} aria-expanded={showContext}>
-              {showContext ? t('Hide what is sent') : t('What is sent with the question')}
-            </button>
-          </div>
-          {showContext && <pre className="assist-context">{cropContext(db, crop)}</pre>}
-          <p className="field-hint">
-            {t('Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.')}{' '}
-            {t('Only questions about farming and your farm are answered.')}
-          </p>
-        </form>
+        {!full && (
+          <form
+            className="chat-compose"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void send()
+            }}
+          >
+            <textarea
+              id={`ask-${crop.id}`}
+              className="input assist-input"
+              rows={isNew ? 3 : 2}
+              value={question}
+              aria-label={t('Your question')}
+              placeholder={
+                isNew
+                  ? t(
+                      'Describe what you see and what you want to know, e.g. “Lower leaves turn yellow with brown spots. What is it and what should I do?”',
+                    )
+                  : t('Ask a follow-up question…')
+              }
+              onChange={(e) => setQuestion(e.target.value)}
+              disabled={!!waitingFor}
+            />
+            <div className="assist-photos">
+              {photos.map((p, i) => (
+                <span key={i} className="assist-thumb">
+                  <img src={p.preview} alt={t('Photo {n}', { n: i + 1 })} />
+                  <button type="button" aria-label={t('Remove photo')} onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>
+                    ×
+                  </button>
+                </span>
+              ))}
+              {photos.length < 4 && (
+                <label className="btn btn-ghost btn-small assist-add-photo">
+                  📷 {t('Add photos')} ({photos.length}/4)
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => void addPhotos(e.target.files)}
+                    disabled={!!waitingFor}
+                  />
+                </label>
+              )}
+              <button type="submit" className="btn btn-primary chat-send" disabled={!!waitingFor || !question.trim()}>
+                {t('Send')}
+              </button>
+            </div>
+            {error && <p className="form-error">{error}</p>}
+            <div className="assist-actions">
+              <button type="button" className="link-btn" onClick={() => setShowContext(!showContext)} aria-expanded={showContext}>
+                {showContext ? t('Hide what is sent') : t('What is sent with the question')}
+              </button>
+            </div>
+            {showContext && <pre className="assist-context">{cropContext(db, crop)}</pre>}
+            <p className="field-hint">
+              {t('Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.')}{' '}
+              {t('Only questions about farming and your farm are answered.')}
+            </p>
+          </form>
+        )}
       </div>
     </>
   )

@@ -3731,3 +3731,5 @@ button.wx-day.is-open {
 .chat > *, .chat-head > *, .chat-thread > * { min-width: 0; }
 .chat-pick { width: 100%; text-overflow: ellipsis; }
 @media (max-width: 520px) { .chat-head { flex-direction: column; align-items: stretch; } .chat-pick { flex: none; } }
+.chat-full { display: grid; gap: 10px; justify-items: start; border-top: 1px solid var(--line); padding-top: 12px; }
+.chat-full p { margin: 0; }

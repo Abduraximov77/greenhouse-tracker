@@ -944,4 +944,6 @@ export const uz: Record<string, string> = {
   Send: 'Yuborish',
   'Follow-ups continue the same conversation and reuse the pages already read, so they use less of your Claude limit.':
     'Qo‘shimcha savollar shu suhbatni davom ettiradi va o‘qilgan sahifalardan qayta foydalanadi, shuning uchun Claude limitingizdan kamroq sarflanadi.',
+  'This chat has {n} questions. To ask more, start a new chat: it answers faster and uses less of your Claude limit.':
+    'Bu suhbatda {n} ta savol bo‘ldi. Yana so‘rash uchun yangi suhbat boshlang: tezroq javob beradi va Claude limitingizdan kamroq sarflaydi.',
 }
