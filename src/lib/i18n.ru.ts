@@ -950,4 +950,6 @@ export const ru: Record<string, string> = {
   'Connect to the server and run:': 'Подключитесь к серверу и выполните:',
   'Paste the token when asked, then open the link it prints on your devices. It answers only you.':
     'Вставьте токен, когда попросят, затем откройте выданную ссылку на своих устройствах. Отвечает только вам.',
+  'Paste the token when asked, then open the link it prints on your devices. Other accounts still need your approval in Telegram; approve only your own accounts, because it uses your personal Claude subscription.':
+    'Вставьте токен, когда попросят, затем откройте выданную ссылку на своих устройствах. Другим аккаунтам по-прежнему нужно ваше разрешение в Telegram; разрешайте только своим аккаунтам — используется ваша личная подписка Claude.',
 }

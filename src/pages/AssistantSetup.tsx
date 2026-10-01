@@ -211,7 +211,11 @@ export function AssistantSettings() {
             {t('Connect to the server and run:')}
             <pre>{`curl -fsSL ${location.origin}/helper/server-setup.sh -o setup.sh && sudo bash setup.sh`}</pre>
           </li>
-          <li>{t('Paste the token when asked, then open the link it prints on your devices. It answers only you.')}</li>
+          <li>
+            {t(
+              'Paste the token when asked, then open the link it prints on your devices. Other accounts still need your approval in Telegram; approve only your own accounts, because it uses your personal Claude subscription.',
+            )}
+          </li>
         </ol>
       </details>
     </div>

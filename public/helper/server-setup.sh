@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # AgroLedger AI helper on a rented Linux server (Ubuntu/Debian), using YOUR OWN Claude login.
-# It runs all the time, restarts by itself, and answers only you (--only-me).
+# It runs all the time and restarts by itself. Other accounts can use it only after you allow them
+# in Telegram (approve only your own accounts: it uses your personal Claude subscription).
 #
 #   curl -fsSL https://agroledger-app.github.io/helper/server-setup.sh -o setup.sh && sudo bash setup.sh
 #
@@ -55,7 +56,7 @@ fi
 step "Starting it as a service (it starts again after a restart)"
 cat > /etc/systemd/system/agroledger-helper.service <<EOF
 [Unit]
-Description=AgroLedger AI helper (owner only)
+Description=AgroLedger AI helper
 After=network-online.target
 Wants=network-online.target
 
@@ -63,7 +64,7 @@ Wants=network-online.target
 User=agroledger
 WorkingDirectory=$HOME_DIR/app
 EnvironmentFile=/etc/agroledger/token.env
-ExecStart=/usr/bin/env node $HOME_DIR/app/agroledger-helper.mjs --only-me
+ExecStart=/usr/bin/env node $HOME_DIR/app/agroledger-helper.mjs
 Restart=always
 RestartSec=10
 

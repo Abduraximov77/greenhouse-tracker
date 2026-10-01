@@ -957,4 +957,6 @@ export const uz: Record<string, string> = {
   'Connect to the server and run:': 'Serverga ulaning va buni ishga tushiring:',
   'Paste the token when asked, then open the link it prints on your devices. It answers only you.':
     'So‘ralganda tokenni joylang, so‘ng chiqqan havolani qurilmalaringizda oching. U faqat sizga javob beradi.',
+  'Paste the token when asked, then open the link it prints on your devices. Other accounts still need your approval in Telegram; approve only your own accounts, because it uses your personal Claude subscription.':
+    'So‘ralganda tokenni joylang, so‘ng chiqqan havolani qurilmalaringizda oching. Boshqa hisoblar baribir Telegramda sizning ruxsatingizni so‘raydi; faqat o‘zingizning hisoblaringizga ruxsat bering, chunki u sizning shaxsiy Claude obunangizdan foydalanadi.',
 }
