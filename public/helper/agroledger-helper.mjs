@@ -329,43 +329,59 @@ function startTunnel() {
     console.log('    Linux:   see https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/\n')
     return false
   }
-  // http2 goes over normal HTTPS (TCP 443); the default (QUIC, UDP 7844) is often blocked, e.g. in China.
-  const t = spawn('cloudflared', ['tunnel', '--no-autoupdate', '--protocol', 'http2', '--url', `http://127.0.0.1:${PORT}`], {
-    shell: IS_WIN,
-  })
-  let shown = false
-  let connected = false
-  let lastWarn = 0
-  const watch = (d) => {
-    const text = String(d)
-    if (/Registered tunnel connection/i.test(text) && !connected) {
-      connected = true
-      log('secure address is connected ✓ (phone and other devices can reach this computer)')
+  let tries = 0
+  let announcer = null
+  const run = () => {
+    tries++
+    // http2 goes over normal HTTPS (TCP 443); the default (QUIC, UDP 7844) is often blocked, e.g. in China.
+    const t = spawn('cloudflared', ['tunnel', '--no-autoupdate', '--protocol', 'http2', '--url', `http://127.0.0.1:${PORT}`], {
+      shell: IS_WIN,
+    })
+    let shown = false
+    let connected = false
+    let lastWarn = 0
+    const watch = (d) => {
+      const text = String(d)
+      if (/Registered tunnel connection/i.test(text) && !connected) {
+        connected = true
+        tries = 0
+        log('secure address is connected ✓ (phone and other devices can reach this computer)')
+      }
+      if (/ERR|failed to|unable to/i.test(text) && Date.now() - lastWarn > 30000) {
+        lastWarn = Date.now()
+        const line = text.split('\n').find((l) => /ERR|failed to|unable to/i.test(l)) ?? ''
+        log('⚠ the secure address cannot connect to Cloudflare: ' + line.replace(/^.*?(ERR|INF|WRN)\s*/, '').slice(0, 160))
+        log('  Your internet blocks it. Turn on your VPN in global / TUN ("all traffic" / "enhanced") mode — it keeps trying by itself.')
+      }
+      // the real address (never Cloudflare's own api.trycloudflare.com, which appears in error lines)
+      const m = text.match(/https:\/\/(?!api\.)[a-z0-9-]+\.trycloudflare\.com/)
+      if (m && !shown && !/error|failed/i.test(text)) {
+        shown = true
+        const addr = m[0]
+        console.log('\n  ✅ Ready for all your devices.')
+        console.log('  New device? Open this link on it once (phone, laptop):\n')
+        console.log('  ' + linkFor(addr) + '\n')
+        console.log('  Devices you already linked find this new address by themselves — nothing to do on them.')
+        console.log('  Keep the link private: anyone with it can ask through your Claude account.\n')
+        announce(addr)
+        // messages on the relay last about 12 hours, so share the address again every 6 hours
+        if (announcer) clearInterval(announcer)
+        announcer = setInterval(() => announce(addr), 6 * 60 * 60 * 1000)
+        announcer.unref()
+      }
     }
-    if (/ERR|failed to|unable to/i.test(text) && Date.now() - lastWarn > 30000) {
-      lastWarn = Date.now()
-      const line = text.split('\n').find((l) => /ERR|failed to|unable to/i.test(l)) ?? ''
-      log('⚠ the secure address cannot connect to Cloudflare yet: ' + line.replace(/^.*?(ERR|INF|WRN)\s*/, '').slice(0, 160))
-      log('  If this keeps repeating, your internet blocks it: turn on your VPN in global / TUN ("all traffic") mode, then restart this helper.')
-    }
-    const m = String(d).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)
-    if (m && !shown) {
-      shown = true
-      const addr = m[0]
-      console.log('\n  ✅ Ready for all your devices.')
-      console.log('  New device? Open this link on it once (phone, laptop):\n')
-      console.log('  ' + linkFor(addr) + '\n')
-      console.log('  Devices you already linked find this new address by themselves — nothing to do on them.')
-      console.log('  Keep the link private: anyone with it can ask through your Claude account.\n')
-      announce(addr)
-      // messages on the relay last about 12 hours, so share the address again every 6 hours
-      setInterval(() => announce(addr), 6 * 60 * 60 * 1000).unref()
-    }
+    t.stdout.on('data', watch)
+    t.stderr.on('data', watch)
+    current = t
+    t.on('close', () => {
+      const wait = Math.min(120, 15 * tries)
+      log(`secure address stopped; trying again in ${wait} seconds (no need to restart this helper)`)
+      setTimeout(run, wait * 1000)
+    })
   }
-  t.stdout.on('data', watch)
-  t.stderr.on('data', watch)
-  t.on('close', () => log('tunnel stopped'))
-  process.on('exit', () => t.kill())
+  let current = null
+  process.on('exit', () => current?.kill())
+  run()
   return true
 }
 
