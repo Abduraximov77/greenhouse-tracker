@@ -869,4 +869,15 @@ export const ru: Record<string, string> = {
   'Nobody has set up the assistant yet.': 'Помощника пока никто не настроил.',
   'Weight, kg (optional)': 'Вес, кг (необязательно)',
   'Empty: the price is per box': 'Если пусто: цена за ящик',
+  'Mixed sizes': 'Смешанные',
+  '{n}-size': '{n}-ка',
+  'Enter the boxes for at least one size.': 'Укажите количество ящиков хотя бы для одного размера.',
+  'Left on the truck': 'Осталось в машине',
+  Size: 'Размер',
+  Price: 'Цена',
+  Sum: 'Сумма',
+  box: 'ящик',
+  'Fill only the sizes you sold. With a weight the price is per kg, without it per box.':
+    'Заполните только проданные размеры. Если указан вес — цена за кг, если нет — за ящик.',
+  optional: 'необяз.',
 }

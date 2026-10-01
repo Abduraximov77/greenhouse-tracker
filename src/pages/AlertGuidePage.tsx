@@ -48,9 +48,6 @@ export function AlertGuidePage() {
             <p className="guide-when">
               <b>{t('When')}:</b> {t(r.when)}
             </p>
-            <p className="guide-do">
-              <b>{t('What to do')}:</b> {t(r.action)}
-            </p>
           </article>
         ))}
       </div>

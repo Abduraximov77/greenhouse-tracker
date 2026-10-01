@@ -131,6 +131,19 @@ export interface Sale extends Meta {
   payStatus: PayStatus // has the buyer paid us
   paidAmount: number | null
   note: string
+  /** Sold by tomato size (3-lik … 7-lik): boxes, optional weight and own price per size. */
+  lines?: SaleLine[] | null
+}
+
+/** 'mix' = not sorted by size */
+export const SALE_SIZES = ['3', '4', '5', '6', '7', 'mix'] as const
+export interface SaleLine {
+  size: string
+  boxes: number
+  /** kg of this size; when given, price is per kg, otherwise per box */
+  kg: number | null
+  price: number
+  amount: number
 }
 
 /** Money that came in (kirim): a sale, a payment, anything received. */

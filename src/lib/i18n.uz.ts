@@ -876,4 +876,15 @@ export const uz: Record<string, string> = {
   'Nobody has set up the assistant yet.': 'Hali hech kim yordamchini sozlamagan.',
   'Weight, kg (optional)': 'Og‘irligi, kg (ixtiyoriy)',
   'Empty: the price is per box': 'Bo‘sh qolsa: narx bir quti uchun',
+  'Mixed sizes': 'Aralash',
+  '{n}-size': '{n}-lik',
+  'Enter the boxes for at least one size.': 'Kamida bitta razmer uchun quti sonini kiriting.',
+  'Left on the truck': 'Mashinada qoldi',
+  Size: 'Razmer',
+  Price: 'Narxi',
+  Sum: 'Summa',
+  box: 'quti',
+  'Fill only the sizes you sold. With a weight the price is per kg, without it per box.':
+    'Faqat sotilgan razmerlarni to‘ldiring. Og‘irlik yozilsa narx 1 kg uchun, yozilmasa 1 quti uchun.',
+  optional: 'ixtiyoriy',
 }
