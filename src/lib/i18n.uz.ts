@@ -902,4 +902,8 @@ export const uz: Record<string, string> = {
   '{n} sizes without a price': 'narxsiz {n} ta razmer',
   'price not entered': 'narx kiritilmagan',
   'Price (optional)': 'Narxi (ixtiyoriy)',
+  "{n} boxes from this truck are already sold; the truck cannot have fewer.": "Bu mashinadan {n} quti allaqachon sotilgan; mashinada undan kam bo‘lishi mumkin emas.",
+  "{n} kg from this truck are already sold; the weight cannot be less.": "Bu mashinadan {n} kg allaqachon sotilgan; og‘irlik undan kam bo‘lishi mumkin emas.",
+  "Set the exchange rate in Settings first: some wages are in another currency.": "Avval Sozlamalarda valyuta kursini kiriting: ba’zi ish haqlari boshqa valyutada.",
+  "This entry has give-backs, so only the date, amount and note can be changed.": "Bu yozuvga qaytarishlar bog‘langan, shuning uchun faqat sana, miqdor va izohni o‘zgartirish mumkin.",
 }

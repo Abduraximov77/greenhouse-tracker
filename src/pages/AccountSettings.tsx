@@ -96,7 +96,12 @@ export function AccountSettings() {
           <label className="field-label" htmlFor="farm-switch">
             {t('Farm')}
           </label>
-          <select id="farm-switch" className="input" value={farm?.id ?? ''} onChange={(e) => void enterFarm(e.target.value, 'replace')}>
+          <select
+            id="farm-switch"
+            className="input"
+            value={farm?.id ?? ''}
+            onChange={(e) => enterFarm(e.target.value, 'replace').catch((err) => setError(errText(err)))}
+          >
             {s.farms
               .filter((f) => f.status === 'active')
               .map((f) => (

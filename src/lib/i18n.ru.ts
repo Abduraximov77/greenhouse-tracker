@@ -895,4 +895,8 @@ export const ru: Record<string, string> = {
   '{n} sizes without a price': '{n} размер(а) без цены',
   'price not entered': 'цена не указана',
   'Price (optional)': 'Цена (необяз.)',
+  "{n} boxes from this truck are already sold; the truck cannot have fewer.": "Из этой машины уже продано {n} ящиков; меньше указать нельзя.",
+  "{n} kg from this truck are already sold; the weight cannot be less.": "Из этой машины уже продано {n} кг; меньший вес указать нельзя.",
+  "Set the exchange rate in Settings first: some wages are in another currency.": "Сначала укажите курс в Настройках: часть зарплат в другой валюте.",
+  "This entry has give-backs, so only the date, amount and note can be changed.": "К этой записи привязаны возвраты, поэтому можно менять только дату, сумму и заметку.",
 }

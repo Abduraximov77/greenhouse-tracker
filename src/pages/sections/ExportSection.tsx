@@ -123,6 +123,13 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
     if (boxes === null || boxes <= 0 || !Number.isInteger(boxes)) return setError(t('Enter the number of boxes (a whole number).'))
     if (price === null || price < 0) return setError(t('Enter the delivery price (0 if free).'))
     if (kg !== null && kg <= 0) return setError(t('Enter the total weight in kg, or leave it empty.'))
+    if (editing && editing !== 'new') {
+      const own = db.sales.filter((r) => r.shipmentId === editing)
+      const soldBoxes = own.reduce((a, r) => a + r.boxes, 0)
+      const soldKg = own.reduce((a, r) => a + (r.kg ?? 0), 0)
+      if (boxes < soldBoxes) return setError(t('{n} boxes from this truck are already sold; the truck cannot have fewer.', { n: formatNumber(soldBoxes, 0) }))
+      if (kg !== null && kg + 0.5 < soldKg) return setError(t('{n} kg from this truck are already sold; the weight cannot be less.', { n: formatNumber(soldKg, 0) }))
+    }
     const data = {
       cropId: crop.id,
       date: f.date,

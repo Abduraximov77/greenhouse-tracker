@@ -148,18 +148,23 @@ export async function runAlerts(env: Env) {
 
     const places = await farmPlaces(env, farm.id)
     if (!places.length) continue
-    const perPlace: { place: Place; crops: string[]; alerts: Alert[] }[] = []
+    const perPlace: { place: Place; crops: string[]; alerts: Alert[]; today: string }[] = []
     for (const p of places) {
       const key = `${p.place.lat},${p.place.lon}`
       if (!forecasts.has(key)) forecasts.set(key, await fetchForecast(p.place))
       const f = forecasts.get(key)
-      if (f) perPlace.push({ ...p, alerts: evaluateAlerts(f) })
+      if (f)
+        perPlace.push({
+          ...p,
+          alerts: evaluateAlerts(f),
+          today: new Date(Date.now() + (f.utcOffset ?? 0) * 1000).toISOString().slice(0, 10),
+        })
     }
 
     for (const { m, hour, day } of due) {
       const evening = hour === m.alert_hour
       if (evening) {
-        const done = await env.DB.prepare('SELECT 1 FROM digests WHERE user_id = ? AND day = ?').bind(m.id, day).first()
+        const done = await env.DB.prepare('SELECT 1 FROM digests WHERE user_id = ? AND day = ?').bind(m.id, `${day}|${farm.id}`).first()
         if (done) continue
       }
       const sentRows = await env.DB.prepare('SELECT key FROM sent_alerts WHERE user_id = ? AND farm_id = ?')
@@ -169,7 +174,6 @@ export async function runAlerts(env: Env) {
       const lang: Lang = (['uz', 'ru', 'en'] as const).includes(m.lang) ? m.lang : 'uz'
       const t = tr(lang)
       const fmt = (n: number) => n.toLocaleString(NUM_LOCALE[lang], { maximumFractionDigits: 1 })
-      const today = day
       const blocks: string[] = []
       const newKeys: string[] = []
       for (const pp of perPlace) {
@@ -183,11 +187,13 @@ export async function runAlerts(env: Env) {
         if (!list.length) continue
         const crops = pp.crops.map((c) => cropName(c, lang)).join(', ')
         const lines = list.map((a) => {
-          const dayWord = a.date === today ? t('Today') : t('Tomorrow')
+          // today/tomorrow at the farm's place (the person may be in another time zone)
+          const dayWord = a.date === pp.today ? t('Today') : t('Tomorrow')
           return `${RULES_BY_ID[a.rule].icon} <b>${esc(dayWord)}</b>: ${esc(alertText(a, t, fmt))}`
         })
         blocks.push(`📍 <b>${esc(pp.place.name)}</b>${crops ? ' · ' + esc(crops) : ''}\n` + lines.join('\n'))
       }
+      let sentOk = true
       if (blocks.length) {
         const head = evening
           ? `🌦 <b>${esc(farm.name)}</b> — ${esc(t('Weather warnings'))}`
@@ -198,6 +204,7 @@ export async function runAlerts(env: Env) {
           text: head + '\n\n' + blocks.join('\n\n'),
           disable_web_page_preview: true,
         })
+        sentOk = r.ok
         if (!r.ok && r.error_code === 403) {
           await env.DB.prepare('UPDATE users SET can_message = 0 WHERE id = ?').bind(m.id).run()
           continue
@@ -216,7 +223,9 @@ export async function runAlerts(env: Env) {
           )
         }
       }
-      if (evening) await env.DB.prepare('INSERT OR IGNORE INTO digests (user_id, day) VALUES (?, ?)').bind(m.id, day).run()
+      // the evening message counts as done for this farm only when it went out and every forecast was read
+      if (evening && sentOk && perPlace.length === places.length)
+        await env.DB.prepare('INSERT OR IGNORE INTO digests (user_id, day) VALUES (?, ?)').bind(m.id, `${day}|${farm.id}`).run()
     }
   }
   // forget old "already sent" notes

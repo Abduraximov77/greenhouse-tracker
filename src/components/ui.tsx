@@ -4,10 +4,38 @@ import { useT } from '../lib/i18n'
 import { useDB } from '../lib/store'
 import { href } from '../lib/router'
 
-/** Parse what the user typed ("12,5", " 3 ") into a number, or null if empty/invalid. */
+/**
+ * Parse what the user typed into a number, or null if empty/invalid.
+ *   "12,5" → 12.5   "12.5" → 12.5   "12 600" → 12600   "12,600" → 12600   "1,500,000" → 1500000
+ *   "1.500.000" → 1500000   "1,234.5" → 1234.5   "1.234,5" → 1234.5
+ * A single comma followed by exactly three digits is a thousands sign when there is no other separator
+ * and the number does not start with 0 ("0,125" stays 0.125); a single dot is always decimal ("12.600" →
+ * 12.6). Anything else is refused.
+ */
 export function num(s: string): number | null {
-  const t = s.trim().replace(/\s/g, '').replace(',', '.')
+  let t = s.trim().replace(/[\s\u00a0\u202f']/g, '')
   if (t === '') return null
+  if (!/^[-+]?[\d.,]+$/.test(t) || !/\d/.test(t)) return null
+  const commas = (t.match(/,/g) ?? []).length
+  const dots = (t.match(/\./g) ?? []).length
+  if (commas && dots) {
+    // the last separator is the decimal one, the other is for thousands
+    const dec = t.lastIndexOf(',') > t.lastIndexOf('.') ? ',' : '.'
+    const thou = dec === ',' ? '.' : ','
+    if ((t.match(new RegExp('\\' + dec, 'g')) ?? []).length > 1) return null
+    t = t.split(thou).join('').replace(dec, '.')
+  } else if (commas + dots > 1) {
+    // "1,500,000" / "1.500.000": thousands only, every group of three
+    const sep = commas ? ',' : '.'
+    const parts = t.replace(/^[-+]/, '').split(sep)
+    if (parts.slice(1).some((p) => p.length !== 3) || !parts[0]) return null
+    t = t.split(sep).join('')
+  } else if (commas + dots === 1) {
+    const sep = commas ? ',' : '.'
+    const [a, b] = t.replace(/^[-+]/, '').split(sep)
+    const thousands = b.length === 3 && /^[1-9]\d{0,2}$/.test(a) && sep === ','
+    t = thousands ? t.replace(sep, '') : t.replace(sep, '.')
+  }
   const n = Number(t)
   return Number.isFinite(n) ? n : null
 }

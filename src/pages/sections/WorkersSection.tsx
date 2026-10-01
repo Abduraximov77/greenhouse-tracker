@@ -267,13 +267,16 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
       const already = fresh ? 0 : payment(due, a.payStatus, a.paidAmount).paid
       const owedHere = due - already
       if (owedHere <= 0) continue
-      const owedInDisplay = convert(owedHere, a.currency, cur.display, cur.rates) ?? owedHere
+      // no exchange rate for this day's currency: leave the day as it is (the page shows "rate missing")
+      const owedInDisplay = convert(owedHere, a.currency, cur.display, cur.rates)
+      if (owedInDisplay === null) continue
       const key = attendanceKey(a.cropId, a.workerId, a.date)
       if (left + 0.005 >= owedInDisplay) {
         updates[key] = { payStatus: 'paid', paidAmount: null }
         left -= owedInDisplay
       } else {
-        const partInDayCurrency = convert(left, cur.display, a.currency, cur.rates) ?? left
+        const partInDayCurrency = convert(left, cur.display, a.currency, cur.rates)
+        if (partInDayCurrency === null) continue
         updates[key] = {
           payStatus: 'partial',
           paidAmount: Math.round((already + partInDayCurrency) * 100) / 100,
@@ -399,6 +402,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     e.preventDefault()
                     const n = num(dayPartialValue)
                     if (n === null || n <= 0) return setDayPartialError(t('Enter the amount paid.'))
+                    if (dayTotal.missing) return setDayPartialError(t('Set the exchange rate in Settings first: some wages are in another currency.'))
                     // Start from nothing paid for this day, then pay out the amount.
                     setWorkerDaysPaid(crop.id, (a) => a.date === date, false)
                     if (n >= dayTotal.total - 0.005) setWorkerDaysPaid(crop.id, (a) => a.date === date, true)

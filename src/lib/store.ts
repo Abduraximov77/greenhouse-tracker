@@ -577,6 +577,11 @@ export function hasOwnData() {
 /** A copy of all data, e.g. kept before replacing it with a farm's data. */
 export function backupLocal(tag: string) {
   try {
+    // keep only the 3 newest copies, so they never fill the phone's storage
+    const old = Object.keys(localStorage)
+      .filter((k) => k.startsWith(`${STORAGE_KEY}-backup-`))
+      .sort()
+    for (const k of old.slice(0, Math.max(0, old.length - 2))) localStorage.removeItem(k)
     localStorage.setItem(`${STORAGE_KEY}-backup-${tag}`, JSON.stringify(db))
   } catch {
     // no room: skip

@@ -88,7 +88,8 @@ export function TruckSales({ truck }: { truck: Shipment }) {
         const price = num(r.price)
         const byKg = kg !== null && kg > 0
         const amount = price === null ? null : byKg ? kg! * price : boxes !== null ? boxes * price : null
-        const used = !!(r.boxes.trim() || r.kg.trim() || r.price.trim())
+        // a row counts once boxes or kg are typed (prices carried over from the last sale don't count)
+        const used = !!(r.boxes.trim() || r.kg.trim())
         return { size, r, boxes, kg, price, byKg, used, amount: amount === null ? null : Math.round(amount * 100) / 100 }
       })
     : []

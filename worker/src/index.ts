@@ -300,12 +300,27 @@ async function updateMe(req: Request, env: Env, user: UserRow) {
     const a = b.assistant as { u?: unknown; k?: unknown } | null
     const ok = a && typeof a.u === 'string' && typeof a.k === 'string' && a.u.length < 300 && a.k.length < 300 && /^https?:\/\//.test(a.u)
     const link = ok ? JSON.stringify({ u: a!.u, k: a!.k }) : null
-    // someone given access keeps "given by" while the same helper's address changes; a different key means
-    // they linked a helper of their own
-    const sameHelper = user.assistant_from != null && link && parseAssistant(user.assistant)?.k === a!.k
-    await env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = ? WHERE id = ?')
-      .bind(link, link && sameHelper ? user.assistant_from : null, user.id)
-      .run()
+    let owner = await assistantOwnerId(env)
+    if (!link) {
+      // unlink on this account
+      await env.DB.prepare('UPDATE users SET assistant = NULL, assistant_from = NULL WHERE id = ?').bind(user.id).run()
+    } else if (owner === null || owner === user.id) {
+      // the first account to link its own helper becomes the assistant's owner
+      if (owner === null) {
+        await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('assistant_owner', ?)").bind(String(user.id)).run()
+        owner = await assistantOwnerId(env)
+      }
+      if (owner === user.id)
+        await env.DB.batch([
+          env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = NULL WHERE id = ?').bind(link, user.id),
+          // people the owner let in follow the owner's helper (new address or new key)
+          env.DB.prepare('UPDATE users SET assistant = ? WHERE assistant_from = ?').bind(link, user.id),
+        ])
+    } else if (user.assistant_from != null && parseAssistant(user.assistant)?.k === a!.k) {
+      // someone given access: the same helper got a new address
+      await env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?').bind(link, user.id).run()
+    }
+    // anything else (another account trying to set a link of its own) is ignored
   }
   const lang = ['uz', 'ru', 'en'].includes(b.lang ?? '') ? b.lang! : user.lang
   const hour = Number.isInteger(b.alertHour) && b.alertHour! >= 0 && b.alertHour! <= 23 ? b.alertHour! : user.alert_hour
@@ -539,10 +554,8 @@ async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
   const rejected: { coll: string; id: string; reason: string }[] = []
 
   if (changes.length) {
-    // current versions, to keep the newest edit when two phones changed the same record
-    const farm = await env.DB.prepare('SELECT seq FROM farms WHERE id = ?').bind(farmId).first<{ seq: number }>()
-    let seq = farm?.seq ?? 0
-    const stmts: D1PreparedStatement[] = []
+    // 1) check every change first
+    const ok: Change[] = []
     for (const c of changes) {
       if (!COLLS.has(c.coll) || typeof c.id !== 'string' || !c.id || c.id.length > 200) {
         rejected.push({ coll: c.coll, id: c.id, reason: 'bad' })
@@ -552,28 +565,72 @@ async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
         rejected.push({ coll: c.coll, id: c.id, reason: 'owners_only' })
         continue
       }
-      const data = c.data === undefined ? null : JSON.stringify(c.data)
-      if (data && data.length > 200000) {
+      if (c.data !== undefined && JSON.stringify(c.data).length > 200000) {
         rejected.push({ coll: c.coll, id: c.id, reason: 'too_big' })
         continue
       }
-      const at = typeof c.updatedAt === 'string' ? c.updatedAt.slice(0, 40) : now()
-      seq++
-      stmts.push(
-        env.DB.prepare(
-          `INSERT INTO records (farm_id, coll, id, data, deleted, updated_at, updated_by, seq)
-           VALUES (?1, ?2, ?3, COALESCE(?4, '{}'), ?5, ?6, ?7, ?8)
-           ON CONFLICT(farm_id, coll, id) DO UPDATE SET
-             data = CASE WHEN ?6 >= records.updated_at AND ?4 IS NOT NULL THEN ?4 ELSE records.data END,
-             deleted = CASE WHEN ?6 >= records.updated_at THEN ?5 ELSE records.deleted END,
-             updated_by = CASE WHEN ?6 >= records.updated_at THEN ?7 ELSE records.updated_by END,
-             updated_at = MAX(?6, records.updated_at),
-             seq = ?8`,
-        ).bind(farmId, c.coll, c.id, data, c.deleted ? 1 : 0, at, user.id, seq),
-      )
+      ok.push(c)
     }
-    if (stmts.length) {
-      stmts.push(env.DB.prepare('UPDATE farms SET seq = MAX(seq, ?) WHERE id = ?').bind(seq, farmId))
+    // a refused season/crop delete also refuses the deletes of what is under it (its crops, harvests,
+    // expenses…), so nothing under a crop that stays is lost; other deletes go through
+    let keep = ok
+    const refusedCrops = new Set(rejected.filter((r) => r.reason === 'owners_only' && r.coll === 'crops').map((r) => r.id))
+    const refusedSeasons = rejected.filter((r) => r.reason === 'owners_only' && r.coll === 'seasons').map((r) => r.id)
+    if (refusedCrops.size || refusedSeasons.length) {
+      if (refusedSeasons.length) {
+        const rows = await env.DB.prepare(
+          `SELECT id FROM records WHERE farm_id = ? AND coll = 'crops' AND json_extract(data, '$.seasonId') IN (SELECT value FROM json_each(?))`,
+        )
+          .bind(farmId, JSON.stringify(refusedSeasons))
+          .all<{ id: string }>()
+        for (const r of rows.results) refusedCrops.add(r.id)
+      }
+      const deletes = ok.filter((c) => c.deleted)
+      const under = new Set<string>()
+      if (deletes.length) {
+        const rows = await env.DB.prepare(
+          `SELECT coll, id, json_extract(data, '$.cropId') AS crop, json_extract(data, '$.seasonId') AS season FROM records
+           WHERE farm_id = ? AND (coll || '|' || id) IN (SELECT value FROM json_each(?))`,
+        )
+          .bind(farmId, JSON.stringify(deletes.map((c) => `${c.coll}|${c.id}`)))
+          .all<{ coll: string; id: string; crop: string | null; season: string | null }>()
+        for (const r of rows.results)
+          if (
+            (r.crop && refusedCrops.has(r.crop)) ||
+            (r.season && refusedSeasons.includes(r.season)) ||
+            (r.coll === 'crops' && refusedCrops.has(r.id))
+          )
+            under.add(`${r.coll}|${r.id}`)
+      }
+      keep = ok.filter((c) => {
+        // attendance ids start with the crop id
+        const isUnder = under.has(`${c.coll}|${c.id}`) || (c.coll === 'attendance' && [...refusedCrops].some((id) => c.id.startsWith(id)))
+        if (!c.deleted || !isUnder) return true
+        rejected.push({ coll: c.coll, id: c.id, reason: 'owners_only' })
+        return false
+      })
+    }
+    // 2) write them in one transaction; the change numbers are taken inside it, so two phones saving
+    //    at the same moment never get the same number
+    if (keep.length) {
+      const n = keep.length
+      const stmts: D1PreparedStatement[] = [env.DB.prepare('UPDATE farms SET seq = seq + ? WHERE id = ?').bind(n, farmId)]
+      keep.forEach((c, k) => {
+        const data = c.data === undefined ? null : JSON.stringify(c.data)
+        const at = typeof c.updatedAt === 'string' ? c.updatedAt.slice(0, 40) : now()
+        stmts.push(
+          env.DB.prepare(
+            `INSERT INTO records (farm_id, coll, id, data, deleted, updated_at, updated_by, seq)
+             VALUES (?1, ?2, ?3, COALESCE(?4, '{}'), ?5, ?6, ?7, (SELECT seq FROM farms WHERE id = ?1) - ?8)
+             ON CONFLICT(farm_id, coll, id) DO UPDATE SET
+               data = CASE WHEN ?6 >= records.updated_at AND ?4 IS NOT NULL THEN ?4 ELSE records.data END,
+               deleted = CASE WHEN ?6 >= records.updated_at THEN ?5 ELSE records.deleted END,
+               updated_by = CASE WHEN ?6 >= records.updated_at THEN ?7 ELSE records.updated_by END,
+               updated_at = MAX(?6, records.updated_at),
+               seq = (SELECT seq FROM farms WHERE id = ?1) - ?8`,
+          ).bind(farmId, c.coll, c.id, data, c.deleted ? 1 : 0, at, user.id, n - 1 - k),
+        )
+      })
       await env.DB.batch(stmts)
     }
   }
@@ -616,24 +673,28 @@ async function trash(env: Env, user: UserRow, farmId: string) {
 async function restore(req: Request, env: Env, user: UserRow, farmId: string) {
   await requireMember(env, user, farmId, true)
   const b = await body<{ coll: string; id: string }>(req)
-  const farm = await env.DB.prepare('SELECT seq FROM farms WHERE id = ?').bind(farmId).first<{ seq: number }>()
-  const seq = (farm?.seq ?? 0) + 1
   await env.DB.batch([
+    env.DB.prepare('UPDATE farms SET seq = seq + 1 WHERE id = ?').bind(farmId),
     env.DB.prepare(
-      'UPDATE records SET deleted = 0, updated_at = ?, updated_by = ?, seq = ? WHERE farm_id = ? AND coll = ? AND id = ?',
-    ).bind(now(), user.id, seq, farmId, b.coll, b.id),
-    env.DB.prepare('UPDATE farms SET seq = MAX(seq, ?) WHERE id = ?').bind(seq, farmId),
+      `UPDATE records SET deleted = 0, updated_at = ?, updated_by = ?, seq = (SELECT seq FROM farms WHERE id = ?)
+       WHERE farm_id = ? AND coll = ? AND id = ?`,
+    ).bind(now(), user.id, farmId, farmId, b.coll, b.id),
   ])
   return json({ ok: true })
 }
 
 // ---------- AI assistant access for another account ----------
-/** People who run the assistant on their own computer (linked it themselves, not given access). */
+async function assistantOwnerId(env: Env): Promise<number | null> {
+  const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'assistant_owner'").first<{ value: string }>()
+  return r ? Number(r.value) : null
+}
+
+/** The one person who runs the assistant on their computer and answers access requests. */
 async function assistantGivers(env: Env, userId: number) {
-  const rows = await env.DB.prepare('SELECT * FROM users WHERE assistant IS NOT NULL AND assistant_from IS NULL AND id != ?')
-    .bind(userId)
-    .all<UserRow>()
-  return rows.results
+  const owner = await assistantOwnerId(env)
+  if (owner === null || owner === userId) return []
+  const u = await env.DB.prepare('SELECT * FROM users WHERE id = ? AND assistant IS NOT NULL').bind(owner).first<UserRow>()
+  return u ? [u] : []
 }
 
 async function assistantRequest(env: Env, user: UserRow) {
@@ -684,7 +745,7 @@ async function decideAssistant(
   const uid = Number(uidS)
   const giver = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(cq.from.id).first<UserRow>()
   const lang = giver?.lang ?? 'uz'
-  const allowedGiver = giver?.assistant && (await assistantGivers(env, uid)).some((g) => g.id === giver.id)
+  const allowedGiver = !!giver?.assistant && (await assistantOwnerId(env)) === giver.id
   if (!giver || !allowedGiver) {
     await tg(env.TELEGRAM_BOT_TOKEN, 'answerCallbackQuery', { callback_query_id: cq.id, text: txt(lang, 'aiNotYours'), show_alert: true })
     return

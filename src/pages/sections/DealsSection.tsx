@@ -83,8 +83,21 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
     setEditing(rec ? rec.id : 'new')
   }
 
+  // An entry linked to give-backs (or a give-back itself) keeps its person, direction, kind, product and
+  // currency, so the give-backs keep adding up correctly.
+  const editRec = editing && editing !== 'new' ? all.find((r) => r.id === editing) : undefined
+  const linked = !!editRec && (!!editRec.returnOf || all.some((r) => r.returnOf === editRec.id))
+
   function submit() {
     if (!f) return
+    if (linked && editRec) {
+      f.person = editRec.person
+      f.direction = editRec.direction
+      f.kind = editRec.kind
+      f.item = editRec.item
+      f.unit = editRec.unit
+      f.currency = editRec.currency
+    }
     const amount = num(f.amount)
     const quantity = num(f.quantity)
     if (!f.date) return setError(t('Enter the date.'))
@@ -182,6 +195,9 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
           onSubmit={submit}
           error={error}
         >
+          {linked && (
+            <p className="field-hint field-wide">{t('This entry has give-backs, so only the date, amount and note can be changed.')}</p>
+          )}
           <div className="field">
             <span className="field-label" id="deal-dir-label">
               {t('Direction')}
@@ -194,6 +210,7 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
                   role="radio"
                   aria-checked={f.direction === d}
                   className={f.direction === d ? `is-on ${d === 'gave' ? 'is-gave' : 'is-got'}` : ''}
+                  disabled={linked}
                   onClick={() => setF({ ...f, direction: d })}
                 >
                   {d === 'gave' ? `↗ ${t('We gave')}` : `↙ ${t('We got')}`}
@@ -213,6 +230,7 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
                   role="radio"
                   aria-checked={f.kind === k}
                   className={f.kind === k ? 'is-on is-good' : ''}
+                  disabled={linked}
                   onClick={() => setF({ ...f, kind: k })}
                 >
                   {k === 'money' ? t('Money') : t('Product')}
@@ -226,6 +244,7 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
           <Field label={t('Person')}>
             <input
               id="deal-person"
+              disabled={linked}
               className="input"
               list="deal-people"
               value={f.person}
@@ -243,6 +262,7 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
               <Field label={t('Product')}>
                 <input
                   id="deal-item"
+                  disabled={linked}
                   className="input"
                   list="deal-items"
                   value={f.item}
@@ -266,6 +286,7 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
                   />
                   <input
                     id="deal-unit"
+                    disabled={linked}
                     className="input"
                     list="deal-units"
                     placeholder={t('unit')}
@@ -290,7 +311,7 @@ export function DealsSection({ crop }: { crop: SeasonCrop }) {
               id="deal-amount"
               value={f.amount}
               currency={f.currency}
-              onCurrency={(c) => setF({ ...f, currency: c })}
+              onCurrency={(c) => !linked && setF({ ...f, currency: c })}
               onChange={(v) => setF({ ...f, amount: v })}
             />
           </Field>

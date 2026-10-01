@@ -167,8 +167,10 @@ function deviceName() {
 
 async function finishSignIn(res: MeResponse) {
   const old = state.session
+  // the farm this device was working in (also after being signed out), so its unsent changes go there
+  const lastFarm = old?.farmId ?? read<{ farmId: string } | null>(CURSOR_KEY, null)?.farmId
   const farmId =
-    res.farms.find((f) => f.id === old?.farmId && f.status === 'active')?.id ?? res.farms.find((f) => f.status === 'active')?.id ?? null
+    res.farms.find((f) => f.id === lastFarm && f.status === 'active')?.id ?? res.farms.find((f) => f.status === 'active')?.id ?? null
   set({ session: { token: res.token!, user: res.user, farms: res.farms, farmId }, error: null })
   if (!farmId) return
   // first time this farm opens on this phone: show the farm's records (this phone's old data is kept as a backup)
@@ -339,6 +341,14 @@ export async function restoreItem(farmId: string, coll: string, id: string) {
  * - 'replace': show the farm's records (this phone's old data is kept as a backup copy).
  */
 export async function enterFarm(farmId: string, mode: 'upload' | 'replace') {
+  if (!state.session) return
+  // never drop changes not yet sent to the farm that is open now: send them first, or stop
+  if (state.session.farmId && state.session.farmId !== farmId) {
+    await waitForSync()
+    if (Object.keys(pending).length) await syncNow()
+    if (Object.keys(pending).length) throw new CloudError('unsent')
+  }
+  await waitForSync()
   const s = state.session
   if (!s) return
   stopSync()
@@ -392,6 +402,12 @@ function schedule(ms: number) {
   timer = setTimeout(() => void syncNow(), ms)
 }
 
+let errorAt = 0
+
+async function waitForSync() {
+  for (let i = 0; running && i < 300; i++) await new Promise((r) => setTimeout(r, 100))
+}
+
 export async function syncNow() {
   const farm = activeFarm()
   if (!farm) return
@@ -422,8 +438,13 @@ export async function syncNow() {
       const incoming = res.changes.filter((c) => !pending[`${c.coll}|${c.id}`])
       applyRemote(incoming)
       write(CURSOR_KEY, { farmId: farm.id, cursor: res.cursor })
+      // role changed by an owner (e.g. made member): show the right buttons
+      const sNow = state.session
+      if (sNow && res.role && sNow.farms.some((x) => x.id === farm.id && x.role !== res.role))
+        set({ session: { ...sNow, farms: sNow.farms.map((x) => (x.id === farm.id ? { ...x, role: res.role as FarmRef['role'] } : x)) } })
       if (res.rejected.length) {
         // not allowed (e.g. a member deleting a crop): get the farm's version back
+        errorAt = Date.now()
         set({ error: res.rejected.some((r) => r.reason === 'owners_only') ? 'owners_only' : 'rejected' })
         write(CURSOR_KEY, { farmId: farm.id, cursor: 0 })
         again = true
@@ -431,7 +452,9 @@ export async function syncNow() {
       more = res.more || Object.keys(pending).length > 0
       if (!res.more && batch.length === 0) more = false
     }
-    set({ status: 'idle', lastSync: new Date().toISOString() })
+    // a "put back" message stays for 20 seconds so it can be read
+    const keepError = again || Date.now() - errorAt < 20000
+    set({ status: 'idle', lastSync: new Date().toISOString(), ...(keepError ? {} : { error: null }) })
   } catch (e) {
     const msg = (e as Error).message
     set({ status: msg === 'offline' ? 'offline' : 'error', error: msg === 'offline' ? null : msg })
