@@ -6,7 +6,11 @@ import {
   BOT_USERNAME,
   activeFarm,
   changeFarmPassword,
+  chooseFarm,
   cloudAvailable,
+  insideTelegram,
+  openFarm,
+  signInInsideTelegram,
   createFarm,
   enterFarm,
   farmInfo,
@@ -35,6 +39,7 @@ const ERR: Record<string, string> = {
   last_owner: 'A farm must always have at least one owner. Make someone else an owner first.',
   owners_only: 'Only owners can do this.',
   telegram_check_failed: 'Telegram sign-in could not be checked. Try again.',
+  unsent: 'Some changes are not sent yet. Connect to the internet and try again.',
   already_decided: 'Someone already answered this request.',
 }
 
@@ -71,15 +76,11 @@ export function AccountSettings() {
             {t('Signed in with Telegram')}
           </span>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-small"
-          onClick={() => {
-            if (confirmSignOut(t)) void signOut()
-          }}
-        >
-          {t('Sign out')}
-        </button>
+        {farm && (
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => chooseFarm().catch((e) => setError(errText(e)))}>
+            {t('Change farm')}
+          </button>
+        )}
       </div>
 
       {farm ? (
@@ -126,7 +127,15 @@ export function WelcomeGate() {
   const cloud = useCloud()
   const s = cloud.session
   const pending = s?.farms.find((f) => f.status === 'pending')
+  const myFarms = s?.farms.filter((f) => f.status === 'active') ?? []
   const step = !s ? 1 : 2
+  const inTg = insideTelegram()
+  const [tgError, setTgError] = useState(false)
+  // inside the Telegram app: sign in again by itself, no button needed
+  useEffect(() => {
+    if (!s && inTg) void signInInsideTelegram().catch(() => setTgError(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!s])
   return (
     <div className="welcome">
       <div className="welcome-head">
@@ -144,7 +153,13 @@ export function WelcomeGate() {
         </ol>
       </div>
       {!s ? (
-        <SignIn />
+        inTg && !tgError ? (
+          <div className="card settings-card">
+            <p className="field-hint">{t('Signing in…')}</p>
+          </div>
+        ) : (
+          <SignIn />
+        )
       ) : (
         <>
           <div className="card settings-card account-me">
@@ -157,11 +172,36 @@ export function WelcomeGate() {
               <b>{s.user.name}</b>
               <span className="field-hint">{t('Signed in with Telegram')}</span>
             </div>
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => void signOut()}>
-              {t('Sign out')}
-            </button>
           </div>
+          {myFarms.length > 0 && (
+            <div className="card settings-card">
+              <p className="empty-title">{t('Your farms')}</p>
+              <ul className="farm-pick">
+                {myFarms.map((f) => (
+                  <li key={f.id}>
+                    <span>
+                      <b>{f.name}</b> <span className="field-hint">{f.code}</span>
+                    </span>
+                    <button type="button" className="btn btn-primary btn-small" onClick={() => void openFarm(f.id)}>
+                      {t('Open')}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {pending ? <PendingCard name={pending.name} farmId={pending.id} /> : <CreateOrJoin />}
+          {!inTg && (
+            <button
+              type="button"
+              className="link-btn welcome-switch"
+              onClick={() => {
+                if (confirmSignOut(t)) void signOut()
+              }}
+            >
+              {t('Use another Telegram account')}
+            </button>
+          )}
         </>
       )}
     </div>
@@ -231,7 +271,8 @@ function CreateOrJoin() {
   const [pass, setPass] = useState('')
   const [pass2, setPass2] = useState('')
   const [code, setCode] = useState('')
-  const [move, setMove] = useState(hasOwnData())
+  const picking = !!useCloud().session?.picking
+  const [move, setMove] = useState(hasOwnData() && !picking)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -297,10 +338,12 @@ function CreateOrJoin() {
             <span className="field-label">{t('Repeat the password')}</span>
             <input className="input" type="password" autoComplete="new-password" value={pass2} onChange={(e) => setPass2(e.target.value)} />
           </label>
-          <label className="check">
-            <input type="checkbox" checked={move} onChange={(e) => setMove(e.target.checked)} />
-            <span>{t('Move the records on this device into the farm')}</span>
-          </label>
+          {!picking && (
+            <label className="check">
+              <input type="checkbox" checked={move} onChange={(e) => setMove(e.target.checked)} />
+              <span>{t('Move the records on this device into the farm')}</span>
+            </label>
+          )}
         </>
       ) : (
         <>

@@ -863,4 +863,9 @@ export const uz: Record<string, string> = {
   'Ask the person who runs the assistant on their computer. They get a message in Telegram and allow it with one tap.':
     'Yordamchini o‘z kompyuterida ishlatayotgan odamdan so‘rang. U Telegramda xabar oladi va bitta tugma bilan ruxsat beradi.',
   'Ask for access': 'Ruxsat so‘rash',
+  'Change farm': 'Fermani almashtirish',
+  'Your farms': 'Fermalaringiz',
+  'Use another Telegram account': 'Boshqa Telegram hisobi bilan kirish',
+  'Some changes are not sent yet. Connect to the internet and try again.':
+    'Ba’zi o‘zgarishlar hali yuborilmagan. Internetga ulanib, qayta urining.',
 }

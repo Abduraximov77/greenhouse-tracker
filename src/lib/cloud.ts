@@ -37,6 +37,8 @@ interface Session {
   user: CloudUser
   farms: FarmRef[]
   farmId: string | null
+  /** chose "Change farm": stay signed in, show the create / join / open-farm page */
+  picking?: boolean
 }
 export type SyncStatus = 'off' | 'idle' | 'syncing' | 'offline' | 'error'
 interface State {
@@ -202,7 +204,9 @@ export async function refreshMe(open = true) {
   if (!s) return
   const farmId = res.farms.some((f) => f.id === s.farmId && f.status === 'active')
     ? s.farmId
-    : (res.farms.find((f) => f.status === 'active')?.id ?? null)
+    : s.picking
+      ? null
+      : (res.farms.find((f) => f.status === 'active')?.id ?? null)
   const switched = farmId !== s.farmId
   set({ session: { ...s, user: res.user, farms: res.farms, farmId } })
   if (open && switched && farmId) await enterFarm(farmId, 'replace')
@@ -224,6 +228,45 @@ export async function requestAssistant() {
   await refreshMe(false)
 }
 
+/**
+ * "Change farm": stay signed in with Telegram, close this farm on this device and show the page to
+ * create a farm, join one, or open another of your farms. Unsent changes are sent first.
+ */
+export async function chooseFarm() {
+  const s = state.session
+  if (!s) return
+  if (Object.keys(pending).length) {
+    await syncNow()
+    if (Object.keys(pending).length) throw new CloudError('unsent')
+  }
+  stopSync()
+  set({ session: { ...s, farmId: null, picking: true } })
+}
+
+/** Open one of your farms (from the farm page). Its records are downloaded fresh. */
+export async function openFarm(farmId: string) {
+  await enterFarm(farmId, 'replace')
+}
+
+/** Inside the Telegram app the person is always known: sign in again by itself. */
+const TG_KEY = 'agroledger:tg-launch'
+export function insideTelegram() {
+  try {
+    return !!sessionStorage.getItem(TG_KEY)
+  } catch {
+    return false
+  }
+}
+export async function signInInsideTelegram() {
+  let data: string | null = null
+  try {
+    data = sessionStorage.getItem(TG_KEY)
+  } catch {
+    // storage blocked
+  }
+  if (data) await signInWithInitData(data)
+}
+
 export async function signOut() {
   try {
     await api('POST', '/auth/logout')
@@ -236,6 +279,7 @@ export async function signOut() {
 
 export async function createFarm(name: string, password: string, moveMyData: boolean) {
   const farm = await api<FarmRef>('POST', '/farms', { name, password })
+  if (state.session) set({ session: { ...state.session, picking: false } })
   await refreshMe(false)
   await enterFarm(farm.id, moveMyData ? 'upload' : 'replace')
   return farm
@@ -243,6 +287,7 @@ export async function createFarm(name: string, password: string, moveMyData: boo
 
 export async function joinFarm(code: string, password: string) {
   const farm = await api<FarmRef>('POST', '/farms/join', { code, password })
+  if (state.session) set({ session: { ...state.session, picking: false } })
   await refreshMe()
   return farm
 }
@@ -305,7 +350,7 @@ export async function enterFarm(farmId: string, mode: 'upload' | 'replace') {
   }
   write(PENDING_KEY, pending)
   write(CURSOR_KEY, { farmId, cursor: 0 })
-  set({ session: { ...s, farmId } })
+  set({ session: { ...s, farmId, picking: false } })
   startSync()
   await syncNow()
 }
@@ -426,6 +471,11 @@ export function takeTelegramLaunchData(): string | null {
   if (!h.includes('tgWebAppData=')) return null
   const params = new URLSearchParams(h.slice(1))
   const data = params.get('tgWebAppData')
+  try {
+    if (data) sessionStorage.setItem(TG_KEY, data)
+  } catch {
+    // storage blocked
+  }
   history.replaceState(null, '', location.pathname + location.search + '#/')
   return data
 }

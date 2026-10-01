@@ -855,4 +855,9 @@ export const ru: Record<string, string> = {
   'Ask the person who runs the assistant on their computer. They get a message in Telegram and allow it with one tap.':
     'Попросите того, у кого помощник работает на компьютере. Он получит сообщение в Telegram и разрешит одним нажатием.',
   'Ask for access': 'Запросить доступ',
+  'Change farm': 'Сменить ферму',
+  'Your farms': 'Ваши фермы',
+  'Use another Telegram account': 'Войти с другим аккаунтом Telegram',
+  'Some changes are not sent yet. Connect to the internet and try again.':
+    'Некоторые изменения ещё не отправлены. Подключитесь к интернету и попробуйте снова.',
 }
