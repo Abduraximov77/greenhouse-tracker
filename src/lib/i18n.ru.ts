@@ -891,4 +891,8 @@ export const ru: Record<string, string> = {
   'Very damp air: ventilate in the morning.': 'Очень влажный воздух: проветривайте утром.',
   'Dew forms on the film in the morning: open vents gradually after sunrise.':
     'Утром на плёнке выпадает роса: после восхода постепенно открывайте форточки.',
+  'Check the price.': 'Проверьте цену.',
+  '{n} sizes without a price': '{n} размер(а) без цены',
+  'price not entered': 'цена не указана',
+  'Price (optional)': 'Цена (необяз.)',
 }

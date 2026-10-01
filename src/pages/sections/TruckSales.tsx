@@ -57,7 +57,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
     const last = allSales[0]
     const rows = emptyRows()
     if (rec?.lines?.length) {
-      for (const l of rec.lines) rows[l.size] = { boxes: str(l.boxes), kg: str(l.kg), price: str(l.price) }
+      for (const l of rec.lines) rows[l.size] = { boxes: str(l.boxes), kg: str(l.kg), price: str(l.price ?? null) }
     } else if (rec) {
       // older sale, not split by size
       rows.mix = {
@@ -67,7 +67,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
       }
     } else if (last?.lines?.length) {
       // a new sale starts with the last prices per size
-      for (const l of last.lines) rows[l.size] = { ...emptyRow(), price: str(l.price) }
+      for (const l of last.lines) rows[l.size] = { ...emptyRow(), price: str(l.price ?? null) }
     }
     setF({
       date: rec?.date ?? todayISO(),
@@ -95,7 +95,9 @@ export function TruckSales({ truck }: { truck: Shipment }) {
   const used = lines.filter((l) => l.used)
   const formBoxes = used.reduce((a, l) => a + (l.boxes ?? 0), 0)
   const formKg = used.reduce((a, l) => a + (l.byKg ? l.kg! : 0), 0)
-  const formAmount = used.every((l) => l.amount !== null) && used.length ? used.reduce((a, l) => a + l.amount!, 0) : null
+  const priced = used.filter((l) => l.amount !== null)
+  const formAmount = priced.length ? priced.reduce((a, l) => a + l.amount!, 0) : null
+  const unpriced = used.length - priced.length
   // Boxes that can still be sold from this truck (when editing, this sale's own boxes count as available).
   const editingRec = editing && editing !== 'new' ? sales.find((r) => r.id === editing) : undefined
   const canSell = left + (editingRec?.boxes ?? 0)
@@ -114,7 +116,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
       if (l.boxes === null || l.boxes <= 0 || !Number.isInteger(l.boxes))
         return setError(`${name}: ${t('Enter the number of boxes (a whole number).')}`)
       if (l.r.kg.trim() && (l.kg === null || l.kg <= 0)) return setError(`${name}: ${t('Enter the weight sold in kg.')}`)
-      if (l.price === null || l.price < 0) return setError(`${name}: ${t(l.byKg ? 'Enter the price per kg.' : 'Enter the price per box.')}`)
+      if (l.r.price.trim() && (l.price === null || l.price < 0)) return setError(`${name}: ${t('Check the price.')}`)
     }
     if (formBoxes > canSell) return setError(t('Only {n} boxes are left on this truck.', { n: formatNumber(canSell, 0) }))
     const editingKg = editingRec?.kg ?? 0
@@ -124,10 +126,10 @@ export function TruckSales({ truck }: { truck: Shipment }) {
       size: l.size,
       boxes: l.boxes!,
       kg: l.byKg ? l.kg : null,
-      price: l.price!,
+      price: l.price,
       amount: l.amount ?? 0,
     }))
-    const one = saleLines.length === 1 ? saleLines[0] : null
+    const one = saleLines.length === 1 && saleLines[0].price !== null ? saleLines[0] : null
     const data = {
       cropId: truck.cropId,
       shipmentId: truck.id,
@@ -138,6 +140,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
       pricePerKg: one?.kg ? one.price : null,
       pricePerBox: one && !one.kg ? one.price : null,
       amount: Math.round((formAmount ?? 0) * 100) / 100,
+      priceMissing: unpriced > 0,
       currency: f.currency,
       buyer: f.buyer.trim(),
       // Sales count as money received; there is no separate "paid" step.
@@ -232,7 +235,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               <span>{t('Size')}</span>
               <span>{t('Boxes')}</span>
               <span>{t('Weight, kg (optional)')}</span>
-              <span>{t('Price')}</span>
+              <span>{t('Price (optional)')}</span>
               <span>{t('Sum')}</span>
             </div>
             {lines.map((l) => (
@@ -261,7 +264,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
                     id={`sale-${l.size}-price-${truck.id}`}
                     className="input"
                     inputMode="decimal"
-                    placeholder={t('Price')}
+                    placeholder={t('Price (optional)')}
                     aria-label={`${sizeLabel(l.size, t)} · ${t(l.byKg ? 'Price per kg' : 'Price per box')}`}
                     value={l.r.price}
                     onChange={(e) => setRow(l.size, { price: e.target.value })}
@@ -278,7 +281,10 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               <b>{formatNumber(formBoxes, 0)}</b>
               <b>{formKg > 0 ? `${formatNumber(formKg, 0)} ${t('kg')}` : ''}</b>
               <span />
-              <b className="size-sum">{formAmount !== null ? cur.both(formAmount, f.currency) : '—'}</b>
+              <b className="size-sum">
+                {formAmount !== null ? cur.both(formAmount, f.currency) : '—'}
+                {unpriced > 0 && <small className="size-noprice"> + {t('{n} sizes without a price', { n: unpriced })}</small>}
+              </b>
             </div>
           </div>
           <p className="mini-hint">{t('Fill only the sizes you sold. With a weight the price is per kg, without it per box.')}</p>
@@ -323,7 +329,14 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               <div className="sale-line">
                 <span>
                   {formatDate(r.date)} · <b>{t('{n} boxes', { n: formatNumber(r.boxes, 0) })}</b>
-                  {r.kg ? ` · ${formatNumber(r.kg, 0)} ${t('kg')}` : ''} = <b>{cur.both(r.amount, r.currency)}</b>
+                  {r.kg ? ` · ${formatNumber(r.kg, 0)} ${t('kg')}` : ''}
+                  {r.amount > 0 && (
+                    <>
+                      {' '}
+                      = <b>{cur.both(r.amount, r.currency)}</b>
+                    </>
+                  )}
+                  {r.priceMissing && <span className="pay-badge partial"> {t('price not entered')}</span>}
                   {r.buyer && ` · ${r.buyer}`}
                 </span>
                 <small className="sale-sizes">
@@ -332,10 +345,11 @@ export function TruckSales({ truck }: { truck: Shipment }) {
                         .map(
                           (l) =>
                             `${sizeLabel(l.size, t)}: ${formatNumber(l.boxes, 0)} ${t('boxes')}` +
-                            (l.kg
-                              ? ` · ${formatNumber(l.kg, 0)} ${t('kg')} × ${cur.fmt(l.price, r.currency)}/${t('kg')}`
-                              : ` × ${cur.fmt(l.price, r.currency)}`) +
-                            ` = ${cur.fmt(l.amount, r.currency)}`,
+                            (l.kg ? ` · ${formatNumber(l.kg, 0)} ${t('kg')}` : '') +
+                            (l.price === null
+                              ? ''
+                              : (l.kg ? ` × ${cur.fmt(l.price, r.currency)}/${t('kg')}` : ` × ${cur.fmt(l.price, r.currency)}`) +
+                                ` = ${cur.fmt(l.amount, r.currency)}`),
                         )
                         .join(' · ')
                     : r.kg

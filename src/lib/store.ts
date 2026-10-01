@@ -131,6 +131,8 @@ export interface Sale extends Meta {
   payStatus: PayStatus // has the buyer paid us
   paidAmount: number | null
   note: string
+  /** true when some sizes have no price yet (amount counts only the priced ones) */
+  priceMissing?: boolean
   /** Sold by tomato size (3-lik … 7-lik): boxes, optional weight and own price per size. */
   lines?: SaleLine[] | null
 }
@@ -142,7 +144,8 @@ export interface SaleLine {
   boxes: number
   /** kg of this size; when given, price is per kg, otherwise per box */
   kg: number | null
-  price: number
+  /** optional: without a price the line counts no money yet */
+  price: number | null
   amount: number
 }
 

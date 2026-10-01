@@ -898,4 +898,8 @@ export const uz: Record<string, string> = {
   'Very damp air: ventilate in the morning.': 'Havo juda nam: ertalab shamollating.',
   'Dew forms on the film in the morning: open vents gradually after sunrise.':
     'Ertalab plyonkada shudring hosil bo‘ladi: quyosh chiqqach fortochkalarni asta-sekin oching.',
+  'Check the price.': 'Narxni tekshiring.',
+  '{n} sizes without a price': 'narxsiz {n} ta razmer',
+  'price not entered': 'narx kiritilmagan',
+  'Price (optional)': 'Narxi (ixtiyoriy)',
 }
