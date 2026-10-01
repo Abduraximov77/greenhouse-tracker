@@ -141,7 +141,7 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
                       </span>
                       {r.from && <span className="record-sub">{t('From: {name}', { name: r.from })}</span>}
                       {r.note && <span className="record-sub">{r.note}</span>}
-                      <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} />
+                      <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} by={r.by} />
                     </div>
                     <div className="record-actions">
                       <button className="btn btn-ghost btn-small" onClick={() => open(r)}>

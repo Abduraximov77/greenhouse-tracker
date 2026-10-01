@@ -1671,3 +1671,44 @@ button.wx-day.is-open { border-color: var(--brand); box-shadow: inset 0 0 0 2px 
 .md ul, .md ol { margin: 0 0 8px; padding-left: 1.3em; display: grid; gap: 3px; }
 .md code { background: var(--bg); padding: 0 4px; border-radius: 3px; }
 .assist-caution { margin: 8px 0 0; padding: 6px 10px; border-left: 3px solid var(--warn); background: var(--warn-soft); color: var(--text); font-size: 0.85rem; border-radius: 3px; }
+
+/* ---------- account / farm ---------- */
+.account { display: grid; gap: 12px; }
+.account-me { display: flex; align-items: center; gap: 12px; }
+.account-me-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; display: inline-grid; place-items: center; background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+.account-why { margin: 0 0 12px; padding-left: 1.2em; display: grid; gap: 4px; }
+.tg-login { min-height: 46px; margin: 6px 0; }
+.account-farm-form { display: grid; gap: 12px; }
+.account-farm-form .segmented { justify-self: start; }
+.check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--brand); }
+.account-pending p { margin: 6px 0; }
+.account-farm-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.account-farm-head .empty-title { margin: 0; }
+.farm-code { text-align: right; display: flex; flex-direction: column; }
+.farm-code b { font-size: 1.6rem; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; color: var(--brand); }
+.sync-line { margin: 10px 0 0; font-size: 0.9rem; color: var(--good); }
+.sync-offline, .sync-error { color: var(--warn); }
+.sync-syncing { color: var(--muted); }
+.account-requests .req { display: grid; gap: 6px; padding: 10px; border-left: 4px solid var(--brand); background: var(--brand-soft); border-radius: 4px; }
+.account-requests .req + .req { margin-top: 8px; }
+.reqbtns { display: flex; gap: 8px; }
+.people { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.person { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; }
+.person > div { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.person-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.role { font-size: 0.85rem; font-weight: 600; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--line); }
+.role.owner { background: #fbf1d6; border-color: #c9a53e; color: #7a5a00; }
+:root[data-theme='night'] .role.owner { background: #3a2f12; color: #e6c66a; }
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.inline-form .input { flex: 1 1 200px; }
+.account-sec-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.btn-danger { color: var(--danger); border: 1px solid currentColor; background: transparent; }
+.trash { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
+.trash li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; }
+.sync-badge { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgb(255 255 255 / 0.35); color: var(--on-bar, #fff); text-decoration: none; font-weight: 700; }
+.sync-badge.sync-offline, .sync-badge.sync-error { background: #c97a10; border-color: #c97a10; }
+.sync-badge.sync-syncing { animation: spin 1.2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sync-badge.sync-syncing { animation: none; } }

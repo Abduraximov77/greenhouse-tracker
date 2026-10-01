@@ -312,7 +312,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
                         {r.driverPhone && ` · ${r.driverPhone}`}
                         {r.note ? ` · ${r.note}` : ''}
                       </span>
-                      <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} />
+                      <Stamp createdAt={r.createdAt} updatedAt={r.updatedAt} by={r.by} />
                     </div>
                     <div className="record-actions">
                       <button className="btn btn-ghost btn-small" onClick={() => open(r)}>

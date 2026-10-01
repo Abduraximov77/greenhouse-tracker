@@ -87,13 +87,14 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 }
 
 /** Shows when a record was saved (automatic). */
-export function Stamp({ createdAt, updatedAt }: { createdAt: string; updatedAt: string }) {
+export function Stamp({ createdAt, updatedAt, by }: { createdAt: string; updatedAt: string; by?: string | null }) {
   const t = useT()
   const edited = updatedAt !== createdAt
   return (
     <span className="stamp" title={edited ? t('Edited {time}', { time: formatDateTime(updatedAt) }) : undefined}>
       {t('Saved {time}', { time: formatDateTime(createdAt) })}
       {edited && ` · ${t('edited')}`}
+      {by && ` · ${by}`}
     </span>
   )
 }

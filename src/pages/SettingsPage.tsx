@@ -6,6 +6,8 @@ import { CURRENCIES, formatDateTime, formatNumber } from '../lib/format'
 import { convert, fetchRatesOnline, formatMoney } from '../lib/money'
 import { LANGS, useT } from '../lib/i18n'
 import { LocationSettings } from '../components/Weather'
+import { AccountSettings } from './AccountSettings'
+import { useCanDeleteCore } from '../lib/cloud'
 import { AssistantSettings } from './AssistantSetup'
 import { usePath } from '../lib/router'
 import { Breadcrumbs, Field, PageHead, SectionHead, num, str } from '../components/ui'
@@ -24,6 +26,7 @@ export function SettingsPage() {
   const t = useT()
   const s = db.settings
   const others = useUsedCurrencies().filter((c) => c !== 'USD')
+  const canDelete = useCanDeleteCore()
   const path = usePath()
   // Opened from "Set location": scroll to that block.
   useEffect(() => {
@@ -68,10 +71,7 @@ export function SettingsPage() {
       <PageHead title={t('Settings')} />
 
       <SectionHead title={t('Account')} />
-      <div className="card settings-card account-soon">
-        <p className="empty-title">{t('Accounts are coming soon')}</p>
-        <p className="field-hint">{t('Signing in and sharing the same records with your family will be set up here.')}</p>
-      </div>
+      <AccountSettings />
 
       <SectionHead title={t('General')} />
 
@@ -238,15 +238,17 @@ export function SettingsPage() {
               <div key={season.id} className="card manage-season">
                 <div className="manage-row">
                   <span className="manage-name">{t('{season} season', { season: seasonLabel(season) })}</span>
-                  <ConfirmDelete
-                    label={t('Delete season')}
-                    question={t('Delete the {season} season?', { season: seasonLabel(season) })}
-                    details={t(
-                      'Its {n} crops and all their records (expenses, worker days, harvest, export) will be deleted. Workers stay.',
-                      { n: crops.length },
-                    )}
-                    onDelete={() => removeRecord('seasons', season.id)}
-                  />
+                  {canDelete && (
+                    <ConfirmDelete
+                      label={t('Delete season')}
+                      question={t('Delete the {season} season?', { season: seasonLabel(season) })}
+                      details={t(
+                        'Its {n} crops and all their records (expenses, worker days, harvest, export) will be deleted. Workers stay.',
+                        { n: crops.length },
+                      )}
+                      onDelete={() => removeRecord('seasons', season.id)}
+                    />
+                  )}
                 </div>
                 {crops.length > 0 && (
                   <ul className="manage-crops">
@@ -255,12 +257,14 @@ export function SettingsPage() {
                       return (
                         <li key={c.id} className="manage-row">
                           <span>{name}</span>
-                          <ConfirmDelete
-                            label={t('Delete crop')}
-                            question={t('Delete {crop} from {season}?', { crop: name, season: seasonLabel(season) })}
-                            details={t('All its records (expenses, worker days, harvest, export) will be deleted. Workers stay.')}
-                            onDelete={() => removeRecord('crops', c.id)}
-                          />
+                          {canDelete && (
+                            <ConfirmDelete
+                              label={t('Delete crop')}
+                              question={t('Delete {crop} from {season}?', { crop: name, season: seasonLabel(season) })}
+                              details={t('All its records (expenses, worker days, harvest, export) will be deleted. Workers stay.')}
+                              onDelete={() => removeRecord('crops', c.id)}
+                            />
+                          )}
                         </li>
                       )
                     })}

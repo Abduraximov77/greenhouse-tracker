@@ -45,8 +45,22 @@ Built as a website first, designed so it can become a phone app later.
   totals are converted with the exchange rate in Settings, which also has a currency converter
   and a button to fetch today's rate online (works when hosted on its own address)
 
-> Data is currently saved in the browser on each device. A shared online database
-> and user accounts are the next step.
+## Accounts and family sharing
+- Sign in with Telegram (Settings → Account). One person creates the farm and gets a farm code
+  (`AL-1234`) plus a password; family members enter both and an owner allows them, in the app
+  or with the buttons the bot sends.
+- Records are shared between all phones of the farm and saved on the server; each entry shows who
+  saved it. The app keeps working offline and sends the changes when the internet is back.
+- Owners can remove people, change roles and the password, sign out every device, and bring back
+  deleted records (30 days). Members cannot delete seasons, crops or workers.
+- **Telegram weather alerts** from the same fixed rules as the app: an evening message at the hour
+  each person picks, and urgent danger alerts straight away (06:00–23:00).
+- **Backups**: the database keeps 30 days of point-in-time history (Cloudflare D1), and every
+  Sunday each owner gets a copy of the whole farm as a file in Telegram.
+
+The server is in `worker/` (Cloudflare Worker + D1). GitHub Actions deploys it together with the
+website (`scripts/deploy-api.mjs`) when these repository secrets exist:
+`TELEGRAM_BOT_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
 
 ## Run it on your computer
 Requires [Node.js](https://nodejs.org) 20 or newer.
@@ -58,4 +72,4 @@ npm run dev
 Then open the address it prints (usually http://localhost:5173).
 
 ## Tech
-React + TypeScript + Vite.
+React + TypeScript + Vite; server: Cloudflare Workers + D1.

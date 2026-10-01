@@ -13,6 +13,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { AlertGuidePage } from './pages/AlertGuidePage'
 import { ConnectPage, LinkedPage } from './pages/AssistantSetup'
 import { fetchRatesOnline, formatMoney } from './lib/money'
+import { useCloud } from './lib/cloud'
 
 // How long the loading screen shows at minimum, so it doesn't just flash.
 const MIN_SPLASH_MS = 2100
@@ -136,6 +137,7 @@ function Header() {
           </svg>
           <span className="rate-text">{rateText}</span>
         </a>
+        <SyncBadge />
         <a className="icon-link" href={href('settings')} aria-label={t('Settings')} title={t('Settings')}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -196,5 +198,27 @@ function NotFound() {
     <Empty title={t("This page doesn't exist")}>
       {t('It may have been deleted.')} <a href={href()}>{t('Go to seasons')}</a>
     </Empty>
+  )
+}
+
+/** Small sign in the top bar: is everything saved to the farm? Shown only when signed in to a farm. */
+function SyncBadge() {
+  const t = useT()
+  const c = useCloud()
+  if (!c.session?.farmId) return null
+  const [icon, label] =
+    c.status === 'syncing'
+      ? ['⟳', t('Saving to the farm…')]
+      : c.status === 'offline'
+        ? ['⚠', t('No internet: {n} changes will be sent when it is back.', { n: c.pending })]
+        : c.status === 'error'
+          ? ['⚠', t('Could not reach the farm. It will try again.')]
+          : c.pending
+            ? ['⟳', t('{n} changes waiting to be sent', { n: c.pending })]
+            : ['✓', t('All saved to the farm')]
+  return (
+    <a className={`sync-badge sync-${c.status}`} href={href('settings')} title={label} aria-label={label}>
+      {icon}
+    </a>
   )
 }

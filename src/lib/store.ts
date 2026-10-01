@@ -11,6 +11,8 @@ export interface Meta {
   id: ID
   createdAt: string // ISO timestamp, set automatically
   updatedAt: string
+  /** Who saved it last (name), filled in by the shared farm database. */
+  by?: string | null
 }
 
 export interface Season extends Meta {
@@ -27,7 +29,6 @@ export interface SeasonCrop extends Meta {
   /** Where this crop grows; if empty, the farm's main place (Settings) is used. */
   place?: Place | null
 }
-
 
 export interface Harvest extends Meta {
   cropId: ID
@@ -111,6 +112,7 @@ export interface Attendance {
   payStatus: PayStatus
   paidAmount: number | null
   updatedAt: string
+  by?: string | null
 }
 
 /** A sale of boxes from a truck (added later, once the buyer has taken them). */
@@ -437,14 +439,130 @@ function migrateV6(old: any): any {
 let db: DB = load()
 const listeners = new Set<() => void>()
 
-function commit(next: DB) {
-  db = next
+// ---------- shared farm: the sync engine (cloud.ts) listens to every change ----------
+export type SyncChange = { coll: string; id: string; data: unknown; deleted?: boolean; updatedAt: string; by?: string | null }
+type CommitHook = (changes: SyncChange[]) => void
+let commitHook: CommitHook | null = null
+export function setCommitHook(h: CommitHook | null) {
+  commitHook = h
+}
+
+/** The record collections shared with the farm (settings stay on each phone, except the main place). */
+export const SYNC_COLLS: CollectionName[] = [
+  'seasons',
+  'crops',
+  'harvests',
+  'shipments',
+  'expenses',
+  'incomes',
+  'deals',
+  'sales',
+  'answers',
+  'workers',
+]
+
+/** What changed between two versions of the data, as records to send. */
+export function diffDB(prev: DB, next: DB): SyncChange[] {
+  const out: SyncChange[] = []
+  const t = nowIso()
+  for (const coll of SYNC_COLLS) {
+    const a = prev[coll] as Meta[]
+    const b = next[coll] as Meta[]
+    if (a === b) continue
+    const before = new Map(a.map((r) => [r.id, r]))
+    const after = new Map(b.map((r) => [r.id, r]))
+    for (const [id, r] of after) if (before.get(id) !== r) out.push({ coll, id, data: r, updatedAt: r.updatedAt || t })
+    for (const [id, r] of before) if (!after.has(id)) out.push({ coll, id, data: r, deleted: true, updatedAt: t })
+  }
+  if (prev.attendance !== next.attendance) {
+    for (const [k, r] of Object.entries(next.attendance))
+      if (prev.attendance[k] !== r) out.push({ coll: 'attendance', id: k, data: r, updatedAt: r.updatedAt || t })
+    for (const [k, r] of Object.entries(prev.attendance))
+      if (!(k in next.attendance)) out.push({ coll: 'attendance', id: k, data: r, deleted: true, updatedAt: t })
+  }
+  if (prev.settings.place !== next.settings.place)
+    out.push({ coll: 'meta', id: 'place', data: { value: next.settings.place ?? null }, updatedAt: t })
+  return out
+}
+
+function save() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db))
   } catch {
     // ignore: data stays in memory for this visit
   }
+}
+
+function commit(next: DB) {
+  const prev = db
+  db = next
+  save()
+  if (commitHook) {
+    const changes = diffDB(prev, next)
+    if (changes.length) commitHook(changes)
+  }
   listeners.forEach((l) => l())
+}
+
+/** Put changes from the farm (made on other phones) into this phone's data, without sending them back. */
+export function applyRemote(changes: SyncChange[]) {
+  if (!changes.length) return
+  const next: DB = { ...db, attendance: { ...db.attendance }, settings: { ...db.settings } }
+  const lists = new Map<string, Map<string, Meta>>()
+  const list = (coll: string) => {
+    let m = lists.get(coll)
+    if (!m) {
+      m = new Map((db[coll as CollectionName] as Meta[]).map((r) => [r.id, r]))
+      lists.set(coll, m)
+    }
+    return m
+  }
+  for (const c of changes) {
+    if (c.coll === 'attendance') {
+      if (c.deleted) delete next.attendance[c.id]
+      else next.attendance[c.id] = { ...(c.data as Attendance), by: c.by ?? null }
+    } else if (c.coll === 'meta') {
+      if (c.id === 'place') next.settings.place = ((c.data as { value?: Place | null })?.value ?? null) as Place | null
+    } else if ((SYNC_COLLS as string[]).includes(c.coll)) {
+      const m = list(c.coll)
+      if (c.deleted) m.delete(c.id)
+      else m.set(c.id, { ...(c.data as Meta), id: c.id, by: c.by ?? (c.data as Meta)?.by ?? null })
+    }
+  }
+  for (const [coll, m] of lists) (next as unknown as Record<string, Meta[]>)[coll] = [...m.values()]
+  db = next
+  save()
+  listeners.forEach((l) => l())
+}
+
+/** Empty all farm records on this phone (before loading a farm someone else made). Settings stay. */
+export function clearFarmData() {
+  const empty: Partial<DB> = { attendance: {} }
+  for (const c of SYNC_COLLS) (empty as Record<string, unknown>)[c] = []
+  db = { ...db, ...empty, settings: { ...db.settings, place: null } } as DB
+  save()
+  listeners.forEach((l) => l())
+}
+
+/** Every record on this phone as changes, to move it all into a new farm. */
+export function allAsChanges(): SyncChange[] {
+  const empty = { ...db, attendance: {}, settings: { ...db.settings, place: undefined } } as DB
+  for (const c of SYNC_COLLS) (empty as unknown as Record<string, unknown>)[c] = []
+  return diffDB(empty, db)
+}
+
+/** True when this phone has records the user typed (not just the two empty starting seasons). */
+export function hasOwnData() {
+  return SYNC_COLLS.some((c) => c !== 'seasons' && (db[c] as Meta[]).length > 0) || Object.keys(db.attendance).length > 0
+}
+
+/** A copy of all data, e.g. kept before replacing it with a farm's data. */
+export function backupLocal(tag: string) {
+  try {
+    localStorage.setItem(`${STORAGE_KEY}-backup-${tag}`, JSON.stringify(db))
+  } catch {
+    // no room: skip
+  }
 }
 
 function subscribe(l: () => void) {
@@ -468,24 +586,15 @@ export function currentLang(): Lang {
 
 // ---------- generic record actions ----------
 
-export function addRecord<K extends CollectionName>(
-  name: K,
-  data: Omit<Collections[K], keyof Meta>,
-): Collections[K] {
+export function addRecord<K extends CollectionName>(name: K, data: Omit<Collections[K], keyof Meta>): Collections[K] {
   const t = nowIso()
   const rec = { ...data, id: newId(), createdAt: t, updatedAt: t } as Collections[K]
   commit({ ...db, [name]: [...(db[name] as Collections[K][]), rec] })
   return rec
 }
 
-export function updateRecord<K extends CollectionName>(
-  name: K,
-  id: ID,
-  patch: Partial<Omit<Collections[K], keyof Meta>>,
-) {
-  const list = (db[name] as Collections[K][]).map((r) =>
-    r.id === id ? { ...r, ...patch, updatedAt: nowIso() } : r,
-  )
+export function updateRecord<K extends CollectionName>(name: K, id: ID, patch: Partial<Omit<Collections[K], keyof Meta>>) {
+  const list = (db[name] as Collections[K][]).map((r) => (r.id === id ? { ...r, ...patch, updatedAt: nowIso() } : r))
   commit({ ...db, [name]: list })
 }
 

@@ -1,3 +1,4 @@
+import { useCanDeleteCore } from '../../lib/cloud'
 import { Fragment, useState } from 'react'
 import {
   addRecord,
@@ -50,6 +51,7 @@ function shiftDate(iso: string, days: number) {
 }
 
 export function WorkersSection({ crop }: { crop: SeasonCrop }) {
+  const canDeleteWorkers = useCanDeleteCore()
   const db = useDB()
   const t = useT()
   const cur = useCurrency()
@@ -217,7 +219,11 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
   const extra = db.expenses
     .filter((r) => r.cropId === crop.id && r.forWorkers && (period === 'all' || r.date.startsWith(period)))
     .sort((a, b) => b.date.localeCompare(a.date))
-  const extraSum = sumIn(extra.map((r) => ({ amount: r.amount, currency: r.currency })), cur.display, cur.rates)
+  const extraSum = sumIn(
+    extra.map((r) => ({ amount: r.amount, currency: r.currency })),
+    cur.display,
+    cur.rates,
+  )
   const extraPaid = sumIn(
     extra.map((r) => ({ amount: payment(r.amount, r.payStatus, r.paidAmount).paid, currency: r.currency })),
     cur.display,
@@ -814,7 +820,7 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                   <button className="btn btn-ghost btn-small" onClick={() => open(w)}>
                     {t('Edit')}
                   </button>
-                  <DeleteButton onDelete={() => removeRecord('workers', w.id)} />
+                  {canDeleteWorkers && <DeleteButton onDelete={() => removeRecord('workers', w.id)} />}
                 </div>
               </li>
             ))}
