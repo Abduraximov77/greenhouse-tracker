@@ -265,8 +265,8 @@ async function signIn(req: Request, env: Env) {
   const tz = Number.isFinite(b.tz) ? Math.max(-720, Math.min(840, Math.round(b.tz!))) : 300
   const t = now()
   await env.DB.prepare(
-    `INSERT INTO users (id, name, username, photo, lang, tz_offset, can_message, created_at, last_seen)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
+    `INSERT INTO users (id, name, username, photo, lang, tz_offset, can_message, created_at, last_seen, alert_hour)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, 13)
      ON CONFLICT(id) DO UPDATE SET name = ?2, username = ?3, photo = ?4, tz_offset = ?6,
        can_message = MAX(can_message, ?7), last_seen = ?8`,
   )
@@ -311,6 +311,7 @@ async function me(env: Env, user: UserRow) {
       lang: user.lang,
       alertsOn: !!user.alerts_on,
       alertHour: user.alert_hour,
+      tzOffset: user.tz_offset,
       canMessage: !!user.can_message,
       assistant,
       assistantRequest: assistant ? null : (areq?.status ?? null),

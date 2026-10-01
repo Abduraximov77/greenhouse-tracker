@@ -959,4 +959,7 @@ export const uz: Record<string, string> = {
     'So‘ralganda tokenni joylang, so‘ng chiqqan havolani qurilmalaringizda oching. U faqat sizga javob beradi.',
   'Paste the token when asked, then open the link it prints on your devices. Other accounts still need your approval in Telegram; approve only your own accounts, because it uses your personal Claude subscription.':
     'So‘ralganda tokenni joylang, so‘ng chiqqan havolani qurilmalaringizda oching. Boshqa hisoblar baribir Telegramda sizning ruxsatingizni so‘raydi; faqat o‘zingizning hisoblaringizga ruxsat bering, chunki u sizning shaxsiy Claude obunangizdan foydalanadi.',
+  'Daily message at': 'Kunlik xabar vaqti',
+  'Warnings for today and tomorrow come at this time, by this phone’s own clock. Dangerous weather (frost, storm, strong wind) comes straight away, between 06:00 and 23:00.':
+    'Bugun va ertangi ogohlantirishlar shu vaqtda, telefoningizning o‘z soati bo‘yicha keladi. Xavfli ob-havo (sovuq, bo‘ron, kuchli shamol) darhol, 06:00 dan 23:00 gacha keladi.',
 }

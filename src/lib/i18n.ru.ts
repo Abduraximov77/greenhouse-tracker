@@ -952,4 +952,7 @@ export const ru: Record<string, string> = {
     'Вставьте токен, когда попросят, затем откройте выданную ссылку на своих устройствах. Отвечает только вам.',
   'Paste the token when asked, then open the link it prints on your devices. Other accounts still need your approval in Telegram; approve only your own accounts, because it uses your personal Claude subscription.':
     'Вставьте токен, когда попросят, затем откройте выданную ссылку на своих устройствах. Другим аккаунтам по-прежнему нужно ваше разрешение в Telegram; разрешайте только своим аккаунтам — используется ваша личная подписка Claude.',
+  'Daily message at': 'Ежедневное сообщение в',
+  'Warnings for today and tomorrow come at this time, by this phone’s own clock. Dangerous weather (frost, storm, strong wind) comes straight away, between 06:00 and 23:00.':
+    'Предупреждения на сегодня и завтра приходят в это время — по часам этого телефона. Опасная погода (заморозки, гроза, сильный ветер) приходит сразу, с 06:00 до 23:00.',
 }

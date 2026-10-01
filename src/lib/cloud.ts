@@ -19,6 +19,8 @@ export interface CloudUser {
   lang: string
   alertsOn: boolean
   alertHour: number
+  /** minutes east of UTC the server uses for this person's alerts */
+  tzOffset?: number
   canMessage: boolean
   /** this person's own AI-assistant link, if they linked one on any device */
   assistant?: { u: string; k: string } | null
@@ -213,6 +215,9 @@ export async function refreshMe(open = true) {
       : (res.farms.find((f) => f.status === 'active')?.id ?? null)
   const switched = farmId !== s.farmId
   set({ session: { ...s, user: res.user, farms: res.farms, farmId } })
+  // the phone's time zone changed (travel, new phone): tell the server so alerts come at the right local hour
+  const tz = -new Date().getTimezoneOffset()
+  if (res.user.tzOffset !== undefined && res.user.tzOffset !== tz) void updateMe({}).catch(() => {})
   if (open && switched && farmId) await enterFarm(farmId, 'replace')
 }
 

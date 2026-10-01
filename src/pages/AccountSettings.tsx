@@ -674,7 +674,7 @@ function AlertSettings() {
       </label>
       {u.alertsOn && (
         <label className="field">
-          <span className="field-label">{t('Evening message at')}</span>
+          <span className="field-label">{t('Daily message at')}</span>
           <select className="input" value={u.alertHour} onChange={(e) => void updateMe({ alertHour: Number(e.target.value) })}>
             {Array.from({ length: 24 }, (_, h) => (
               <option key={h} value={h}>
@@ -684,7 +684,7 @@ function AlertSettings() {
           </select>
           <span className="field-hint">
             {t(
-              'Warnings for tomorrow come at this time. Dangerous weather (frost, storm, strong wind) comes straight away, between 06:00 and 23:00.',
+              'Warnings for today and tomorrow come at this time, by this phone’s own clock. Dangerous weather (frost, storm, strong wind) comes straight away, between 06:00 and 23:00.',
             )}
           </span>
         </label>
