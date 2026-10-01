@@ -12,13 +12,29 @@ export function cropTotals(db: DB, cropId: ID) {
   const deals = db.deals.filter((r) => r.cropId === cropId)
   const sales = db.sales.filter((r) => r.cropId === cropId)
 
-  const sum = <T,>(list: T[], f: (r: T) => number | null) => list.reduce((a, r) => a + (f(r) ?? 0), 0)
+  const sum = <T>(list: T[], f: (r: T) => number | null) => list.reduce((a, r) => a + (f(r) ?? 0), 0)
 
-  const delivery = sumIn(shipments.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })), to, rates)
-  const pay = sumIn(days.map((r) => ({ amount: dayPay(r), currency: r.currency })), to, rates)
+  const delivery = sumIn(
+    shipments.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })),
+    to,
+    rates,
+  )
+  const pay = sumIn(
+    days.map((r) => ({ amount: dayPay(r), currency: r.currency })),
+    to,
+    rates,
+  )
   // Expenses marked "for workers" count as worker costs, not as ordinary expenses.
-  const spent = sumIn(expenses.filter((r) => !r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  const workerExtra = sumIn(expenses.filter((r) => r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
+  const spent = sumIn(
+    expenses.filter((r) => !r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })),
+    to,
+    rates,
+  )
+  const workerExtra = sumIn(
+    expenses.filter((r) => r.forWorkers).map((r) => ({ amount: r.amount, currency: r.currency })),
+    to,
+    rates,
+  )
   // Money actually paid out, for every kind of cost (the rest is still owed).
   const paidOf = (due: number | null, r: { payStatus: PayStatus; paidAmount: number | null; currency: string }) => ({
     amount: payment(due ?? 0, r.payStatus, r.paidAmount).paid,
@@ -48,8 +64,16 @@ export function cropTotals(db: DB, cropId: ID) {
   const owedExpenses = owedOf(expenses.filter((r) => !r.forWorkers).map((r) => owedPart(r.amount, r)))
 
   // Income is only the money entered under Income. Sales from trucks are shown on their own and not added to it.
-  const sold = sumIn(sales.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
-  const otherIncome = sumIn(incomes.map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
+  const sold = sumIn(
+    sales.map((r) => ({ amount: r.amount, currency: r.currency })),
+    to,
+    rates,
+  )
+  const otherIncome = sumIn(
+    incomes.map((r) => ({ amount: r.amount, currency: r.currency })),
+    to,
+    rates,
+  )
   const income = otherIncome
   const totalCost = delivery.total + pay.total + workerExtra.total + spent.total
   const people = dealBalances(deals, to, rates)
@@ -69,6 +93,8 @@ export function cropTotals(db: DB, cropId: ID) {
     income: income.total,
     otherIncome: otherIncome.total,
     salesTotal: sold.total,
+    /** some sales have sizes without a price, or a currency with no exchange rate: the total is incomplete */
+    salesIncomplete: sold.missing || sales.some((r) => r.priceMissing),
 
     boxesSold: sales.reduce((a, r) => a + r.boxes, 0),
     kgSold: sales.reduce((a, r) => a + (r.kg ?? 0), 0),
@@ -128,7 +154,11 @@ export function dealBalances(deals: Deal[], to: string, rates: Settings['rates']
     .map(({ person, rows }) => {
       const cash = rows.filter((r) => r.kind === 'money')
       const valued = (dir: Deal['direction']) =>
-        sumIn(cash.filter((r) => r.direction === dir).map((r) => ({ amount: r.amount, currency: r.currency })), to, rates)
+        sumIn(
+          cash.filter((r) => r.direction === dir).map((r) => ({ amount: r.amount, currency: r.currency })),
+          to,
+          rates,
+        )
       const given = valued('gave')
       const got = valued('got')
       const products = new Map<string, { item: string; unit: string; net: number }>()
@@ -143,7 +173,10 @@ export function dealBalances(deals: Deal[], to: string, rates: Settings['rates']
       return {
         person,
         count: rows.length,
-        last: rows.map((r) => r.date).sort().at(-1)!,
+        last: rows
+          .map((r) => r.date)
+          .sort()
+          .at(-1)!,
         hasMoney: cash.length > 0,
         given: given.total,
         got: got.total,

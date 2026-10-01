@@ -186,7 +186,13 @@ function Overview({ crop }: { crop: SeasonCrop }) {
           tone={tt.boxesInStock < 0 ? 'warn' : tt.boxesInStock > 0 ? 'good' : undefined}
         />
         <Stat label={t('Trucks sent')} value={formatNumber(tt.trucks, 0)} />
-        {tt.salesTotal > 0 && <Stat label={t('{crop} sales', { crop: crop_ })} value={money(tt.salesTotal)} />}
+        {tt.salesTotal > 0 && (
+          <Stat
+            label={t('{crop} sales', { crop: crop_ })}
+            value={money(tt.salesTotal)}
+            note={tt.salesIncomplete ? t('Not complete: some prices or exchange rates are missing') : undefined}
+          />
+        )}
       </div>
 
       <SectionHead title={t('Income and profit')} />

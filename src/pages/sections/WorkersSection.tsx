@@ -402,7 +402,8 @@ export function WorkersSection({ crop }: { crop: SeasonCrop }) {
                     e.preventDefault()
                     const n = num(dayPartialValue)
                     if (n === null || n <= 0) return setDayPartialError(t('Enter the amount paid.'))
-                    if (dayTotal.missing) return setDayPartialError(t('Set the exchange rate in Settings first: some wages are in another currency.'))
+                    if (dayTotal.missing)
+                      return setDayPartialError(t('Set the exchange rate in Settings first: some wages are in another currency.'))
                     // Start from nothing paid for this day, then pay out the amount.
                     setWorkerDaysPaid(crop.id, (a) => a.date === date, false)
                     if (n >= dayTotal.total - 0.005) setWorkerDaysPaid(crop.id, (a) => a.date === date, true)

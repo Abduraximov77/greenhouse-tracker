@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { allAsChanges, applyRemote, backupLocal, clearFarmData, currentSettings, setCommitHook, type SyncChange } from './store'
+import { allAsChanges, applyRemote, backupLocal, clearFarmData, currentSettings, hasOwnData, setCommitHook, type SyncChange } from './store'
 
 /**
  * The shared farm: sign in with Telegram, then every change on this phone is sent to the farm's
@@ -24,6 +24,8 @@ export interface CloudUser {
   assistant?: { u: string; k: string } | null
   /** asked to use someone else's assistant: pending | rejected */
   assistantRequest?: string | null
+  /** this person runs the assistant and answers access requests */
+  assistantOwner?: boolean
 }
 export interface FarmRef {
   id: string
@@ -237,12 +239,13 @@ export async function requestAssistant() {
 export async function chooseFarm() {
   const s = state.session
   if (!s) return
+  await waitForSync()
   if (Object.keys(pending).length) {
     await syncNow()
     if (Object.keys(pending).length) throw new CloudError('unsent')
   }
   stopSync()
-  set({ session: { ...s, farmId: null, picking: true } })
+  set({ session: { ...state.session!, farmId: null, picking: true } })
 }
 
 /** Open one of your farms (from the farm page). Its records are downloaded fresh. */
@@ -268,6 +271,16 @@ export async function signInInsideTelegram() {
   }
   if (data) await signInWithInitData(data)
 }
+
+export interface AssistantPerson {
+  id: number
+  name: string
+  username: string | null
+  pass: string | null
+}
+/** For the assistant's owner: who uses the assistant through them, and taking it away. */
+export const assistantPeople = () => api<{ people: AssistantPerson[] }>('GET', '/assistant/people')
+export const revokeAssistant = (userId: number) => api<{ people: AssistantPerson[] }>('POST', '/assistant/revoke', { userId })
 
 export async function signOut() {
   try {
@@ -352,12 +365,30 @@ export async function enterFarm(farmId: string, mode: 'upload' | 'replace') {
   const s = state.session
   if (!s) return
   stopSync()
+  if (mode === 'replace') {
+    // keep a copy of this phone's records first; if they were never in a farm and can't be copied, stop
+    const copied = backupLocal(new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'))
+    if (!copied && !read<{ farmId: string } | null>(CURSOR_KEY, null) && hasOwnData()) {
+      startSync()
+      throw new CloudError('no_space')
+    }
+  }
+  // changes that could not be sent (e.g. removed from that farm) are kept aside, never just dropped
+  if (Object.keys(pending).length) {
+    try {
+      // keep only the 3 newest such copies
+      const old = Object.keys(localStorage)
+        .filter((k) => k.startsWith('agroledger:unsent-'))
+        .sort()
+      for (const k of old.slice(0, Math.max(0, old.length - 2))) localStorage.removeItem(k)
+      localStorage.setItem(`agroledger:unsent-${Date.now()}`, JSON.stringify(Object.values(pending)))
+    } catch {
+      // no room
+    }
+  }
   pending = {}
   if (mode === 'upload') for (const c of allAsChanges()) pending[`${c.coll}|${c.id}`] = c
-  else {
-    backupLocal(new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'))
-    clearFarmData()
-  }
+  else clearFarmData()
   write(PENDING_KEY, pending)
   write(CURSOR_KEY, { farmId, cursor: 0 })
   set({ session: { ...s, farmId, picking: false } })
@@ -403,6 +434,8 @@ function schedule(ms: number) {
 }
 
 let errorAt = 0
+// changes sent per request; made smaller when the server says a request is too big
+let batchSize = 400
 
 async function waitForSync() {
   for (let i = 0; running && i < 300; i++) await new Promise((r) => setTimeout(r, 100))
@@ -420,7 +453,7 @@ export async function syncNow() {
   try {
     let more = true
     while (more) {
-      const batch = Object.values(pending).slice(0, 400)
+      const batch = Object.values(pending).slice(0, batchSize)
       const res = await api<{
         changes: SyncChange[]
         cursor: number
@@ -458,6 +491,18 @@ export async function syncNow() {
   } catch (e) {
     const msg = (e as Error).message
     set({ status: msg === 'offline' ? 'offline' : 'error', error: msg === 'offline' ? null : msg })
+    // too much at once: send fewer changes per request next time
+    if (msg === 'too_big' && batchSize > 1) {
+      batchSize = Math.max(1, Math.floor(batchSize / 4))
+      again = true
+    }
+    // the farm is full: retrying won't help
+    if (msg === 'farm_full') stopSync()
+    // no longer in this farm: stop trying every 20 seconds; the account check moves the phone on
+    if (msg === 'not_member') {
+      stopSync()
+      void refreshMe().catch(() => {})
+    }
   } finally {
     running = false
     if (again) {
@@ -478,7 +523,14 @@ if (typeof window !== 'undefined') {
   })
   // opened from the Telegram bot: sign in automatically
   const launch = API_URL ? takeTelegramLaunchData() : null
-  if (launch && !state.session) void signInWithInitData(launch).catch(() => {})
+  const launchUser = launch ? telegramUserId(launch) : null
+  if (launch && state.session && launchUser !== null && launchUser !== state.session.user.id) {
+    // opened in Telegram by a different person than the one signed in here: send what is waiting, then switch
+    void (async () => {
+      await syncNow().catch(() => {})
+      await signInWithInitData(launch).catch(() => {})
+    })()
+  } else if (launch && !state.session) void signInWithInitData(launch).catch(() => {})
   else if (state.session && API_URL) {
     if (activeFarm()) startSync()
     void refreshMe().catch(() => {})
@@ -489,6 +541,15 @@ if (typeof window !== 'undefined') {
  * Opened from the Telegram bot (Mini App): Telegram puts the signed-in person's data in the address
  * after "#tgWebAppData=". Sign in with it, then clean the address so the app's pages work.
  */
+function telegramUserId(initData: string): number | null {
+  try {
+    const u = JSON.parse(new URLSearchParams(initData).get('user') ?? 'null') as { id?: number } | null
+    return typeof u?.id === 'number' ? u.id : null
+  } catch {
+    return null
+  }
+}
+
 export function takeTelegramLaunchData(): string | null {
   const h = location.hash
   if (!h.includes('tgWebAppData=')) return null

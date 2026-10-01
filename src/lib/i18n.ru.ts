@@ -895,8 +895,35 @@ export const ru: Record<string, string> = {
   '{n} sizes without a price': '{n} размер(а) без цены',
   'price not entered': 'цена не указана',
   'Price (optional)': 'Цена (необяз.)',
-  "{n} boxes from this truck are already sold; the truck cannot have fewer.": "Из этой машины уже продано {n} ящиков; меньше указать нельзя.",
-  "{n} kg from this truck are already sold; the weight cannot be less.": "Из этой машины уже продано {n} кг; меньший вес указать нельзя.",
-  "Set the exchange rate in Settings first: some wages are in another currency.": "Сначала укажите курс в Настройках: часть зарплат в другой валюте.",
-  "This entry has give-backs, so only the date, amount and note can be changed.": "К этой записи привязаны возвраты, поэтому можно менять только дату, сумму и заметку.",
+  '{n} boxes from this truck are already sold; the truck cannot have fewer.':
+    'Из этой машины уже продано {n} ящиков; меньше указать нельзя.',
+  '{n} kg from this truck are already sold; the weight cannot be less.': 'Из этой машины уже продано {n} кг; меньший вес указать нельзя.',
+  'Set the exchange rate in Settings first: some wages are in another currency.':
+    'Сначала укажите курс в Настройках: часть зарплат в другой валюте.',
+  'This entry has give-backs, so only the date, amount and note can be changed.':
+    'К этой записи привязаны возвраты, поэтому можно менять только дату, сумму и заметку.',
+  'Link this device to the AI assistant on this computer address?': 'Подключить это устройство к AI-помощнику по этому адресу?',
+  'Only open links your own AgroLedger helper printed. Questions, photos and crop details go to this address.':
+    'Открывайте только ссылки, которые показал ваш собственный помощник AgroLedger. Вопросы, фото и данные посевов отправляются на этот адрес.',
+  'This device is already linked to an assistant. This link replaces it.':
+    'Это устройство уже подключено к помощнику. Эта ссылка заменит его.',
+  Link: 'Подключить',
+  'People you allowed to use the assistant': 'Кому вы разрешили пользоваться помощником',
+  'Could not load the list. Check the internet.': 'Не удалось загрузить список. Проверьте интернет.',
+  'Nobody else yet.': 'Пока больше никого.',
+  'Take away assistant access from {name}?': 'Забрать у {name} доступ к помощнику?',
+  'Take away': 'Забрать',
+  'To be fully sure a removed person can no longer ask, start the helper once with --new-key and link your devices again; everyone else then has to ask you again.':
+    'Чтобы удалённый человек точно больше не мог спрашивать, один раз запустите помощника с --new-key и заново подключите свои устройства; остальным придётся попросить вас снова.',
+  'Not complete: some prices or exchange rates are missing': 'Неполно: не указаны некоторые цены или курсы валют',
+  'You have created the most farms allowed (5).': 'Вы уже создали максимум ферм (5).',
+  'You were turned down recently. Wait an hour before asking again.': 'Вам недавно отказали. Подождите час, прежде чем просить снова.',
+  'This farm is full. Ask the owner to delete old records.': 'Ферма заполнена. Попросите владельца удалить старые записи.',
+  'Too much data at once. Try again.': 'Слишком много данных за раз. Попробуйте снова.',
+  'This phone is out of storage space. Free some space, then try again.':
+    'На телефоне закончилось место. Освободите место и попробуйте снова.',
+  'You are no longer in this farm.': 'Вы больше не в этой ферме.',
+  'Partly given back': 'Частично возвращено',
+  'Each person has their own pass, not your key. Taking it away stops it on your computer at once if the helper is running.':
+    'У каждого свой пропуск, а не ваш ключ. Если его забрать, он сразу перестаёт работать на вашем компьютере (если помощник запущен).',
 }

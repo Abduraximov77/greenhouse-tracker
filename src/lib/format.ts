@@ -73,8 +73,7 @@ export function makeMoney(currency: string, locale: string) {
   } catch {
     fmt = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   }
-  return (n: number | null | undefined) =>
-    n === null || n === undefined || Number.isNaN(n) ? '—' : fmt.format(n)
+  return (n: number | null | undefined) => (n === null || n === undefined || Number.isNaN(n) ? '—' : fmt.format(n))
 }
 
 export function useMoney() {

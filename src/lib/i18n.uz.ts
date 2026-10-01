@@ -902,8 +902,35 @@ export const uz: Record<string, string> = {
   '{n} sizes without a price': 'narxsiz {n} ta razmer',
   'price not entered': 'narx kiritilmagan',
   'Price (optional)': 'Narxi (ixtiyoriy)',
-  "{n} boxes from this truck are already sold; the truck cannot have fewer.": "Bu mashinadan {n} quti allaqachon sotilgan; mashinada undan kam bo‘lishi mumkin emas.",
-  "{n} kg from this truck are already sold; the weight cannot be less.": "Bu mashinadan {n} kg allaqachon sotilgan; og‘irlik undan kam bo‘lishi mumkin emas.",
-  "Set the exchange rate in Settings first: some wages are in another currency.": "Avval Sozlamalarda valyuta kursini kiriting: ba’zi ish haqlari boshqa valyutada.",
-  "This entry has give-backs, so only the date, amount and note can be changed.": "Bu yozuvga qaytarishlar bog‘langan, shuning uchun faqat sana, miqdor va izohni o‘zgartirish mumkin.",
+  '{n} boxes from this truck are already sold; the truck cannot have fewer.':
+    'Bu mashinadan {n} quti allaqachon sotilgan; mashinada undan kam bo‘lishi mumkin emas.',
+  '{n} kg from this truck are already sold; the weight cannot be less.':
+    'Bu mashinadan {n} kg allaqachon sotilgan; og‘irlik undan kam bo‘lishi mumkin emas.',
+  'Set the exchange rate in Settings first: some wages are in another currency.':
+    'Avval Sozlamalarda valyuta kursini kiriting: ba’zi ish haqlari boshqa valyutada.',
+  'This entry has give-backs, so only the date, amount and note can be changed.':
+    'Bu yozuvga qaytarishlar bog‘langan, shuning uchun faqat sana, miqdor va izohni o‘zgartirish mumkin.',
+  'Link this device to the AI assistant on this computer address?': 'Bu qurilmani shu manzildagi AI yordamchiga ulaysizmi?',
+  'Only open links your own AgroLedger helper printed. Questions, photos and crop details go to this address.':
+    'Faqat o‘zingizning AgroLedger yordamchingiz chiqargan havolalarni oching. Savollar, rasmlar va ekin ma’lumotlari shu manzilga yuboriladi.',
+  'This device is already linked to an assistant. This link replaces it.':
+    'Bu qurilma allaqachon yordamchiga ulangan. Bu havola uni almashtiradi.',
+  Link: 'Ulash',
+  'People you allowed to use the assistant': 'Yordamchidan foydalanishga ruxsat bergan odamlaringiz',
+  'Could not load the list. Check the internet.': 'Ro‘yxatni yuklab bo‘lmadi. Internetni tekshiring.',
+  'Nobody else yet.': 'Hozircha boshqa hech kim yo‘q.',
+  'Take away assistant access from {name}?': '{name} uchun yordamchiga ruxsatni olib tashlaysizmi?',
+  'Take away': 'Olib tashlash',
+  'To be fully sure a removed person can no longer ask, start the helper once with --new-key and link your devices again; everyone else then has to ask you again.':
+    'Olib tashlangan odam boshqa so‘ray olmasligiga to‘liq ishonch hosil qilish uchun yordamchini bir marta --new-key bilan ishga tushiring va qurilmalaringizni qayta ulang; qolganlar sizdan qayta so‘rashi kerak bo‘ladi.',
+  'Not complete: some prices or exchange rates are missing': 'To‘liq emas: ba’zi narxlar yoki valyuta kurslari kiritilmagan',
+  'You have created the most farms allowed (5).': 'Siz ruxsat etilgan eng ko‘p fermani yaratgansiz (5 ta).',
+  'You were turned down recently. Wait an hour before asking again.': 'Yaqinda rad etildingiz. Qayta so‘rashdan oldin bir soat kuting.',
+  'This farm is full. Ask the owner to delete old records.': 'Ferma to‘lib qoldi. Egasidan eski yozuvlarni o‘chirishni so‘rang.',
+  'Too much data at once. Try again.': 'Bir vaqtda juda ko‘p ma’lumot. Qayta urining.',
+  'This phone is out of storage space. Free some space, then try again.': 'Telefonda joy qolmagan. Biroz joy bo‘shatib, qayta urining.',
+  'You are no longer in this farm.': 'Siz endi bu fermada emassiz.',
+  'Partly given back': 'Qisman qaytarildi',
+  'Each person has their own pass, not your key. Taking it away stops it on your computer at once if the helper is running.':
+    'Har bir odamning o‘z ruxsatnomasi bor, sizning kalitingiz emas. Olib tashlansa, yordamchi ishlayotgan bo‘lsa, kompyuteringizda darhol to‘xtaydi.',
 }

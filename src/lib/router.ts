@@ -36,7 +36,8 @@ window.addEventListener('hashchange', () => {
     goingBack = false
     return
   }
-  if (visited.length > 1 && visited[visited.length - 2] === h) visited.pop() // browser back button
+  if (visited.length > 1 && visited[visited.length - 2] === h)
+    visited.pop() // browser back button
   else if (visited[visited.length - 1] !== h) visited.push(h)
 })
 

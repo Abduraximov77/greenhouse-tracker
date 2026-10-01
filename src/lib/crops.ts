@@ -6,7 +6,7 @@ export const CROP_CATALOG: { name: string; ru: string; uz: string; group: string
   { name: 'Cherry tomato', ru: 'Черри', uz: 'Cherri pomidor', group: 'Fruiting vegetables' },
   { name: 'Cucumber', ru: 'Огурец', uz: 'Bodring', group: 'Fruiting vegetables' },
   { name: 'Sweet pepper', ru: 'Сладкий перец', uz: 'Bulgor qalampiri', group: 'Fruiting vegetables' },
-  { name: 'Hot pepper', ru: 'Острый перец', uz: "Achchiq qalampir", group: 'Fruiting vegetables' },
+  { name: 'Hot pepper', ru: 'Острый перец', uz: 'Achchiq qalampir', group: 'Fruiting vegetables' },
   { name: 'Eggplant', ru: 'Баклажан', uz: 'Baqlajon', group: 'Fruiting vegetables' },
   { name: 'Zucchini', ru: 'Кабачок', uz: 'Qovoqcha', group: 'Fruiting vegetables' },
   { name: 'Melon', ru: 'Дыня', uz: 'Qovun', group: 'Fruiting vegetables' },

@@ -93,9 +93,7 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
           )
         }
       />
-      <p className="field-hint">
-        {t("Boxes entered for workers (Workers tab) are added here automatically, so don't enter them again.")}
-      </p>
+      <p className="field-hint">{t("Boxes entered for workers (Workers tab) are added here automatically, so don't enter them again.")}</p>
 
       {editing && (
         <FormCard
@@ -109,19 +107,27 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
             <input id="harvest-date" className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
           </Field>
           <Field label={t('Boxes packed')}>
-            <input id="harvest-boxes" className="input" inputMode="numeric" value={f.boxes} onChange={(e) => setF({ ...f, boxes: e.target.value })} />
+            <input
+              id="harvest-boxes"
+              className="input"
+              inputMode="numeric"
+              value={f.boxes}
+              onChange={(e) => setF({ ...f, boxes: e.target.value })}
+            />
           </Field>
           <Field label={t('Kg per box (optional)')} hint={t('Remembered for next time')}>
-            <input id="harvest-kg" className="input" inputMode="decimal" value={f.kgPerBox} onChange={(e) => setF({ ...f, kgPerBox: e.target.value })} />
+            <input
+              id="harvest-kg"
+              className="input"
+              inputMode="decimal"
+              value={f.kgPerBox}
+              onChange={(e) => setF({ ...f, kgPerBox: e.target.value })}
+            />
           </Field>
           <Computed
             label={t('Total weight')}
             value={totalKg !== null ? `${formatNumber(totalKg)} ${t('kg')}` : '—'}
-            note={
-              totalKg !== null
-                ? `${formatNumber(boxes, 0)} × ${formatNumber(kgPerBox)} ${t('kg')}`
-                : t('Boxes × kg per box')
-            }
+            note={totalKg !== null ? `${formatNumber(boxes, 0)} × ${formatNumber(kgPerBox)} ${t('kg')}` : t('Boxes × kg per box')}
           />
           <Field label={t('Note (optional)')} wide>
             <input id="harvest-note" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
@@ -149,7 +155,11 @@ export function HarvestSection({ season, crop }: { season: Season; crop: SeasonC
                     <li className="card record">
                       <div className="record-main">
                         <span className="record-title">
-                          {t('From workers')}: {formatNumber(workerLines.reduce((a, l) => a + l.boxes, 0), 0)}
+                          {t('From workers')}:{' '}
+                          {formatNumber(
+                            workerLines.reduce((a, l) => a + l.boxes, 0),
+                            0,
+                          )}
                         </span>
                         <ul className="worker-boxes">
                           {workerLines.map((l, i) => (

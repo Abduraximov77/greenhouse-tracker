@@ -1,10 +1,27 @@
 import type { ReactNode } from 'react'
+import { isTrustedUrl } from '../lib/trustedSources'
 
 /**
  * A small, safe Markdown view for assistant answers: paragraphs, "-"/"1." lists, **bold**, *italic*,
  * `code` and links. Everything becomes React elements, so no HTML from the answer is ever run.
  */
-export function Markdown({ text }: { text: string }) {
+/** Same page? (ignores "www.", a trailing "/" and capital letters) */
+const pageKey = (url: string) => {
+  try {
+    const u = new URL(url)
+    return (u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/+$/, '')).toLowerCase()
+  } catch {
+    return url
+  }
+}
+
+/**
+ * `links`: when given, only these addresses become clickable (the pages the assistant really read);
+ * any other address is shown as plain text.
+ */
+export function Markdown({ text, links }: { text: string; links?: string[] }) {
+  const allowed = links ? new Set(links.map(pageKey)) : null
+  const inline = (s: string) => inlineWith(s, allowed)
   const blocks: ReactNode[] = []
   const lines = text.replace(/\r/g, '').split('\n')
   let para: string[] = []
@@ -60,7 +77,9 @@ export function Markdown({ text }: { text: string }) {
 
 const TOKEN = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)<]+)/g
 
-function inline(s: string): ReactNode[] {
+function inlineWith(s: string, allowed: Set<string> | null): ReactNode[] {
+  // with a list: only those pages, and only on the trusted sites (a list saved by a phone can't add others)
+  const ok = (url: string) => !allowed || (allowed.has(pageKey(url)) && isTrustedUrl(url))
   const out: ReactNode[] = []
   let last = 0
   for (const m of s.matchAll(TOKEN)) {
@@ -69,6 +88,8 @@ function inline(s: string): ReactNode[] {
     if (m[1]) out.push(<b key={k}>{m[1]}</b>)
     else if (m[2]) out.push(<i key={k}>{m[2]}</i>)
     else if (m[3]) out.push(<code key={k}>{m[3]}</code>)
+    else if (m[4] && !ok(m[5])) out.push(m[4])
+    else if (m[6] && !ok(m[6])) out.push(m[6])
     else if (m[4])
       out.push(
         <a key={k} href={m[5]} target="_blank" rel="noreferrer noopener">

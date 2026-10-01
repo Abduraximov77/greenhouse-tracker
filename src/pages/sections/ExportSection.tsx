@@ -127,8 +127,10 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
       const own = db.sales.filter((r) => r.shipmentId === editing)
       const soldBoxes = own.reduce((a, r) => a + r.boxes, 0)
       const soldKg = own.reduce((a, r) => a + (r.kg ?? 0), 0)
-      if (boxes < soldBoxes) return setError(t('{n} boxes from this truck are already sold; the truck cannot have fewer.', { n: formatNumber(soldBoxes, 0) }))
-      if (kg !== null && kg + 0.5 < soldKg) return setError(t('{n} kg from this truck are already sold; the weight cannot be less.', { n: formatNumber(soldKg, 0) }))
+      if (boxes < soldBoxes)
+        return setError(t('{n} boxes from this truck are already sold; the truck cannot have fewer.', { n: formatNumber(soldBoxes, 0) }))
+      if (kg !== null && kg + 0.5 < soldKg)
+        return setError(t('{n} kg from this truck are already sold; the weight cannot be less.', { n: formatNumber(soldKg, 0) }))
     }
     const data = {
       cropId: crop.id,
@@ -155,12 +157,18 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
   const formatTons = (v: number) => (v >= 1000 ? `${formatNumber(v / 1000, 2)} ${t('t')}` : `${formatNumber(v, 0)} ${t('kg')}`)
 
   const delivery = cur.sum(list.map((r) => ({ amount: r.deliveryPrice, currency: r.currency })))
-  const deliveryPaid = cur.sum(list.map((r) => ({ amount: payment(r.deliveryPrice, r.payStatus, r.paidAmount).paid, currency: r.currency })))
+  const deliveryPaid = cur.sum(
+    list.map((r) => ({ amount: payment(r.deliveryPrice, r.payStatus, r.paidAmount).paid, currency: r.currency })),
+  )
 
   return (
     <>
       <div className="stat-grid">
-        <Stat label={t('Boxes in stock')} value={formatNumber(totals.boxesInStock, 0)} tone={totals.boxesInStock < 0 ? 'warn' : undefined} />
+        <Stat
+          label={t('Boxes in stock')}
+          value={formatNumber(totals.boxesInStock, 0)}
+          tone={totals.boxesInStock < 0 ? 'warn' : undefined}
+        />
         <Stat label={t('Boxes exported')} value={formatNumber(totals.boxesExported, 0)} />
         <Stat label={t('Trucks sent')} value={formatNumber(totals.trucks, 0)} />
         {exportedKg > 0 && <Stat label={t('Weight sent')} value={formatTons(exportedKg)} />}
@@ -176,7 +184,12 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         <div className="stat-grid sales-stats">
           <Stat label={t('Boxes sold')} value={`${formatNumber(totals.boxesSold, 0)} / ${formatNumber(totals.boxesExported, 0)}`} />
           {totals.kgSold > 0 && <Stat label={t('Weight sold')} value={formatTons(totals.kgSold)} />}
-          <Stat label={t('Sales')} value={cur.fmt(totals.salesTotal)} tone={totals.salesTotal > 0 ? 'good' : undefined} />
+          <Stat
+            label={t('Sales')}
+            value={cur.fmt(totals.salesTotal)}
+            tone={totals.salesTotal > 0 ? 'good' : undefined}
+            note={totals.salesIncomplete ? t('Not complete: some prices or exchange rates are missing') : undefined}
+          />
         </div>
       )}
 
@@ -221,7 +234,13 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
             <input id="ex-driver" className="input" value={f.driverName} onChange={(e) => setF({ ...f, driverName: e.target.value })} />
           </Field>
           <Field label={t("Driver's phone")}>
-            <input id="ex-phone" className="input" type="tel" value={f.driverPhone} onChange={(e) => setF({ ...f, driverPhone: e.target.value })} />
+            <input
+              id="ex-phone"
+              className="input"
+              type="tel"
+              value={f.driverPhone}
+              onChange={(e) => setF({ ...f, driverPhone: e.target.value })}
+            />
           </Field>
           <Field
             label={t('Boxes loaded')}
@@ -235,7 +254,13 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
               )
             }
           >
-            <input id="ex-boxes" className="input" inputMode="numeric" value={f.boxes} onChange={(e) => setF({ ...f, boxes: e.target.value })} />
+            <input
+              id="ex-boxes"
+              className="input"
+              inputMode="numeric"
+              value={f.boxes}
+              onChange={(e) => setF({ ...f, boxes: e.target.value })}
+            />
           </Field>
           <Field
             label={t('Total weight, kg (optional)')}
@@ -245,7 +270,13 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
                 : t('The whole load, e.g. 2500')
             }
           >
-            <input id="ex-kg" className="input" inputMode="decimal" value={f.totalKg} onChange={(e) => setF({ ...f, totalKg: e.target.value })} />
+            <input
+              id="ex-kg"
+              className="input"
+              inputMode="decimal"
+              value={f.totalKg}
+              onChange={(e) => setF({ ...f, totalKg: e.target.value })}
+            />
           </Field>
           <Field label={t('Delivery price')}>
             <MoneyInput
@@ -273,11 +304,7 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
           <Computed
             label={t('Delivery cost per box')}
             value={boxes && price !== null ? cur.both(price / boxes, f.currency) : '—'}
-            note={
-              boxes && price !== null
-                ? `${cur.fmt(price, f.currency)} ÷ ${formatNumber(boxes, 0)}`
-                : t('Delivery price ÷ boxes')
-            }
+            note={boxes && price !== null ? `${cur.fmt(price, f.currency)} ÷ ${formatNumber(boxes, 0)}` : t('Delivery price ÷ boxes')}
           />
           <div className="field field-wide">
             <span className="field-label">{t('Delivery payment')}</span>
@@ -302,7 +329,15 @@ export function ExportSection({ crop }: { crop: SeasonCrop }) {
         <div className="day-groups">
           {groupByDate(list, (r) => r.date).map(([date, rows]) => (
             <section key={date} className="day-group">
-              <DayHeading date={date} right={t('{n} boxes', { n: formatNumber(rows.reduce((a, r) => a + r.boxes, 0), 0) })} />
+              <DayHeading
+                date={date}
+                right={t('{n} boxes', {
+                  n: formatNumber(
+                    rows.reduce((a, r) => a + r.boxes, 0),
+                    0,
+                  ),
+                })}
+              />
               <ul className="records">
                 {rows.map((r) => (
                   <li key={r.id} className="card record">

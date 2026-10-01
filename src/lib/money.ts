@@ -17,16 +17,18 @@ export function convert(amount: number, from: string, to: string, rates: Setting
 export function formatMoney(n: number | null | undefined, currency: string) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—'
   try {
-    return new Intl.NumberFormat(currentLocale(), {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })
-      .format(n)
-      // Let long amounts wrap between the number and the currency code, not inside "UZS".
-      .replace(/\u00a0(?=[A-Z]{3}$)/, ' ')
-      .replace(/^([A-Z]{3})\u00a0/, '$1 ')
+    return (
+      new Intl.NumberFormat(currentLocale(), {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })
+        .format(n)
+        // Let long amounts wrap between the number and the currency code, not inside "UZS".
+        .replace(/\u00a0(?=[A-Z]{3}$)/, ' ')
+        .replace(/^([A-Z]{3})\u00a0/, '$1 ')
+    )
   } catch {
     return `${n.toLocaleString(currentLocale(), { maximumFractionDigits: 2 })} ${currency}`
   }

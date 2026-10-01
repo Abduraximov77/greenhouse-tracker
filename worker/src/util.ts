@@ -39,7 +39,8 @@ export function randomId() {
 export function farmCode() {
   const b = new Uint32Array(1)
   crypto.getRandomValues(b)
-  return 'AL-' + String(1000 + (b[0] % 9000))
+  // 6 digits (900 000 codes); older 4-digit codes keep working
+  return 'AL-' + String(100000 + (b[0] % 900000))
 }
 
 // Farm passwords: PBKDF2. Kept light because the free plan allows ~10 ms of work per request;

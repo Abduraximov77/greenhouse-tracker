@@ -26,6 +26,11 @@ type Form = {
 const emptyRow = (): Row => ({ boxes: '', kg: '', price: '' })
 const emptyRows = () => Object.fromEntries(SALE_SIZES.map((z) => [z, emptyRow()])) as Record<string, Row>
 
+/** Size lines, unless an older app version changed the sale afterwards (then its totals no longer match). */
+function linesOf(r: Sale) {
+  return r.lines?.length && r.lines.reduce((a, l) => a + l.boxes, 0) === r.boxes ? r.lines : null
+}
+
 /** "3-lik", "Aralash" … */
 export function sizeLabel(size: string, t: (k: string, v?: Record<string, string | number>) => string) {
   return size === 'mix' ? t('Mixed sizes') : t('{n}-size', { n: size })
@@ -56,8 +61,8 @@ export function TruckSales({ truck }: { truck: Shipment }) {
     setError(null)
     const last = allSales[0]
     const rows = emptyRows()
-    if (rec?.lines?.length) {
-      for (const l of rec.lines) rows[l.size] = { boxes: str(l.boxes), kg: str(l.kg), price: str(l.price ?? null) }
+    if (rec && linesOf(rec)) {
+      for (const l of linesOf(rec)!) rows[l.size] = { boxes: str(l.boxes), kg: str(l.kg), price: str(l.price ?? null) }
     } else if (rec) {
       // older sale, not split by size
       rows.mix = {
@@ -341,8 +346,8 @@ export function TruckSales({ truck }: { truck: Shipment }) {
                   {r.buyer && ` · ${r.buyer}`}
                 </span>
                 <small className="sale-sizes">
-                  {r.lines?.length
-                    ? r.lines
+                  {linesOf(r)
+                    ? linesOf(r)!
                         .map(
                           (l) =>
                             `${sizeLabel(l.size, t)}: ${formatNumber(l.boxes, 0)} ${t('boxes')}` +

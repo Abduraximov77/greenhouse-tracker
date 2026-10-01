@@ -222,6 +222,8 @@ export interface Answer extends Meta {
   costUsd: number | null
   /** Source check by the helper: trusted pages opened and read, unchecked links removed. */
   sources?: { read: number; removed: number }
+  /** The trusted pages the helper really opened; only these are shown as links. */
+  sourceUrls?: string[]
   /** The answer this question followed up on. */
   followUpOf?: ID | null
 }
@@ -575,7 +577,7 @@ export function hasOwnData() {
 }
 
 /** A copy of all data, e.g. kept before replacing it with a farm's data. */
-export function backupLocal(tag: string) {
+export function backupLocal(tag: string): boolean {
   try {
     // keep only the 3 newest copies, so they never fill the phone's storage
     const old = Object.keys(localStorage)
@@ -583,8 +585,10 @@ export function backupLocal(tag: string) {
       .sort()
     for (const k of old.slice(0, Math.max(0, old.length - 2))) localStorage.removeItem(k)
     localStorage.setItem(`${STORAGE_KEY}-backup-${tag}`, JSON.stringify(db))
+    return true
   } catch {
-    // no room: skip
+    // no room
+    return false
   }
 }
 

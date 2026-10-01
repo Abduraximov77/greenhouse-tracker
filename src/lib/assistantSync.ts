@@ -58,9 +58,16 @@ export function startAssistantSync() {
       writeOwner(null)
       if (local) setQuietly(null)
     }
+    // the assistant's owner took access away: stop using it on this device
+    if (s.user.assistantRequest === 'revoked' && !s.user.assistant && getHelperLink()) {
+      setQuietly(null)
+      writeOwner(null)
+      return
+    }
     const now = getHelperLink()
     const server = s.user.assistant ?? null
-    if (server && (!now || now.k !== server.k)) {
+    // a new key, or the helper moved to a new address (people let in learn it from the account)
+    if (server && (!now || now.k !== server.k || now.u !== server.u)) {
       setQuietly(server)
       writeOwner(s.user.id)
     } else if (!server && now && !pushed && readOwner() === null) {

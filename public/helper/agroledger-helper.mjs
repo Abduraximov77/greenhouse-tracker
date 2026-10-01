@@ -35,7 +35,10 @@ const USE_TUNNEL = !args.includes('--no-tunnel')
 const APP_URL = 'https://agroledger-app.github.io'
 const ALLOWED_ORIGINS = new Set([APP_URL, 'http://localhost:5173', 'http://localhost:4173'])
 const JOB_TIMEOUT_MS = 6 * 60 * 1000
-const MAX_BODY = 20 * 1024 * 1024 // photos included
+const MAX_BODY = 14 * 1024 * 1024 // photos included (the app sends at most 4 small JPEGs)
+/** Raise by 1 with every change to this file; the hourly update only installs a higher number. */
+const RELEASE = 4
+const MAX_WAITING = 5 // questions waiting in line; more are refused so nobody can run up the Claude usage
 const IS_WIN = process.platform === 'win32'
 // The helper runs as two processes: a small "supervisor" (tunnel, keep-awake, updates) and a "worker"
 // (answers questions). Updating only restarts the worker, so the secure address stays the same.
@@ -86,12 +89,45 @@ function loadKey() {
 }
 const KEY = loadKey()
 
-function keyOk(req) {
-  const h = req.headers.authorization ?? ''
-  const given = Buffer.from(h.startsWith('Bearer ') ? h.slice(7) : '')
-  const real = Buffer.from(KEY)
-  return given.length === real.length && crypto.timingSafeEqual(given, real)
+/**
+ * Who is asking: the owner (the secret key itself), or a person the owner let in through Telegram.
+ * Those people get their own pass "f.<telegram id>.<nonce>.<mac>", made by the AgroLedger server from
+ * this key; it only allows asking questions, never reveals the key, and the owner can cancel it.
+ */
+const PASS_DAILY = 40 // questions a day per person (not the owner)
+function readConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+  } catch {
+    return {}
+  }
 }
+function revokedPasses() {
+  return new Set(readConfig().revoked ?? [])
+}
+function revokePass(idNonce) {
+  const c = readConfig()
+  c.revoked = [...new Set([...(c.revoked ?? []), idNonce])].slice(-500)
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(c, null, 2), { mode: 0o600 })
+}
+function passMac(id, nonce) {
+  return crypto.createHmac('sha256', KEY).update(`agl-follower:${id}.${nonce}`).digest('hex').slice(0, 32)
+}
+function whoAsks(req) {
+  const h = req.headers.authorization ?? ''
+  const token = h.startsWith('Bearer ') ? h.slice(7) : ''
+  const given = Buffer.from(token)
+  const real = Buffer.from(KEY)
+  if (given.length === real.length && crypto.timingSafeEqual(given, real)) return { owner: true }
+  const m = token.match(/^f\.(\d{1,15})\.([a-f0-9]{8,32})\.([a-f0-9]{32})$/)
+  if (!m) return null
+  const want = Buffer.from(passMac(m[1], m[2]))
+  const got = Buffer.from(m[3])
+  if (got.length !== want.length || !crypto.timingSafeEqual(got, want)) return null
+  if (revokedPasses().has(`${m[1]}.${m[2]}`)) return null
+  return { owner: false, person: m[1], pass: `${m[1]}.${m[2]}` }
+}
+const askedToday = new Map() // person -> { day, n }
 
 // ---------- Claude Code ----------
 function claudeVersion() {
@@ -257,13 +293,14 @@ function checkSources(answer, read) {
     removed++
     return title
   })
-  text = text.replace(/(^|[\s(])(https?:\/\/[^\s)<]+)/g, (m, pre, url) => {
+  // any other address anywhere in the text (also <https://…>, "https://…", text:https://…)
+  text = text.replace(/<?(https?:\/\/[^\s<>)\]"'`]+)>?/g, (m, url) => {
     if (isTrusted(url) && ok.has(pageKey(url))) {
       kept++
-      return m
+      return url
     }
     removed++
-    return pre
+    return ''
   })
   return { answer: text, kept, removed }
 }
@@ -335,7 +372,24 @@ const server = http.createServer(async (req, res) => {
     return res.end()
   }
   const url = new URL(req.url, 'http://x')
-  if (!keyOk(req)) return send(res, 401, { error: 'wrong key' })
+  const who = whoAsks(req)
+  if (!who) return send(res, 401, { error: 'wrong key' })
+
+  // the owner cancels a person's pass
+  if (req.method === 'POST' && url.pathname === '/revoke') {
+    if (!who.owner) return send(res, 403, { error: 'owner only' })
+    let body
+    try {
+      body = JSON.parse(await readBody(req))
+    } catch {
+      return send(res, 400, { error: 'bad request' })
+    }
+    const m = String(body.pass ?? '').match(/^f\.(\d{1,15})\.([a-f0-9]{8,32})\./)
+    if (!m) return send(res, 400, { error: 'bad pass' })
+    revokePass(`${m[1]}.${m[2]}`)
+    log(`a person's pass was cancelled (Telegram ID ${m[1]})`)
+    return send(res, 200, { ok: true })
+  }
 
   if (req.method === 'GET' && url.pathname === '/health') {
     return send(res, 200, { ok: true, claude: claudeVersion(), model: MODEL, busy: running, waiting: queue.length })
@@ -349,7 +403,31 @@ const server = http.createServer(async (req, res) => {
     }
     const question = String(body.question ?? '').trim()
     if (!question) return send(res, 400, { error: 'empty question' })
-    const images = Array.isArray(body.images) ? body.images.slice(0, 4).filter((i) => i && typeof i.data === 'string') : []
+    if (queue.length >= MAX_WAITING) return send(res, 429, { error: 'busy: too many questions waiting, try again later' })
+    if (!who.owner) {
+      // people the owner let in: one question waiting at a time and a daily limit, so the owner's
+      // Claude usage can't be run up
+      const busy = [...jobs.values()].some((j) => j.person === who.person && (j.status === 'waiting' || j.status === 'running'))
+      if (busy) return send(res, 429, { error: 'busy: your previous question is still being answered' })
+      const day = new Date().toISOString().slice(0, 10)
+      const c = askedToday.get(who.person)
+      const n = c && c.day === day ? c.n : 0
+      if (n >= PASS_DAILY) return send(res, 429, { error: 'daily limit reached, try again tomorrow' })
+      askedToday.set(who.person, { day, n: n + 1 })
+    }
+    // only real photos of a sane size
+    const images = Array.isArray(body.images)
+      ? body.images
+          .slice(0, 4)
+          .filter(
+            (i) =>
+              i &&
+              typeof i.data === 'string' &&
+              i.data.length < 3_500_000 &&
+              /^[A-Za-z0-9+/=]+$/.test(i.data) &&
+              ['image/jpeg', 'image/png', 'image/webp'].includes(i.type),
+          )
+      : []
     const job = {
       id: crypto.randomUUID(),
       status: 'waiting',
@@ -358,6 +436,7 @@ const server = http.createServer(async (req, res) => {
       context: String(body.context ?? '').slice(0, 8000),
       previous: String(body.previous ?? '').slice(0, 6000),
       lang: ['uz', 'ru', 'en'].includes(body.lang) ? body.lang : 'uz',
+      person: who.owner ? null : who.person,
       images,
     }
     jobs.set(job.id, job)
@@ -551,6 +630,9 @@ function supervise() {
       if (!r.ok) return
       const text = await r.text()
       if (!text.includes('AgroLedger helper') || text === fs.readFileSync(SELF, 'utf8')) return
+      // only move forward: an older or same-numbered file is never installed
+      const nr = Number(text.match(/^const RELEASE = (\d+)$/m)?.[1] ?? 0)
+      if (!(nr > RELEASE)) return
       const tmp = SELF.replace(/\.mjs$/, '') + '.new.mjs' // .mjs so the syntax check reads it as a module
       fs.writeFileSync(tmp, text)
       if (spawnSync(process.execPath, ['--check', tmp]).status !== 0) {

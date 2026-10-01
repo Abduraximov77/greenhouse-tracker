@@ -84,7 +84,7 @@ async function fetchForecast(p: Place): Promise<Forecast | null> {
   }
 }
 
-/** Places of a farm and the crops in each, from the shared records (this year's seasons). */
+/** Places of a farm and the crops in each, from the shared records (the latest season that has crops). */
 async function farmPlaces(env: Env, farmId: string): Promise<{ place: Place; crops: string[] }[]> {
   const rows = await env.DB.prepare(
     "SELECT coll, data FROM records WHERE farm_id = ? AND deleted = 0 AND (coll = 'crops' OR coll = 'seasons' OR (coll = 'meta' AND id = 'place'))",
@@ -95,59 +95,111 @@ async function farmPlaces(env: Env, farmId: string): Promise<{ place: Place; cro
   const seasons = new Map<string, number>()
   const crops: { seasonId: string; crop: string; place?: Place | null }[] = []
   for (const r of rows.results) {
-    const d = JSON.parse(r.data)
-    if (r.coll === 'meta') main = d?.value ?? null
-    else if (r.coll === 'seasons') seasons.set(d.id, d.startYear)
-    else crops.push(d)
+    let d: Record<string, unknown> | null = null
+    try {
+      d = JSON.parse(r.data)
+    } catch {
+      continue
+    }
+    if (!d || typeof d !== 'object') continue
+    if (r.coll === 'meta') main = (d.value as Place) ?? null
+    else if (r.coll === 'seasons' && typeof d.id === 'string') seasons.set(d.id, Number(d.startYear))
+    else if (r.coll === 'crops' && typeof d.seasonId === 'string') crops.push(d as unknown as (typeof crops)[number])
   }
-  const year = new Date().getUTCFullYear()
-  const years = [...seasons.values()].filter((y) => y <= year)
-  const current = years.length ? Math.max(...years) : year
+  // like the app: the newest season that has crops (a "2026" greenhouse season still counts in January)
+  const withCrops = crops.map((c) => seasons.get(c.seasonId)).filter((y): y is number => Number.isFinite(y))
+  const current = withCrops.length ? Math.max(...withCrops) : null
   const out: { place: Place; crops: string[] }[] = []
   const add = (p: Place | null | undefined, crop?: string) => {
-    if (!p || typeof p.lat !== 'number') return
+    if (!p || typeof p.lat !== 'number' || typeof p.lon !== 'number') return
     let e = out.find((x) => samePlace(x.place, p))
-    if (!e) out.push((e = { place: p, crops: [] }))
+    if (!e) out.push((e = { place: { ...p, name: String(p.name ?? '') }, crops: [] }))
     if (crop && !e.crops.includes(crop)) e.crops.push(crop)
   }
   add(main)
-  for (const c of crops) if (seasons.get(c.seasonId) === current) add(c.place ?? main, c.crop)
+  for (const c of crops) if (current !== null && seasons.get(c.seasonId) === current) add(c.place ?? main, String(c.crop ?? ''))
   // places with no crop this season are only kept if they are the main place
   return out.filter((e) => e.crops.length || (main && samePlace(e.place, main)))
 }
 
 interface Member {
   id: number
+  farm_id: string
+  farm_name: string
   lang: Lang
   tz_offset: number
   alert_hour: number
 }
 
 export async function runAlerts(env: Env) {
-  const farms = await env.DB.prepare('SELECT id, name FROM farms').all<{ id: string; name: string }>()
-  const forecasts = new Map<string, Forecast | null>()
-  for (const farm of farms.results) {
-    const members = await env.DB.prepare(
-      `SELECT u.id, u.lang, u.tz_offset, u.alert_hour FROM members m JOIN users u ON u.id = m.user_id
-       WHERE m.farm_id = ? AND m.status = 'active' AND u.alerts_on = 1 AND u.can_message = 1`,
-    )
-      .bind(farm.id)
-      .all<Member>()
-    if (!members.results.length) continue
+  // everyone who wants alerts, in every farm, in one query
+  const rows = await env.DB.prepare(
+    `SELECT u.id, u.lang, u.tz_offset, u.alert_hour, m.farm_id, f.name AS farm_name
+     FROM members m JOIN users u ON u.id = m.user_id JOIN farms f ON f.id = m.farm_id
+     WHERE m.status = 'active' AND u.alerts_on = 1 AND u.can_message = 1`,
+  ).all<Member>()
+  const byFarm = new Map<string, Member[]>()
+  for (const m of rows.results) byFarm.set(m.farm_id, [...(byFarm.get(m.farm_id) ?? []), m])
+  if (!byFarm.size) return
+  const yesterday = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+  const digestRows = await env.DB.prepare('SELECT user_id, day FROM digests WHERE day >= ?')
+    .bind(yesterday)
+    .all<{ user_id: number; day: string }>()
+  const digested = new Set(digestRows.results.map((r) => `${r.user_id}|${r.day}`))
+  const sentAll = await env.DB.prepare('SELECT user_id, farm_id, key FROM sent_alerts').all<{
+    user_id: number
+    farm_id: string
+    key: string
+  }>()
+  const sentBy = new Map<string, Set<string>>()
+  for (const r of sentAll.results) {
+    const k = `${r.user_id}|${r.farm_id}`
+    if (!sentBy.has(k)) sentBy.set(k, new Set())
+    sentBy.get(k)!.add(r.key)
+  }
 
-    // who is due: evening message now, or only urgent ones
+  const forecasts = new Map<string, Forecast | null>()
+  for (const [farmId, members] of byFarm) {
+    // one farm's bad data or a failed send never stops the alerts of the other farms
+    try {
+      await farmAlerts(env, { id: farmId, name: members[0].farm_name }, members, forecasts, digested, sentBy)
+    } catch (e) {
+      console.log('alerts failed for a farm', farmId, String(e))
+    }
+  }
+  // forget old "already sent" notes
+  const old = new Date(Date.now() - 5 * 86400000).toISOString()
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM sent_alerts WHERE sent_at < ?').bind(old),
+    env.DB.prepare('DELETE FROM digests WHERE day < ?').bind(old.slice(0, 10)),
+  ])
+}
+
+async function farmAlerts(
+  env: Env,
+  farm: { id: string; name: string },
+  members: Member[],
+  forecasts: Map<string, Forecast | null>,
+  digested: Set<string>,
+  sentBy: Map<string, Set<string>>,
+) {
+  {
+    // who is due: the evening message (at the chosen hour, or later that day if it could not go out),
+    // or only urgent ones between 06 and 23
     const nowMs = Date.now()
-    const due = members.results
+    const due = members
       .map((m) => {
         const local = new Date(nowMs + m.tz_offset * 60000)
         const hour = local.getUTCHours()
-        return { m, hour, day: local.toISOString().slice(0, 10) }
+        const day = local.toISOString().slice(0, 10)
+        const evening = hour >= m.alert_hour && !digested.has(`${m.id}|${day}|${farm.id}`)
+        return { m, hour, day, evening }
       })
-      .filter((x) => x.hour === x.m.alert_hour || (x.hour >= 6 && x.hour <= 23))
-    if (!due.length) continue
+      .filter((x) => x.evening || (x.hour >= 6 && x.hour <= 23))
+    if (!due.length) return
 
     const places = await farmPlaces(env, farm.id)
-    if (!places.length) continue
+    if (!places.length) return
     const perPlace: { place: Place; crops: string[]; alerts: Alert[]; today: string }[] = []
     for (const p of places) {
       const key = `${p.place.lat},${p.place.lon}`
@@ -161,16 +213,8 @@ export async function runAlerts(env: Env) {
         })
     }
 
-    for (const { m, hour, day } of due) {
-      const evening = hour === m.alert_hour
-      if (evening) {
-        const done = await env.DB.prepare('SELECT 1 FROM digests WHERE user_id = ? AND day = ?').bind(m.id, `${day}|${farm.id}`).first()
-        if (done) continue
-      }
-      const sentRows = await env.DB.prepare('SELECT key FROM sent_alerts WHERE user_id = ? AND farm_id = ?')
-        .bind(m.id, farm.id)
-        .all<{ key: string }>()
-      const sent = new Set(sentRows.results.map((r) => r.key))
+    for (const { m, day, evening } of due) {
+      const sent = sentBy.get(`${m.id}|${farm.id}`) ?? new Set<string>()
       const lang: Lang = (['uz', 'ru', 'en'] as const).includes(m.lang) ? m.lang : 'uz'
       const t = tr(lang)
       const fmt = (n: number) => n.toLocaleString(NUM_LOCALE[lang], { maximumFractionDigits: 1 })
@@ -228,12 +272,9 @@ export async function runAlerts(env: Env) {
         await env.DB.prepare('INSERT OR IGNORE INTO digests (user_id, day) VALUES (?, ?)').bind(m.id, `${day}|${farm.id}`).run()
     }
   }
-  // forget old "already sent" notes
-  const old = new Date(Date.now() - 5 * 86400000).toISOString()
-  await env.DB.prepare('DELETE FROM sent_alerts WHERE sent_at < ?').bind(old).run()
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /** Every Sunday evening: a copy of the whole farm, as a file, to each owner's Telegram. */
 export async function weeklyBackups(env: Env) {

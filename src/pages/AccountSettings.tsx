@@ -40,6 +40,12 @@ const ERR: Record<string, string> = {
   owners_only: 'Only owners can do this.',
   telegram_check_failed: 'Telegram sign-in could not be checked. Try again.',
   unsent: 'Some changes are not sent yet. Connect to the internet and try again.',
+  too_many_farms: 'You have created the most farms allowed (5).',
+  wait_before_asking: 'You were turned down recently. Wait an hour before asking again.',
+  farm_full: 'This farm is full. Ask the owner to delete old records.',
+  too_big: 'Too much data at once. Try again.',
+  no_space: 'This phone is out of storage space. Free some space, then try again.',
+  not_member: 'You are no longer in this farm.',
   already_decided: 'Someone already answered this request.',
 }
 

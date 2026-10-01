@@ -3,7 +3,20 @@ import { addRecord, byDateDesc, groupByDate, removeRecord, updateRecord, useDB, 
 import { todayISO } from '../../lib/format'
 import { useCurrency } from '../../lib/money'
 import { useT } from '../../lib/i18n'
-import { DayHeading, DeleteButton, Empty, Field, FormCard, MoneyInput, RateMissing, SectionHead, Stamp, Stat, num, str } from '../../components/ui'
+import {
+  DayHeading,
+  DeleteButton,
+  Empty,
+  Field,
+  FormCard,
+  MoneyInput,
+  RateMissing,
+  SectionHead,
+  Stamp,
+  Stat,
+  num,
+  str,
+} from '../../components/ui'
 
 type Form = { date: string; source: string; from: string; amount: string; currency: string; note: string }
 
@@ -112,7 +125,13 @@ export function IncomeSection({ crop }: { crop: SeasonCrop }) {
             />
           </Field>
           <Field label={t('From whom (optional)')}>
-            <input id="in-from" className="input" list="income-payers" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} />
+            <input
+              id="in-from"
+              className="input"
+              list="income-payers"
+              value={f.from}
+              onChange={(e) => setF({ ...f, from: e.target.value })}
+            />
             <datalist id="income-payers">
               {payers.map((n) => (
                 <option key={n} value={n} />

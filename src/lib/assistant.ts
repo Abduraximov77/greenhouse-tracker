@@ -59,6 +59,11 @@ export function useHelperLink() {
   )
 }
 
+/** The helper's own kinds of address: a Cloudflare quick tunnel, or this computer. */
+export function isHelperAddress(u: string) {
+  return /^(https:\/\/[a-z0-9-]+\.trycloudflare\.com|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?)\/?$/.test(u)
+}
+
 /** "#/connect/<code>" links printed by the helper hold {u, k} as base64url JSON. */
 export function decodeConnectCode(code: string): HelperLink | null {
   try {
@@ -109,6 +114,8 @@ function fromB64url(s: string) {
 }
 
 export async function findNewAddress(link: HelperLink): Promise<string | null> {
+  // a personal pass can't read the owner's address messages; its address comes from the account
+  if (link.k.startsWith('f.')) return null
   try {
     const topic = 'agl-' + hex(await sha256('agroledger-topic:' + link.k)).slice(0, 40)
     const r = await fetch(`https://ntfy.sh/${topic}/json?poll=1&since=24h`)
@@ -123,7 +130,8 @@ export async function findNewAddress(link: HelperLink): Promise<string | null> {
         const raw = fromB64url(m.message)
         const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(0, 12) }, key, raw.slice(12))
         const v = JSON.parse(new TextDecoder().decode(plain)) as { u: string; t: number }
-        if (/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(v.u) && (!best || v.t > best.t)) best = v
+        // a time in the future can't be real: ignore it, so a made-up message can't always win
+        if (/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(v.u) && v.t <= Date.now() + 10 * 60000 && (!best || v.t > best.t)) best = v
       } catch {
         // not ours or damaged: skip
       }
@@ -132,6 +140,11 @@ export async function findNewAddress(link: HelperLink): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+/** The owner cancels a person's pass on the helper itself, so it stops working at once. */
+export async function revokeOnHelper(link: HelperLink, pass: string) {
+  await call(link, '/revoke', { method: 'POST', body: JSON.stringify({ pass }) })
 }
 
 /** Check the helper; if the saved address no longer answers, look up its new address and save it. */

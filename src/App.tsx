@@ -238,11 +238,13 @@ function SyncBadge() {
       ? ['⟳', t('Saving to the farm…')]
       : c.status === 'offline'
         ? ['⚠', t('No internet: {n} changes will be sent when it is back.', { n: c.pending })]
-        : c.status === 'error'
-          ? ['⚠', t('Could not reach the farm. It will try again.')]
-          : c.pending
-            ? ['⟳', t('{n} changes waiting to be sent', { n: c.pending })]
-            : ['✓', t('All saved to the farm')]
+        : c.status === 'error' && c.error === 'farm_full'
+          ? ['⚠', t('This farm is full. Ask the owner to delete old records.')]
+          : c.status === 'error'
+            ? ['⚠', t('Could not reach the farm. It will try again.')]
+            : c.pending
+              ? ['⟳', t('{n} changes waiting to be sent', { n: c.pending })]
+              : ['✓', t('All saved to the farm')]
   return (
     <a className={`sync-badge sync-${c.status}`} href={href('settings')} title={label} aria-label={label}>
       {icon}

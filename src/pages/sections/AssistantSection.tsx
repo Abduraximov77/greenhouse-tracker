@@ -105,7 +105,9 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
           answer: res.answer,
           photos: sent.photos,
           costUsd: res.costUsd ?? null,
-          ...(res.sources ? { sources: { read: res.sources.read.length, removed: res.sources.removed } } : {}),
+          ...(res.sources
+            ? { sources: { read: res.sources.read.length, removed: res.sources.removed }, sourceUrls: res.sources.read.slice(0, 30) }
+            : {}),
           followUpOf: sent.followUpOf,
         })
         pending.delete(crop.id)
@@ -228,7 +230,7 @@ export function AssistantSection({ crop }: { crop: SeasonCrop }) {
                 <b>{a.question}</b>
                 {a.photos > 0 && <span className="assist-meta"> · 📷 {a.photos}</span>}
               </p>
-              <Markdown text={a.answer} />
+              <Markdown text={a.answer} links={a.sources ? (a.sourceUrls ?? []) : undefined} />
               {a.sources && (
                 <p className={`assist-check ${a.sources.read ? 'is-ok' : 'is-unsure'}`}>
                   {a.sources.read
@@ -361,9 +363,11 @@ function NotLinked() {
             ? 'Nobody has set up the assistant yet.'
             : code === 'owner_cannot_be_messaged'
               ? 'The owner of the assistant has not started the Telegram bot yet.'
-              : code === 'offline'
-                ? 'No internet connection. Try again.'
-                : 'Something went wrong. Try again.',
+              : code === 'wait_before_asking'
+                ? 'You were turned down recently. Wait an hour before asking again.'
+                : code === 'offline'
+                  ? 'No internet connection. Try again.'
+                  : 'Something went wrong. Try again.',
         ),
       )
     } finally {

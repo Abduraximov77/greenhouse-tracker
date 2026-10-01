@@ -4,7 +4,7 @@
  * - Shared records: each phone sends its changes and gets everyone else's
  * - Telegram bot: approval buttons, weather alerts (see alerts.ts), weekly backup to owners
  */
-import { HttpError, farmCode, hashPassword, json, now, randomId, randomToken, safeEqual, sha256Hex } from './util'
+import { HttpError, farmCode, hashPassword, hex, hmac, json, now, randomId, randomToken, safeEqual, sha256Hex } from './util'
 import { displayName, setTgBase, tg, verifyInitData, verifyWidget, webhookSecret, type TgUser } from './telegram'
 import { runAlerts, weeklyBackups } from './alerts'
 
@@ -48,6 +48,14 @@ const COLLS = new Set([
 /** Only owners may delete these. */
 const OWNER_DELETE = new Set(['seasons', 'crops', 'workers'])
 const MAX_FAILS = 5
+/** Limits that keep one account from filling the shared database. */
+const MAX_FARMS_PER_USER = 5
+const MAX_SYNC_BYTES = 3_000_000 // one sync request
+const MAX_RECORD_BYTES = 200_000
+const MAX_FARM_BYTES = 50_000_000 // all records of one farm
+const MAX_PULL_BYTES = 3_000_000 // one sync answer
+const SESSION_IDLE_DAYS = 120
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/
 const LOCK_MIN = 15
 
 // ---------- texts the bot sends (by the person's language) ----------
@@ -125,6 +133,8 @@ function txt(lang: string, key: string, vars: Record<string, string> = {}) {
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     setTgBase(env.TG_API)
+    // without the bot token, Telegram sign-ins could not be checked: answer nothing
+    if (!env.TELEGRAM_BOT_TOKEN) return new Response('not configured', { status: 503 })
     const origin = req.headers.get('Origin')
     const cors: Record<string, string> =
       origin && isAllowedOrigin(origin, env)
@@ -150,6 +160,7 @@ export default {
 
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
     setTgBase(env.TG_API)
+    if (!env.TELEGRAM_BOT_TOKEN) return
     ctx.waitUntil(runAlerts(env))
     const d = new Date(event.scheduledTime)
     // Sunday 15:xx UTC (20:xx in Uzbekistan): weekly backup file to each owner
@@ -189,6 +200,8 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (M === 'GET' && p === '/me') return json(await me(env, user))
   if (M === 'PATCH' && p === '/me') return updateMe(req, env, user)
   if (M === 'POST' && p === '/assistant/request') return assistantRequest(env, user)
+  if (M === 'GET' && p === '/assistant/people') return assistantPeople(env, user)
+  if (M === 'POST' && p === '/assistant/revoke') return assistantRevoke(req, env, user)
   if (M === 'POST' && p === '/farms') return createFarm(req, env, user)
   if (M === 'POST' && p === '/farms/join') return joinFarm(req, env, user)
 
@@ -214,10 +227,17 @@ async function tokenHash(req: Request) {
 
 async function auth(req: Request, env: Env): Promise<UserRow> {
   const th = await tokenHash(req)
-  const row = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?')
+  const row = await env.DB.prepare(
+    'SELECT u.*, s.last_used AS session_used FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?',
+  )
     .bind(th)
-    .first<UserRow>()
+    .first<UserRow & { session_used: string }>()
   if (!row) throw new HttpError(401, 'signed_out')
+  // not used for a long time: sign this device out
+  if (row.session_used && Date.now() - new Date(row.session_used).getTime() > SESSION_IDLE_DAYS * 86400000) {
+    await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(th).run()
+    throw new HttpError(401, 'signed_out')
+  }
   await env.DB.prepare('UPDATE sessions SET last_used = ? WHERE token_hash = ?').bind(now(), th).run()
   return row
 }
@@ -268,6 +288,20 @@ async function me(env: Env, user: UserRow) {
     .bind(user.id)
     .all()
   const areq = await env.DB.prepare('SELECT status FROM assistant_requests WHERE user_id = ?').bind(user.id).first<{ status: string }>()
+  const assistantOwner = await assistantOwnerId(env)
+  // approved before personal passes existed (holds the owner's key itself): give them their own pass
+  if (user.assistant && user.assistant_from != null && !parseAssistant(user.assistant)?.k.startsWith('f.')) {
+    const ownerRow = await env.DB.prepare('SELECT assistant FROM users WHERE id = ?')
+      .bind(user.assistant_from)
+      .first<{ assistant: string | null }>()
+    const own = parseAssistant(ownerRow?.assistant ?? null)
+    if (own) {
+      user.assistant = JSON.stringify({ u: own.u, k: await makePass(own.k, user.id) })
+      await env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?').bind(user.assistant, user.id).run()
+    }
+  }
+  // a link counts only for the assistant's owner and for people the owner let in
+  const assistant = user.assistant && (user.id === assistantOwner || user.assistant_from != null) ? parseAssistant(user.assistant) : null
   return {
     user: {
       id: user.id,
@@ -278,8 +312,9 @@ async function me(env: Env, user: UserRow) {
       alertsOn: !!user.alerts_on,
       alertHour: user.alert_hour,
       canMessage: !!user.can_message,
-      assistant: parseAssistant(user.assistant),
-      assistantRequest: user.assistant ? null : (areq?.status ?? null),
+      assistant,
+      assistantRequest: assistant ? null : (areq?.status ?? null),
+      assistantOwner: user.id === assistantOwner,
     },
     farms: farms.results,
     bot: env.BOT_USERNAME,
@@ -298,34 +333,53 @@ async function updateMe(req: Request, env: Env, user: UserRow) {
   const b = await body<{ lang?: string; tz?: number; alertsOn?: boolean; alertHour?: number; assistant?: unknown }>(req)
   if ('assistant' in b) {
     const a = b.assistant as { u?: unknown; k?: unknown } | null
-    const ok = a && typeof a.u === 'string' && typeof a.k === 'string' && a.u.length < 300 && a.k.length < 300 && /^https?:\/\//.test(a.u)
-    const link = ok ? JSON.stringify({ u: a!.u, k: a!.k }) : null
-    let owner = await assistantOwnerId(env)
-    if (!link) {
-      // unlink on this account
-      await env.DB.prepare('UPDATE users SET assistant = NULL, assistant_from = NULL WHERE id = ?').bind(user.id).run()
-    } else if (owner === null || owner === user.id) {
-      // the first account to link its own helper becomes the assistant's owner
-      if (owner === null) {
-        await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('assistant_owner', ?)").bind(String(user.id)).run()
-        owner = await assistantOwnerId(env)
+    if (a === null) {
+      // unlink on this account (the owner stays the owner; people they let in keep their passes)
+      await env.DB.prepare('UPDATE users SET assistant = NULL WHERE id = ?').bind(user.id).run()
+    } else {
+      // only the helper's own kinds of address: a Cloudflare quick tunnel, or this computer
+      const ok =
+        a &&
+        typeof a.u === 'string' &&
+        typeof a.k === 'string' &&
+        a.u.length < 300 &&
+        a.k.length < 300 &&
+        /^(https:\/\/[a-z0-9-]+\.trycloudflare\.com|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?)\/?$/.test(a.u)
+      if (!ok) throw new HttpError(400, 'bad_link')
+      const link = JSON.stringify({ u: a.u, k: a.k })
+      let owner = await assistantOwnerId(env)
+      if (owner === user.id || (owner === null && (await ownsAFarm(env, user.id)))) {
+        // the first farm owner to link their own helper becomes the assistant's owner
+        if (owner === null) {
+          await env.DB.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('assistant_owner', ?)").bind(String(user.id)).run()
+          owner = await assistantOwnerId(env)
+        }
+        if (owner === user.id) {
+          const keyHash = await sha256Hex('assistant-key:' + a.k)
+          const lastKey = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'assistant_key'").first<{ value: string }>()
+          // compared with the last key the owner used (also after unlinking), so relinking the same helper cuts nobody off
+          const sameKey = lastKey ? lastKey.value === keyHash : parseAssistant(user.assistant)?.k === a.k || !user.assistant
+          await env.DB.batch([
+            env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = NULL WHERE id = ?').bind(link, user.id),
+            env.DB.prepare(
+              "INSERT INTO app_settings (key, value) VALUES ('assistant_key', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ).bind(keyHash),
+            sameKey
+              ? // same helper, new address: people the owner let in follow it (they keep their own pass)
+                env.DB.prepare("UPDATE users SET assistant = json_set(assistant, '$.u', ?) WHERE assistant_from = ?").bind(a.u, user.id)
+              : // a new key cancels every pass; people can ask again
+                env.DB.prepare('UPDATE users SET assistant = NULL, assistant_from = NULL WHERE assistant_from = ?').bind(user.id),
+            ...(sameKey ? [] : [env.DB.prepare("UPDATE assistant_requests SET status = 'revoked' WHERE status = 'approved'")]),
+          ])
+        }
       }
-      if (owner === user.id)
-        await env.DB.batch([
-          env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = NULL WHERE id = ?').bind(link, user.id),
-          // people the owner let in follow the owner's helper (new address or new key)
-          env.DB.prepare('UPDATE users SET assistant = ? WHERE assistant_from = ?').bind(link, user.id),
-        ])
-    } else if (user.assistant_from != null && parseAssistant(user.assistant)?.k === a!.k) {
-      // someone given access: the same helper got a new address
-      await env.DB.prepare('UPDATE users SET assistant = ? WHERE id = ?').bind(link, user.id).run()
+      // anyone else can't set a link: people let in get theirs (with its own pass) from the owner
     }
-    // anything else (another account trying to set a link of its own) is ignored
   }
   const lang = ['uz', 'ru', 'en'].includes(b.lang ?? '') ? b.lang! : user.lang
   const hour = Number.isInteger(b.alertHour) && b.alertHour! >= 0 && b.alertHour! <= 23 ? b.alertHour! : user.alert_hour
   const on = typeof b.alertsOn === 'boolean' ? (b.alertsOn ? 1 : 0) : user.alerts_on
-  const tz = Number.isFinite(b.tz) ? Math.round(b.tz!) : user.tz_offset
+  const tz = Number.isFinite(b.tz) ? Math.max(-720, Math.min(840, Math.round(b.tz!))) : user.tz_offset
   await env.DB.prepare('UPDATE users SET lang = ?, alert_hour = ?, alerts_on = ?, tz_offset = ? WHERE id = ?')
     .bind(lang, hour, on, tz, user.id)
     .run()
@@ -359,6 +413,8 @@ async function createFarm(req: Request, env: Env, user: UserRow) {
     .trim()
     .slice(0, 80)
   if (!name) throw new HttpError(400, 'name_required')
+  const made = await env.DB.prepare('SELECT COUNT(*) AS n FROM farms WHERE created_by = ?').bind(user.id).first<{ n: number }>()
+  if ((made?.n ?? 0) >= MAX_FARMS_PER_USER) throw new HttpError(429, 'too_many_farms')
   const { salt, hash } = await hashPassword(checkPassword(b.password))
   const id = randomId()
   const t = now()
@@ -386,32 +442,57 @@ async function joinFarm(req: Request, env: Env, user: UserRow) {
   let code = String(b.code ?? '')
     .toUpperCase()
     .replace(/\s/g, '')
-  if (/^\d{4}$/.test(code)) code = 'AL-' + code
-  if (/^AL\d{4}$/.test(code)) code = 'AL-' + code.slice(2)
+    .slice(0, 20)
+  if (/^\d{4,6}$/.test(code)) code = 'AL-' + code
+  if (/^AL\d{4,6}$/.test(code)) code = 'AL-' + code.slice(2)
 
-  const att = await env.DB.prepare('SELECT fails, locked_until FROM attempts WHERE user_id = ? AND code = ?')
-    .bind(user.id, code)
+  // count the try first, in one step, so many guesses sent at once can't get around the limit.
+  // Tries while locked don't count, and an expired lock starts the count again.
+  const t0 = now()
+  const att = await env.DB.prepare(
+    `INSERT INTO attempts (user_id, code, fails, locked_until) VALUES (?1, ?2, 1, NULL)
+     ON CONFLICT(user_id, code) DO UPDATE SET
+       fails = CASE WHEN attempts.locked_until IS NULL THEN attempts.fails + 1
+                    WHEN attempts.locked_until > ?3 THEN attempts.fails
+                    ELSE 1 END,
+       locked_until = CASE WHEN attempts.locked_until > ?3 THEN attempts.locked_until ELSE NULL END
+     RETURNING fails, locked_until`,
+  )
+    .bind(user.id, code, t0)
     .first<{ fails: number; locked_until: string | null }>()
-  if (att?.locked_until && att.locked_until > now()) throw new HttpError(429, 'locked')
+  if (att?.locked_until && att.locked_until > t0) throw new HttpError(429, 'locked')
+  if ((att?.fails ?? 0) > MAX_FAILS) {
+    await env.DB.prepare('UPDATE attempts SET fails = 0, locked_until = ? WHERE user_id = ? AND code = ?')
+      .bind(new Date(Date.now() + LOCK_MIN * 60000).toISOString(), user.id, code)
+      .run()
+    throw new HttpError(429, 'locked')
+  }
 
   const farm = await env.DB.prepare('SELECT * FROM farms WHERE code = ?')
     .bind(code)
     .first<{ id: string; name: string; pass_salt: string; pass_hash: string }>()
   const ok = farm && safeEqual((await hashPassword(String(b.password ?? ''), farm.pass_salt)).hash, farm.pass_hash)
   if (!farm || !ok) {
-    const fails = (att?.fails ?? 0) + 1
-    const lock = fails >= MAX_FAILS ? new Date(Date.now() + LOCK_MIN * 60000).toISOString() : null
-    await env.DB.prepare(
-      'INSERT INTO attempts (user_id, code, fails, locked_until) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(user_id, code) DO UPDATE SET fails = ?3, locked_until = ?4',
-    )
-      .bind(user.id, code, lock ? 0 : fails, lock)
-      .run()
-    throw new HttpError(403, lock ? 'locked' : 'wrong_code_or_password')
+    // that was the last allowed try: lock now
+    if ((att?.fails ?? 0) >= MAX_FAILS) {
+      await env.DB.prepare('UPDATE attempts SET fails = 0, locked_until = ? WHERE user_id = ? AND code = ?')
+        .bind(new Date(Date.now() + LOCK_MIN * 60000).toISOString(), user.id, code)
+        .run()
+      throw new HttpError(429, 'locked')
+    }
+    throw new HttpError(403, 'wrong_code_or_password')
   }
   await env.DB.prepare('DELETE FROM attempts WHERE user_id = ? AND code = ?').bind(user.id, code).run()
 
-  const existing = await membership(env, user, farm.id)
+  const existing = await env.DB.prepare('SELECT role, status, decided_at FROM members WHERE farm_id = ? AND user_id = ?')
+    .bind(farm.id, user.id)
+    .first<{ role: Role; status: string; decided_at: string | null }>()
   if (existing?.status === 'active') return json({ id: farm.id, name: farm.name, code, role: existing.role, status: 'active' })
+  // already asked: don't message the owners again
+  if (existing?.status === 'pending') return json({ id: farm.id, name: farm.name, code, role: 'member', status: 'pending' })
+  // turned down or removed less than an hour ago: wait before asking again
+  if (existing && existing.decided_at && Date.now() - new Date(existing.decided_at).getTime() < 3600000)
+    throw new HttpError(429, 'wait_before_asking')
   await env.DB.prepare(
     `INSERT INTO members (farm_id, user_id, role, status, requested_at) VALUES (?1, ?2, 'member', 'pending', ?3)
      ON CONFLICT(farm_id, user_id) DO UPDATE SET status = 'pending', role = 'member', requested_at = ?3, decided_by = NULL, decided_at = NULL`,
@@ -425,7 +506,7 @@ async function joinFarm(req: Request, env: Env, user: UserRow) {
   )
     .bind(farm.id)
     .all<UserRow>()
-  const who = user.name + (user.username ? ` (@${user.username})` : '')
+  const who = user.name + (user.username ? ` (@${user.username})` : '') + ` · ID ${user.id}`
   for (const o of owners.results) {
     const r = await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
       chat_id: o.id,
@@ -465,9 +546,13 @@ async function decide(env: Env, farmId: string, targetId: number, allow: boolean
     .bind(farmId, targetId)
     .first<{ status: string }>()
   if (!target || target.status !== 'pending') return false
-  await env.DB.prepare('UPDATE members SET status = ?, role = ?, decided_by = ?, decided_at = ? WHERE farm_id = ? AND user_id = ?')
+  // only the first answer counts (two owners may press at the same moment)
+  const done = await env.DB.prepare(
+    "UPDATE members SET status = ?, role = ?, decided_by = ?, decided_at = ? WHERE farm_id = ? AND user_id = ? AND status = 'pending'",
+  )
     .bind(allow ? 'active' : 'rejected', role, by.id, now(), farmId, targetId)
     .run()
+  if (!done.meta.changes) return false
   const farm = await env.DB.prepare('SELECT name FROM farms WHERE id = ?').bind(farmId).first<{ name: string }>()
   const u = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(targetId).first<UserRow>()
   if (u)
@@ -490,20 +575,20 @@ async function memberAction(req: Request, env: Env, user: UserRow, farmId: strin
       .bind(farmId, targetId)
       .first<{ role: Role }>()
     if (!target) throw new HttpError(404, 'no_such_member')
-    // there must always be at least one owner
-    if (target.role === 'owner' && (b.action === 'remove' || role !== 'owner')) {
-      const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM members WHERE farm_id = ? AND role = 'owner' AND status = 'active'")
-        .bind(farmId)
-        .first<{ n: number }>()
-      if ((n?.n ?? 0) <= 1) throw new HttpError(409, 'last_owner')
-    }
-    if (b.action === 'role')
-      await env.DB.prepare('UPDATE members SET role = ? WHERE farm_id = ? AND user_id = ?').bind(role, farmId, targetId).run()
-    else {
-      await env.DB.prepare("UPDATE members SET status = 'removed', decided_by = ?, decided_at = ? WHERE farm_id = ? AND user_id = ?")
-        .bind(user.id, now(), farmId, targetId)
-        .run()
-    }
+    // there must always be at least one owner: checked inside the same statement, so two owners acting
+    // at the same moment can't both step down
+    const keepOwner = `AND (role <> 'owner' OR (SELECT COUNT(*) FROM members WHERE farm_id = ?1 AND role = 'owner' AND status = 'active') > 1)`
+    const r =
+      b.action === 'role'
+        ? await env.DB.prepare(`UPDATE members SET role = ?3 WHERE farm_id = ?1 AND user_id = ?2 ${role === 'owner' ? '' : keepOwner}`)
+            .bind(farmId, targetId, role)
+            .run()
+        : await env.DB.prepare(
+            `UPDATE members SET status = 'removed', decided_by = ?3, decided_at = ?4 WHERE farm_id = ?1 AND user_id = ?2 ${keepOwner}`,
+          )
+            .bind(farmId, targetId, user.id, now())
+            .run()
+    if (!r.meta.changes && target.role === 'owner') throw new HttpError(409, 'last_owner')
   } else throw new HttpError(400, 'bad_action')
   return farmInfo(env, user, farmId)
 }
@@ -511,13 +596,13 @@ async function memberAction(req: Request, env: Env, user: UserRow, farmId: strin
 async function leaveFarm(env: Env, user: UserRow, farmId: string) {
   const m = await membership(env, user, farmId)
   if (!m) throw new HttpError(404, 'not_member')
-  if (m.role === 'owner' && m.status === 'active') {
-    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM members WHERE farm_id = ? AND role = 'owner' AND status = 'active'")
-      .bind(farmId)
-      .first<{ n: number }>()
-    if ((n?.n ?? 0) <= 1) throw new HttpError(409, 'last_owner')
-  }
-  await env.DB.prepare("UPDATE members SET status = 'removed' WHERE farm_id = ? AND user_id = ?").bind(farmId, user.id).run()
+  const r = await env.DB.prepare(
+    `UPDATE members SET status = 'removed' WHERE farm_id = ?1 AND user_id = ?2
+     AND (role <> 'owner' OR status <> 'active' OR (SELECT COUNT(*) FROM members WHERE farm_id = ?1 AND role = 'owner' AND status = 'active') > 1)`,
+  )
+    .bind(farmId, user.id)
+    .run()
+  if (!r.meta.changes) throw new HttpError(409, 'last_owner')
   return json({ ok: true })
 }
 
@@ -547,10 +632,26 @@ interface Change {
   updatedAt: string
 }
 
+/** Seasons, crops and workers can't be emptied out (that would be a delete without the owner). */
+function hasRequired(coll: string, d: Record<string, unknown>) {
+  if (coll === 'seasons') return d.id !== undefined && Number.isFinite(Number(d.startYear))
+  if (coll === 'crops') return d.id !== undefined && typeof d.seasonId === 'string' && typeof d.crop === 'string' && d.crop !== ''
+  if (coll === 'workers') return d.id !== undefined && typeof d.name === 'string' && d.name.trim() !== ''
+  return true
+}
+
 async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
   const m = await requireMember(env, user, farmId)
   const b = await body<{ changes?: Change[]; since?: number }>(req)
-  const changes = (b.changes ?? []).slice(0, 500)
+  const changes = Array.isArray(b.changes) ? b.changes.slice(0, 500) : []
+  const size = JSON.stringify(changes).length
+  if (size > MAX_SYNC_BYTES) throw new HttpError(413, 'too_big')
+  if (changes.length) {
+    const used = await env.DB.prepare('SELECT COALESCE(SUM(LENGTH(data)), 0) AS n FROM records WHERE farm_id = ?')
+      .bind(farmId)
+      .first<{ n: number }>()
+    if ((used?.n ?? 0) + size > MAX_FARM_BYTES) throw new HttpError(413, 'farm_full')
+  }
   const rejected: { coll: string; id: string; reason: string }[] = []
 
   if (changes.length) {
@@ -565,7 +666,18 @@ async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
         rejected.push({ coll: c.coll, id: c.id, reason: 'owners_only' })
         continue
       }
-      if (c.data !== undefined && JSON.stringify(c.data).length > 200000) {
+      if (c.deleted) {
+        // a delete keeps the record as it was (so "restore" brings back the real one)
+        c.data = undefined
+      } else {
+        // a record must be an object with its own id (attendance and settings records have none)
+        const d = c.data as Record<string, unknown> | null | undefined
+        if (!d || typeof d !== 'object' || Array.isArray(d) || (d.id !== undefined && d.id !== c.id) || !hasRequired(c.coll, d)) {
+          rejected.push({ coll: c.coll, id: c.id, reason: 'bad' })
+          continue
+        }
+      }
+      if (c.data !== undefined && JSON.stringify(c.data).length > MAX_RECORD_BYTES) {
         rejected.push({ coll: c.coll, id: c.id, reason: 'too_big' })
         continue
       }
@@ -617,7 +729,10 @@ async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
       const stmts: D1PreparedStatement[] = [env.DB.prepare('UPDATE farms SET seq = seq + ? WHERE id = ?').bind(n, farmId)]
       keep.forEach((c, k) => {
         const data = c.data === undefined ? null : JSON.stringify(c.data)
-        const at = typeof c.updatedAt === 'string' ? c.updatedAt.slice(0, 40) : now()
+        // the phone's time decides between two edits, but only a real time no later than now counts,
+        // so a wrong clock (or a crafted value) can't make an edit win forever
+        const serverNow = now()
+        const at = typeof c.updatedAt === 'string' && ISO_TIME.test(c.updatedAt) && c.updatedAt <= serverNow ? c.updatedAt : serverNow
         stmts.push(
           env.DB.prepare(
             `INSERT INTO records (farm_id, coll, id, data, deleted, updated_at, updated_by, seq)
@@ -637,14 +752,22 @@ async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
 
   const since = Number.isFinite(b.since) ? Number(b.since) : 0
   const LIMIT = 2000
+  // first only the sizes, to stop at about 3 MB; then read just those records
+  const sizes = await env.DB.prepare('SELECT seq, LENGTH(data) AS n FROM records WHERE farm_id = ? AND seq > ? ORDER BY seq LIMIT ?')
+    .bind(farmId, since, LIMIT)
+    .all<{ seq: number; n: number }>()
+  let bytes = 0
+  let n = 0
+  while (n < sizes.results.length && (n === 0 || bytes + sizes.results[n].n <= MAX_PULL_BYTES)) bytes += sizes.results[n++].n
+  const upTo = n ? sizes.results[n - 1].seq : since
   const rows = await env.DB.prepare(
     `SELECT r.coll, r.id, r.data, r.deleted, r.updated_at, r.seq, u.name AS by_name
      FROM records r LEFT JOIN users u ON u.id = r.updated_by
-     WHERE r.farm_id = ? AND r.seq > ? ORDER BY r.seq LIMIT ?`,
+     WHERE r.farm_id = ? AND r.seq > ? AND r.seq <= ? ORDER BY r.seq`,
   )
-    .bind(farmId, since, LIMIT)
+    .bind(farmId, since, upTo)
     .all<{ coll: string; id: string; data: string; deleted: number; updated_at: string; seq: number; by_name: string | null }>()
-  const out = rows.results.map((r) => ({
+  const part = rows.results.map((r) => ({
     coll: r.coll,
     id: r.id,
     data: r.deleted ? null : JSON.parse(r.data),
@@ -652,8 +775,8 @@ async function sync(req: Request, env: Env, user: UserRow, farmId: string) {
     updatedAt: r.updated_at,
     by: r.by_name,
   }))
-  const cursor = rows.results.length ? rows.results[rows.results.length - 1].seq : since
-  return json({ changes: out, cursor, more: rows.results.length === LIMIT, rejected, role: m.role })
+  const cursor = upTo
+  return json({ changes: part, cursor, more: n < sizes.results.length || sizes.results.length === LIMIT, rejected, role: m.role })
 }
 
 async function trash(env: Env, user: UserRow, farmId: string) {
@@ -684,6 +807,42 @@ async function restore(req: Request, env: Env, user: UserRow, farmId: string) {
 }
 
 // ---------- AI assistant access for another account ----------
+/** A person's own pass for the owner's helper: made from the helper key, can't be turned back into it. */
+async function makePass(ownerKey: string, userId: number) {
+  const nonce = hex(crypto.getRandomValues(new Uint8Array(8)))
+  const mac = hex(await hmac(new TextEncoder().encode(ownerKey), `agl-follower:${userId}.${nonce}`)).slice(0, 32)
+  return `f.${userId}.${nonce}.${mac}`
+}
+
+async function ownsAFarm(env: Env, userId: number) {
+  return !!(await env.DB.prepare("SELECT 1 FROM members WHERE user_id = ? AND role = 'owner' AND status = 'active' LIMIT 1")
+    .bind(userId)
+    .first())
+}
+
+/** The assistant's owner: who has access through them, and taking it away. */
+async function assistantPeople(env: Env, user: UserRow) {
+  if ((await assistantOwnerId(env)) !== user.id) throw new HttpError(403, 'owners_only')
+  const rows = await env.DB.prepare(
+    "SELECT id, name, username, json_extract(assistant, '$.k') AS pass FROM users WHERE assistant_from = ? ORDER BY name",
+  )
+    .bind(user.id)
+    .all()
+  return json({ people: rows.results })
+}
+async function assistantRevoke(req: Request, env: Env, user: UserRow) {
+  if ((await assistantOwnerId(env)) !== user.id) throw new HttpError(403, 'owners_only')
+  const b = await body<{ userId?: number }>(req)
+  await env.DB.batch([
+    env.DB.prepare('UPDATE users SET assistant = NULL, assistant_from = NULL WHERE id = ? AND assistant_from = ?').bind(
+      Number(b.userId),
+      user.id,
+    ),
+    env.DB.prepare("UPDATE assistant_requests SET status = 'revoked', decided_at = ? WHERE user_id = ?").bind(now(), Number(b.userId)),
+  ])
+  return assistantPeople(env, user)
+}
+
 async function assistantOwnerId(env: Env): Promise<number | null> {
   const r = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'assistant_owner'").first<{ value: string }>()
   return r ? Number(r.value) : null
@@ -698,12 +857,19 @@ async function assistantGivers(env: Env, userId: number) {
 }
 
 async function assistantRequest(env: Env, user: UserRow) {
-  if (user.assistant) return json({ status: 'approved' })
+  if (user.assistant && user.assistant_from != null) return json({ status: 'approved' })
   const givers = await assistantGivers(env, user.id)
   if (!givers.length) throw new HttpError(409, 'no_assistant_owner')
-  const old = await env.DB.prepare('SELECT status, requested_at FROM assistant_requests WHERE user_id = ?')
+  const old = await env.DB.prepare('SELECT status, requested_at, decided_at FROM assistant_requests WHERE user_id = ?')
     .bind(user.id)
-    .first<{ status: string; requested_at: string }>()
+    .first<{ status: string; requested_at: string; decided_at: string | null }>()
+  // turned down less than an hour ago: wait before asking again
+  if (
+    (old?.status === 'rejected' || old?.status === 'revoked') &&
+    old.decided_at &&
+    Date.now() - new Date(old.decided_at).getTime() < 3600000
+  )
+    throw new HttpError(429, 'wait_before_asking')
   // asked less than 10 minutes ago: don't send the message again
   if (old?.status === 'pending' && Date.now() - new Date(old.requested_at).getTime() < 10 * 60000) return json({ status: 'pending' })
   await env.DB.prepare(
@@ -753,20 +919,22 @@ async function decideAssistant(
   const req = await env.DB.prepare('SELECT status FROM assistant_requests WHERE user_id = ?').bind(uid).first<{ status: string }>()
   const target = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(uid).first<UserRow>()
   const allow = kind === 'aa'
-  const done = req?.status === 'pending' && !!target
+  let done = req?.status === 'pending' && !!target
   if (done) {
-    const t0 = now()
-    await env.DB.batch([
-      env.DB.prepare('UPDATE assistant_requests SET status = ?, decided_by = ?, decided_at = ? WHERE user_id = ?').bind(
-        allow ? 'approved' : 'rejected',
-        giver.id,
-        t0,
-        uid,
-      ),
-      ...(allow
-        ? [env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = ? WHERE id = ?').bind(giver.assistant, giver.id, uid)]
-        : []),
-    ])
+    // only the first answer counts (Allow then quickly Reject must not leave access behind)
+    const r = await env.DB.prepare(
+      "UPDATE assistant_requests SET status = ?, decided_by = ?, decided_at = ? WHERE user_id = ? AND status = 'pending'",
+    )
+      .bind(allow ? 'approved' : 'rejected', giver.id, now(), uid)
+      .run()
+    done = !!r.meta.changes
+  }
+  if (done) {
+    if (allow) {
+      const own = parseAssistant(giver.assistant)!
+      const pass = JSON.stringify({ u: own.u, k: await makePass(own.k, uid) })
+      await env.DB.prepare('UPDATE users SET assistant = ?, assistant_from = ? WHERE id = ?').bind(pass, giver.id, uid).run()
+    }
     await tg(env.TELEGRAM_BOT_TOKEN, 'sendMessage', {
       chat_id: uid,
       text: txt(target!.lang, allow ? 'aiYouIn' : 'aiYouOut'),
