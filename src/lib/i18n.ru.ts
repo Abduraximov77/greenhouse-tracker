@@ -867,4 +867,6 @@ export const ru: Record<string, string> = {
     'Для этого ответа не удалось открыть ни одной надёжной страницы. Считайте его неподтверждённым.',
   '{n} unchecked links were removed.': 'Удалено непроверенных ссылок: {n}.',
   'Nobody has set up the assistant yet.': 'Помощника пока никто не настроил.',
+  'Weight, kg (optional)': 'Вес, кг (необязательно)',
+  'Empty: the price is per box': 'Если пусто: цена за ящик',
 }

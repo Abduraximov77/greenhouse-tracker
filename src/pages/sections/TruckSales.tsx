@@ -49,7 +49,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
             date: rec.date,
             boxes: str(rec.boxes),
             kg: str(rec.kg ?? null),
-            price: str(rec.pricePerKg ?? null),
+            price: str(rec.kg ? (rec.pricePerKg ?? null) : (rec.pricePerBox ?? rec.pricePerKg ?? null)),
             currency: rec.currency,
             buyer: rec.buyer,
             payStatus: rec.payStatus,
@@ -74,7 +74,10 @@ export function TruckSales({ truck }: { truck: Shipment }) {
   const boxes = f ? num(f.boxes) : null
   const kg = f ? num(f.kg) : null
   const price = f ? num(f.price) : null
-  const amount = kg !== null && price !== null ? Math.round(kg * price * 100) / 100 : null
+  // weight is optional: with a weight the price is per kg, without it the price is per box
+  const byKg = kg !== null && kg > 0
+  const amount =
+    price === null ? null : byKg ? Math.round(kg! * price * 100) / 100 : boxes !== null ? Math.round(boxes * price * 100) / 100 : null
   // Boxes that can still be sold from this truck (when editing, this sale's own boxes count as available).
   const editingBoxes = editing && editing !== 'new' ? (sales.find((r) => r.id === editing)?.boxes ?? 0) : 0
   const canSell = left + editingBoxes
@@ -84,19 +87,19 @@ export function TruckSales({ truck }: { truck: Shipment }) {
     if (!f.date) return setError(t('Enter the date.'))
     if (boxes === null || boxes <= 0 || !Number.isInteger(boxes)) return setError(t('Enter the number of boxes (a whole number).'))
     if (boxes > canSell) return setError(t('Only {n} boxes are left on this truck.', { n: formatNumber(canSell, 0) }))
-    if (kg === null || kg <= 0) return setError(t('Enter the weight sold in kg.'))
+    if (f.kg.trim() && (kg === null || kg <= 0)) return setError(t('Enter the weight sold in kg.'))
     const editingKg = editing && editing !== 'new' ? (sales.find((r) => r.id === editing)?.kg ?? 0) : 0
-    if (leftKg !== null && kg > leftKg + editingKg + 0.5)
+    if (byKg && leftKg !== null && kg! > leftKg + editingKg + 0.5)
       return setError(t('Only {n} kg are left on this truck.', { n: formatNumber(leftKg + editingKg, 0) }))
-    if (price === null || price < 0) return setError(t('Enter the price per kg.'))
+    if (price === null || price < 0) return setError(t(byKg ? 'Enter the price per kg.' : 'Enter the price per box.'))
     const data = {
       cropId: truck.cropId,
       shipmentId: truck.id,
       date: f.date,
       boxes,
-      kg,
-      pricePerKg: price,
-      pricePerBox: null,
+      kg: byKg ? kg : null,
+      pricePerKg: byKg ? price : null,
+      pricePerBox: byKg ? null : price,
       amount: amount ?? 0,
       currency: f.currency,
       buyer: f.buyer.trim(),
@@ -178,7 +181,7 @@ export function TruckSales({ truck }: { truck: Shipment }) {
             />
           </label>
           <label className="mini-field">
-            <span>{t('Weight, kg')}</span>
+            <span>{t('Weight, kg (optional)')}</span>
             <input
               id={`sale-kg-${truck.id}`}
               className="input"
@@ -188,11 +191,11 @@ export function TruckSales({ truck }: { truck: Shipment }) {
               onChange={(e) => setF({ ...f, kg: e.target.value })}
             />
             <small className="mini-hint">
-              {leftKg !== null ? t('Left on the truck: {kg} kg', { kg: formatNumber(leftKg, 0) }) : t('Type the real weight')}
+              {leftKg !== null ? t('Left on the truck: {kg} kg', { kg: formatNumber(leftKg, 0) }) : t('Empty: the price is per box')}
             </small>
           </label>
           <label className="mini-field sale-price">
-            <span>{t('Price per kg')}</span>
+            <span>{t(byKg ? 'Price per kg' : 'Price per box')}</span>
             <MoneyInput
               id={`sale-price-${truck.id}`}
               value={f.price}

@@ -874,4 +874,6 @@ export const uz: Record<string, string> = {
     'Bu javob uchun birorta ishonchli sahifa ochilmadi. Uni tasdiqlanmagan deb hisoblang.',
   '{n} unchecked links were removed.': 'Tekshirilmagan {n} ta havola olib tashlandi.',
   'Nobody has set up the assistant yet.': 'Hali hech kim yordamchini sozlamagan.',
+  'Weight, kg (optional)': 'Og‘irligi, kg (ixtiyoriy)',
+  'Empty: the price is per box': 'Bo‘sh qolsa: narx bir quti uchun',
 }
