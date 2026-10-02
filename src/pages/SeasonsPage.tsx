@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { addRecord, seasonLabel, useDB } from '../lib/store'
 import { href } from '../lib/router'
 import { cropName } from '../lib/crops'
@@ -6,7 +6,7 @@ import { useT } from '../lib/i18n'
 import { FormCard, Field, PageHead } from '../components/ui'
 import { WeatherCard } from '../components/Weather'
 import { Coachmark } from '../components/Coachmark'
-import { startTour, useTourStep } from '../lib/tour'
+import { useStartTour, useTourStep } from '../lib/tour'
 
 export function SeasonsPage() {
   const db = useDB()
@@ -19,7 +19,7 @@ export function SeasonsPage() {
   const [error, setError] = useState<string | null>(null)
   const thisYear = new Date().getFullYear()
   const hasCrops = db.crops.length > 0
-  useEffect(() => startTour(hasCrops), [hasCrops])
+  useStartTour(hasCrops)
   const tip = useTourStep('season') && !hasCrops && !adding
   // the season to open first: this year's, otherwise the newest
   const tipSeason = seasons.find((s) => s.startYear === thisYear) ?? seasons[seasons.length - 1]

@@ -10,7 +10,7 @@ import { useT } from '../lib/i18n'
 import { Breadcrumbs, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
 import { cropTotals } from './cropTotals'
 import { Coachmark } from '../components/Coachmark'
-import { startTour, tourDone, useTourStep } from '../lib/tour'
+import { tourDone, useStartTour, useTourStep } from '../lib/tour'
 
 export function SeasonPage({ season }: { season: Season }) {
   const db = useDB()
@@ -19,10 +19,11 @@ export function SeasonPage({ season }: { season: Season }) {
   const { fmt: money } = useCurrency()
   const crops = db.crops.filter((c) => c.seasonId === season.id)
   const hasCrops = db.crops.length > 0
+  useStartTour(hasCrops)
+  const seasonTip = useTourStep('season')
   useEffect(() => {
-    startTour(hasCrops)
-    tourDone('season') // the season is open: that step is done
-  }, [hasCrops])
+    if (seasonTip) tourDone('season') // the season is open: that step is done
+  }, [seasonTip])
   const cropTip = useTourStep('crop')
   useEffect(() => {
     if (hasCrops) tourDone('crop')
