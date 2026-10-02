@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addRecord, seasonLabel, useDB } from '../lib/store'
 import { href } from '../lib/router'
 import { cropName } from '../lib/crops'
 import { useT } from '../lib/i18n'
 import { FormCard, Field, PageHead } from '../components/ui'
 import { WeatherCard } from '../components/Weather'
+import { Coachmark } from '../components/Coachmark'
+import { startTour, useTourStep } from '../lib/tour'
 
 export function SeasonsPage() {
   const db = useDB()
@@ -16,6 +18,11 @@ export function SeasonsPage() {
   const [year, setYear] = useState(String(nextYear))
   const [error, setError] = useState<string | null>(null)
   const thisYear = new Date().getFullYear()
+  const hasCrops = db.crops.length > 0
+  useEffect(() => startTour(hasCrops), [hasCrops])
+  const tip = useTourStep('season') && !hasCrops && !adding
+  // the season to open first: this year's, otherwise the newest
+  const tipSeason = seasons.find((s) => s.startYear === thisYear) ?? seasons[seasons.length - 1]
 
   function openAdd() {
     setYear(String(nextYear))
@@ -38,7 +45,7 @@ export function SeasonsPage() {
         sub={t('Choose a season to see its crops and records.')}
         actions={
           !adding && (
-            <button className="btn btn-primary" onClick={openAdd}>
+            <button className="btn btn-primary" data-tour="new-season" onClick={openAdd}>
               + {t('New season')}
             </button>
           )
@@ -67,6 +74,23 @@ export function SeasonsPage() {
         </FormCard>
       )}
 
+      {tip &&
+        (tipSeason ? (
+          <Coachmark
+            step="season"
+            target="[data-tour=open-season]"
+            title={t('Open the season')}
+            text={t('All records are kept inside a season. Tap the {season} season to open it.', { season: seasonLabel(tipSeason) })}
+          />
+        ) : (
+          <Coachmark
+            step="season"
+            target="[data-tour=new-season]"
+            title={t('Create a season')}
+            text={t('All records are kept inside a season. Tap this button to create your first season.')}
+          />
+        ))}
+
       <div className="season-grid">
         {seasons.map((s) => {
           const crops = db.crops.filter((c) => c.seasonId === s.id)
@@ -77,7 +101,12 @@ export function SeasonsPage() {
           )
           const status = s.startYear < thisYear ? 'Past' : s.startYear === thisYear ? 'Current' : 'Upcoming'
           return (
-            <a key={s.id} className="card season-card" href={href('season', s.id)}>
+            <a
+              key={s.id}
+              className="card season-card"
+              href={href('season', s.id)}
+              data-tour={s.id === tipSeason?.id ? 'open-season' : undefined}
+            >
               <span className={`badge badge-${status.toLowerCase()}`}>{t(status)}</span>
               <span className="season-year">{seasonLabel(s)}</span>
               <span className="season-meta">{crops.length ? crops.map((c) => cropName(c.crop, lang)).join(', ') : t('No crops yet')}</span>

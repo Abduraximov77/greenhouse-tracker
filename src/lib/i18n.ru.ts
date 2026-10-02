@@ -955,4 +955,18 @@ export const ru: Record<string, string> = {
   'Daily message at': 'Ежедневное сообщение в',
   'Warnings for today and tomorrow come at this time, by this phone’s own clock. Dangerous weather (frost, storm, strong wind) comes straight away, between 06:00 and 23:00.':
     'Предупреждения на сегодня и завтра приходят в это время — по часам этого телефона. Опасная погода (заморозки, гроза, сильный ветер) приходит сразу, с 06:00 до 23:00.',
+  'Step {n} of {total}': 'Шаг {n} из {total}',
+  'Open the season': 'Откройте сезон',
+  'All records are kept inside a season. Tap the {season} season to open it.':
+    'Все записи хранятся внутри сезона. Нажмите на сезон {season}, чтобы открыть его.',
+  'Create a season': 'Создайте сезон',
+  'All records are kept inside a season. Tap this button to create your first season.':
+    'Все записи хранятся внутри сезона. Нажмите эту кнопку, чтобы создать первый сезон.',
+  'Add a crop': 'Добавьте культуру',
+  'Type the crop you grow, e.g. tomato, and pick it from the list.': 'Введите культуру, например томат, и выберите её из списка.',
+  'Record your work': 'Записывайте работу',
+  'Here you record workers, expenses, income, harvest and export. Pick a section to start.':
+    'Здесь вы записываете рабочих, расходы, доходы, урожай и экспорт. Выберите раздел, чтобы начать.',
+  'Got it': 'Понятно',
+  'Skip tips': 'Пропустить',
 }

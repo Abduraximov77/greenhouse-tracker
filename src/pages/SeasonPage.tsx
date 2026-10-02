@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { addRecord, seasonLabel, setPlace, useDB, type Place, type Season } from '../lib/store'
 import { PlaceChoice } from '../components/Weather'
 import { cropPlace } from '../lib/weather'
@@ -9,6 +9,8 @@ import { useCurrency } from '../lib/money'
 import { useT } from '../lib/i18n'
 import { Breadcrumbs, Empty, Field, FormCard, PageHead, SectionHead, num } from '../components/ui'
 import { cropTotals } from './cropTotals'
+import { Coachmark } from '../components/Coachmark'
+import { startTour, tourDone, useTourStep } from '../lib/tour'
 
 export function SeasonPage({ season }: { season: Season }) {
   const db = useDB()
@@ -16,6 +18,15 @@ export function SeasonPage({ season }: { season: Season }) {
   const lang = db.settings.lang
   const { fmt: money } = useCurrency()
   const crops = db.crops.filter((c) => c.seasonId === season.id)
+  const hasCrops = db.crops.length > 0
+  useEffect(() => {
+    startTour(hasCrops)
+    tourDone('season') // the season is open: that step is done
+  }, [hasCrops])
+  const cropTip = useTourStep('crop')
+  useEffect(() => {
+    if (hasCrops) tourDone('crop')
+  }, [hasCrops])
 
   const [query, setQuery] = useState('')
   const [picked, setPicked] = useState<string | null>(null)
@@ -58,6 +69,7 @@ export function SeasonPage({ season }: { season: Season }) {
       plantedAt: planted || null,
     })
     setPicked(null)
+    tourDone('crop')
     navigate('season', season.id, 'crop', rec.id)
   }
 
@@ -68,6 +80,15 @@ export function SeasonPage({ season }: { season: Season }) {
         title={t('{season} season', { season: seasonLabel(season) })}
         sub={t('Crops you grow this season. Open a crop to record its work.')}
       />
+
+      {cropTip && !hasCrops && !picked && !query.trim() && (
+        <Coachmark
+          step="crop"
+          target=".search-card"
+          title={t('Add a crop')}
+          text={t('Type the crop you grow, e.g. tomato, and pick it from the list.')}
+        />
+      )}
 
       {!picked && (
         <div className="card search-card">

@@ -15,6 +15,8 @@ import { ExpensesSection } from './sections/ExpensesSection'
 import { IncomeSection } from './sections/IncomeSection'
 import { DealsSection } from './sections/DealsSection'
 import { AssistantSection } from './sections/AssistantSection'
+import { Coachmark } from '../components/Coachmark'
+import { tourDone, useTourStep } from '../lib/tour'
 
 type SectionId = 'overview' | 'workers' | 'expenses' | 'income' | 'deals' | 'harvest' | 'export' | 'assistant'
 
@@ -88,6 +90,10 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
   const active: SectionId = SECTIONS.some((x) => x.id === tab) ? (tab as SectionId) : 'overview'
   const section = SECTIONS.find((x) => x.id === active)!
   const name = cropName(crop.crop, lang)
+  const sectionsTip = useTourStep('sections')
+  useEffect(() => {
+    if (active !== 'overview') tourDone('sections') // a section was opened
+  }, [active])
 
   // On phones the menu is a sideways row: keep the current section in view.
   const navRef = useRef<HTMLElement>(null)
@@ -143,6 +149,14 @@ export function CropPage({ season, crop, tab }: { season: Season; crop: SeasonCr
         </nav>
       </aside>
 
+      {sectionsTip && active === 'overview' && (
+        <Coachmark
+          step="sections"
+          target=".crop-nav"
+          title={t('Record your work')}
+          text={t('Here you record workers, expenses, income, harvest and export. Pick a section to start.')}
+        />
+      )}
       <div className="crop-main">
         <Breadcrumbs
           items={[

@@ -3757,3 +3757,46 @@ button.wx-day.is-open {
   .chat-head { flex-wrap: wrap; }
   .chat-head { flex-direction: row; align-items: center; }
 }
+
+/* First-steps hints: dark screen, one lit-up control, an arrow and a small card */
+.coach { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+.coach-block { position: fixed; pointer-events: auto; }
+.coach-ring {
+  position: fixed;
+  border-radius: 14px;
+  pointer-events: none;
+  box-shadow: 0 0 0 4px #ffffff, 0 0 0 12px rgb(255 255 255 / 0.25), 0 0 0 9999px rgb(10 24 18 / 0.64);
+  transition: top 0.2s, left 0.2s, width 0.2s, height 0.2s;
+}
+.coach-arrow { position: fixed; fill: none; stroke: #ffffff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.coach-card {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: coach-in 0.25s ease-out;
+}
+.coach-step { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--brand-accent); }
+.coach-title { margin: 0; font-size: 20px; }
+.coach-text { margin: 0; color: var(--muted); line-height: 1.5; }
+.coach-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.coach-dots { display: flex; gap: 6px; }
+.coach-dots span { width: 6px; height: 6px; border-radius: 3px; background: var(--line); }
+.coach-dots span.is-on { width: 18px; background: var(--brand); }
+.coach-buttons { display: flex; gap: 6px; }
+@keyframes coach-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .coach-card { animation: none; } .coach-ring { transition: none; } }
+.coach-skip { min-height: 44px; padding: 0 10px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; white-space: nowrap; cursor: pointer; }
+.coach-skip:hover { color: var(--text); text-decoration: underline; }
+.coach-buttons .btn { white-space: nowrap; }

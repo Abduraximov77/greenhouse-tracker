@@ -962,4 +962,19 @@ export const uz: Record<string, string> = {
   'Daily message at': 'Kunlik xabar vaqti',
   'Warnings for today and tomorrow come at this time, by this phone’s own clock. Dangerous weather (frost, storm, strong wind) comes straight away, between 06:00 and 23:00.':
     'Bugun va ertangi ogohlantirishlar shu vaqtda, telefoningizning o‘z soati bo‘yicha keladi. Xavfli ob-havo (sovuq, bo‘ron, kuchli shamol) darhol, 06:00 dan 23:00 gacha keladi.',
+  'Step {n} of {total}': '{n}-qadam / {total}',
+  'Open the season': 'Mavsumni oching',
+  'All records are kept inside a season. Tap the {season} season to open it.':
+    'Hamma yozuvlar mavsum ichida saqlanadi. Ochish uchun {season} mavsumini bosing.',
+  'Create a season': 'Mavsum yarating',
+  'All records are kept inside a season. Tap this button to create your first season.':
+    'Hamma yozuvlar mavsum ichida saqlanadi. Birinchi mavsumni yaratish uchun shu tugmani bosing.',
+  'Add a crop': 'Ekin qo‘shing',
+  'Type the crop you grow, e.g. tomato, and pick it from the list.':
+    'Ekayotgan ekiningizni yozing, masalan pomidor, va ro‘yxatdan tanlang.',
+  'Record your work': 'Ishlaringizni yozing',
+  'Here you record workers, expenses, income, harvest and export. Pick a section to start.':
+    'Bu yerda ishchilar, xarajatlar, kirim, hosil va eksportni yozasiz. Boshlash uchun bo‘limni tanlang.',
+  'Got it': 'Tushunarli',
+  'Skip tips': 'O‘tkazib yuborish',
 }
